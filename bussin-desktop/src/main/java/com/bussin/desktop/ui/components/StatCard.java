@@ -15,7 +15,19 @@ public class StatCard extends AppCard {
                         String value,
                         String detail) {
 
-                setLayout(new BorderLayout(0, 8));
+                this(title, value, detail, null);
+        }
+
+        /**
+         * @param iconName optional {@link IconFactory} icon shown in the top-right corner
+         */
+        public StatCard(
+                        String title,
+                        String value,
+                        String detail,
+                        String iconName) {
+
+                setLayout(new BorderLayout(12, 0));
 
                 titleLabel = new JLabel(title);
                 titleLabel.setFont(BussinTheme.SMALL_BOLD);
@@ -47,5 +59,25 @@ public class StatCard extends AppCard {
                 content.add(detailLabel);
 
                 add(content, BorderLayout.CENTER);
+
+                if (iconName != null) {
+
+                        JLabel icon = new JLabel(
+                                        IconFactory.create(
+                                                        iconName,
+                                                        20,
+                                                        BussinTheme.PRIMARY));
+
+                        icon.setHorizontalAlignment(SwingConstants.CENTER);
+                        icon.setOpaque(true);
+                        icon.setBackground(BussinTheme.PRIMARY_LIGHT);
+                        icon.setPreferredSize(new Dimension(40, 40));
+
+                        JPanel iconHolder = new JPanel(new BorderLayout());
+                        iconHolder.setOpaque(false);
+                        iconHolder.add(icon, BorderLayout.NORTH);
+
+                        add(iconHolder, BorderLayout.EAST);
+                }
         }
 }
