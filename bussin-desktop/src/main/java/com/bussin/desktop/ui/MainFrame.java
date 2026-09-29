@@ -27,6 +27,7 @@ import com.bussin.desktop.ui.screens.QueueScreen;
 import com.bussin.desktop.ui.screens.ReportScreen;
 import com.bussin.desktop.ui.screens.RouteScreen;
 import com.bussin.desktop.ui.screens.TripScreen;
+import com.bussin.desktop.ui.screens.UserDashboardScreen;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class MainFrame extends JFrame {
@@ -102,11 +103,7 @@ public class MainFrame extends JFrame {
                                 BussinTheme.BACKGROUND);
 
                 contentPanel.setBorder(
-                                BorderFactory.createEmptyBorder(
-                                                0,
-                                                0,
-                                                0,
-                                                0));
+                                BorderFactory.createEmptyBorder());
 
                 JPanel mainPanel = new JPanel(
                                 new BorderLayout());
@@ -136,8 +133,7 @@ public class MainFrame extends JFrame {
                                 rightPanel,
                                 BorderLayout.CENTER);
 
-                setContentPane(
-                                mainPanel);
+                setContentPane(mainPanel);
         }
 
         // ================================================================
@@ -193,8 +189,7 @@ public class MainFrame extends JFrame {
 
                 contentPanel.repaint();
 
-                sidebar.setActiveRoute(
-                                route);
+                sidebar.setActiveRoute(route);
 
                 updateTitle(route);
         }
@@ -216,11 +211,6 @@ public class MainFrame extends JFrame {
 
                         return;
                 }
-
-                /*
-                 * Dispose the authenticated application window first.
-                 * Then return to the login screen.
-                 */
 
                 dispose();
 
@@ -257,8 +247,27 @@ public class MainFrame extends JFrame {
 
                 return switch (route) {
 
-                        case "dashboard" ->
-                                new DashboardScreen();
+                        // --------------------------------------------------------
+                        // USER DASHBOARD
+                        // --------------------------------------------------------
+
+                        case "dashboard" -> {
+
+                                if ("USER".equals(userRole)) {
+
+                                        yield new UserDashboardScreen(
+                                                        currentUserEmail,
+                                                        this::navigate);
+
+                                } else {
+
+                                        yield new DashboardScreen();
+                                }
+                        }
+
+                        // --------------------------------------------------------
+                        // EXISTING SCREENS
+                        // --------------------------------------------------------
 
                         case "queue" ->
                                 new QueueScreen();
@@ -286,6 +295,15 @@ public class MainFrame extends JFrame {
                         case "profile" ->
                                 new ProfileScreen(
                                                 userRole);
+
+                        // --------------------------------------------------------
+                        // PHASE 11 PLACEHOLDER
+                        // --------------------------------------------------------
+
+                        case "trip-search" ->
+                                createPlaceholder(
+                                                "Find a Trip",
+                                                "Trip search will be implemented in Phase 11.2.");
 
                         default ->
                                 createPlaceholder(
@@ -319,7 +337,8 @@ public class MainFrame extends JFrame {
                                                         "profile" ->
                                                 true;
 
-                                        default -> false;
+                                        default ->
+                                                false;
                                 };
 
                         case "USER":
@@ -331,10 +350,12 @@ public class MainFrame extends JFrame {
                                         case "dashboard",
                                                         "queue",
                                                         "bookings",
-                                                        "profile" ->
+                                                        "profile",
+                                                        "trip-search" ->
                                                 true;
 
-                                        default -> false;
+                                        default ->
+                                                false;
                                 };
                 }
         }
@@ -349,13 +370,19 @@ public class MainFrame extends JFrame {
                 String title = switch (route) {
 
                         case "dashboard" ->
-                                "Dashboard";
+
+                                "USER".equals(userRole)
+                                                ? "Home"
+                                                : "Dashboard";
 
                         case "queue" ->
                                 "Queue";
 
                         case "bookings" ->
                                 "Bookings";
+
+                        case "trip-search" ->
+                                "Find a Trip";
 
                         case "trips" ->
                                 "Trips";
@@ -439,14 +466,12 @@ public class MainFrame extends JFrame {
                 messageLabel.setAlignmentX(
                                 Component.CENTER_ALIGNMENT);
 
-                card.add(
-                                titleLabel);
+                card.add(titleLabel);
 
                 card.add(
                                 Box.createVerticalStrut(10));
 
-                card.add(
-                                messageLabel);
+                card.add(messageLabel);
 
                 panel.add(card);
 

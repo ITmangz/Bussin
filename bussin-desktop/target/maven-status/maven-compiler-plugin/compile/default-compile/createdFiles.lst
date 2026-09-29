@@ -72,6 +72,7 @@ com\bussin\desktop\ui\components\IconFactory.class
 com\bussin\desktop\ui\screens\RouteScreen$Route.class
 com\bussin\desktop\ui\components\TopBar.class
 com\bussin\desktop\ui\auth\ForgotPasswordScreen.class
+com\bussin\desktop\ui\screens\UserDashboardScreen.class
 com\bussin\desktop\ui\screens\DashboardScreen$QueueEntry.class
 com\bussin\desktop\ui\auth\LoginScreen$RoundedActionButton.class
 com\bussin\desktop\ui\screens\BookingScreen$3.class
