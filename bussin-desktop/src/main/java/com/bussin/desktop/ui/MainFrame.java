@@ -18,43 +18,41 @@ import javax.swing.JPanel;
 import com.bussin.desktop.App;
 import com.bussin.desktop.ui.components.Sidebar;
 import com.bussin.desktop.ui.components.TopBar;
+import com.bussin.desktop.ui.flow.BookingFlowState;
+import com.bussin.desktop.ui.screens.BookingConfirmationScreen;
+import com.bussin.desktop.ui.screens.BookingReviewScreen;
 import com.bussin.desktop.ui.screens.BookingScreen;
 import com.bussin.desktop.ui.screens.BusScreen;
 import com.bussin.desktop.ui.screens.DashboardScreen;
 import com.bussin.desktop.ui.screens.EmployeeScreen;
+import com.bussin.desktop.ui.screens.PassengerInformationScreen;
 import com.bussin.desktop.ui.screens.ProfileScreen;
 import com.bussin.desktop.ui.screens.QueueScreen;
 import com.bussin.desktop.ui.screens.ReportScreen;
 import com.bussin.desktop.ui.screens.RouteScreen;
+import com.bussin.desktop.ui.screens.SeatSelectionScreen;
 import com.bussin.desktop.ui.screens.TripScreen;
+import com.bussin.desktop.ui.screens.TripSearchScreen;
+import com.bussin.desktop.ui.screens.UserBookingsScreen;
 import com.bussin.desktop.ui.screens.UserDashboardScreen;
+import com.bussin.desktop.ui.screens.UserQueueScreen;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class MainFrame extends JFrame {
 
-        // ================================================================
-        // CURRENT USER
-        // ================================================================
-
         private final String userRole;
         private final String currentUserEmail;
-
-        // ================================================================
-        // MAIN UI
-        // ================================================================
 
         private final JPanel contentPanel = new JPanel(new BorderLayout());
 
         private final Map<String, JPanel> screenCache = new HashMap<>();
 
+        private final BookingFlowState bookingFlowState = new BookingFlowState();
+
         private Sidebar sidebar;
         private TopBar topBar;
 
         private String currentRoute;
-
-        // ================================================================
-        // CONSTRUCTOR
-        // ================================================================
 
         public MainFrame(
                         String userRole,
@@ -86,10 +84,6 @@ public class MainFrame extends JFrame {
 
                 navigate("dashboard");
         }
-
-        // ================================================================
-        // INITIALIZE UI
-        // ================================================================
 
         private void initializeUI() {
 
@@ -136,10 +130,6 @@ public class MainFrame extends JFrame {
                 setContentPane(mainPanel);
         }
 
-        // ================================================================
-        // NAVIGATION
-        // ================================================================
-
         private void navigate(
                         String route) {
 
@@ -149,20 +139,12 @@ public class MainFrame extends JFrame {
                         return;
                 }
 
-                // ------------------------------------------------------------
-                // LOGOUT
-                // ------------------------------------------------------------
-
                 if ("logout".equals(route)) {
 
                         handleLogout();
 
                         return;
                 }
-
-                // ------------------------------------------------------------
-                // ACCESS CONTROL
-                // ------------------------------------------------------------
 
                 if (!hasAccess(route)) {
 
@@ -186,17 +168,19 @@ public class MainFrame extends JFrame {
                                 BorderLayout.CENTER);
 
                 contentPanel.revalidate();
-
                 contentPanel.repaint();
 
                 sidebar.setActiveRoute(route);
 
                 updateTitle(route);
-        }
 
-        // ================================================================
-        // LOGOUT
-        // ================================================================
+                /*
+                 * Refresh USER screens whenever they are opened.
+                 */
+                if (screen instanceof UserBookingsScreen bookings) {
+                        bookings.refresh();
+                }
+        }
 
         private void handleLogout() {
 
@@ -217,12 +201,21 @@ public class MainFrame extends JFrame {
                 App.showLogin();
         }
 
-        // ================================================================
-        // SCREEN CACHE
-        // ================================================================
-
         private JPanel getOrCreateScreen(
                         String route) {
+
+                /*
+                 * The commuter screens use shared state and should
+                 * be recreated when appropriate.
+                 */
+                if ("trip-search".equals(route)
+                                || "seat-selection".equals(route)
+                                || "passenger-information".equals(route)
+                                || "booking-review".equals(route)
+                                || "booking-confirmation".equals(route)) {
+
+                        return createScreen(route);
+                }
 
                 if (screenCache.containsKey(route)) {
 
@@ -238,18 +231,10 @@ public class MainFrame extends JFrame {
                 return screen;
         }
 
-        // ================================================================
-        // SCREEN CREATION
-        // ================================================================
-
         private JPanel createScreen(
                         String route) {
 
                 return switch (route) {
-
-                        // --------------------------------------------------------
-                        // USER DASHBOARD
-                        // --------------------------------------------------------
 
                         case "dashboard" -> {
 
@@ -265,17 +250,62 @@ public class MainFrame extends JFrame {
                                 }
                         }
 
-                        // --------------------------------------------------------
-                        // EXISTING SCREENS
-                        // --------------------------------------------------------
+                        case "queue" -> {
 
-                        case "queue" ->
-                                new QueueScreen();
+                                if ("USER".equals(userRole)) {
 
-                        case "bookings" ->
-                                new BookingScreen(
-                                                userRole,
-                                                currentUserEmail);
+                                        yield new UserQueueScreen(
+                                                        currentUserEmail,
+                                                        this::navigate);
+
+                                } else {
+
+                                        yield new QueueScreen();
+                                }
+                        }
+
+                        case "bookings" -> {
+
+                                if ("USER".equals(userRole)) {
+
+                                        yield new UserBookingsScreen(
+                                                        currentUserEmail,
+                                                        this::navigate,
+                                                        bookingFlowState);
+
+                                } else {
+
+                                        yield new BookingScreen(
+                                                        userRole,
+                                                        currentUserEmail);
+                                }
+                        }
+
+                        case "trip-search" ->
+                                new TripSearchScreen(
+                                                this::navigate,
+                                                bookingFlowState);
+
+                        case "seat-selection" ->
+                                new SeatSelectionScreen(
+                                                this::navigate,
+                                                bookingFlowState);
+
+                        case "passenger-information" ->
+                                new PassengerInformationScreen(
+                                                currentUserEmail,
+                                                this::navigate,
+                                                bookingFlowState);
+
+                        case "booking-review" ->
+                                new BookingReviewScreen(
+                                                this::navigate,
+                                                bookingFlowState);
+
+                        case "booking-confirmation" ->
+                                new BookingConfirmationScreen(
+                                                this::navigate,
+                                                bookingFlowState);
 
                         case "trips" ->
                                 new TripScreen();
@@ -296,15 +326,6 @@ public class MainFrame extends JFrame {
                                 new ProfileScreen(
                                                 userRole);
 
-                        // --------------------------------------------------------
-                        // PHASE 11 PLACEHOLDER
-                        // --------------------------------------------------------
-
-                        case "trip-search" ->
-                                createPlaceholder(
-                                                "Find a Trip",
-                                                "Trip search will be implemented in Phase 11.2.");
-
                         default ->
                                 createPlaceholder(
                                                 "Page Not Found",
@@ -312,17 +333,12 @@ public class MainFrame extends JFrame {
                 };
         }
 
-        // ================================================================
-        // ROLE ACCESS
-        // ================================================================
-
         private boolean hasAccess(
                         String route) {
 
                 switch (userRole) {
 
                         case "ADMIN":
-
                                 return true;
 
                         case "EMPLOYEE":
@@ -351,7 +367,11 @@ public class MainFrame extends JFrame {
                                                         "queue",
                                                         "bookings",
                                                         "profile",
-                                                        "trip-search" ->
+                                                        "trip-search",
+                                                        "seat-selection",
+                                                        "passenger-information",
+                                                        "booking-review",
+                                                        "booking-confirmation" ->
                                                 true;
 
                                         default ->
@@ -360,29 +380,38 @@ public class MainFrame extends JFrame {
                 }
         }
 
-        // ================================================================
-        // WINDOW TITLE
-        // ================================================================
-
         private void updateTitle(
                         String route) {
 
                 String title = switch (route) {
 
                         case "dashboard" ->
-
                                 "USER".equals(userRole)
                                                 ? "Home"
                                                 : "Dashboard";
 
                         case "queue" ->
-                                "Queue";
+                                "USER".equals(userRole)
+                                                ? "My Queue"
+                                                : "Queue";
 
                         case "bookings" ->
                                 "Bookings";
 
                         case "trip-search" ->
                                 "Find a Trip";
+
+                        case "seat-selection" ->
+                                "Select Seat";
+
+                        case "passenger-information" ->
+                                "Passenger Information";
+
+                        case "booking-review" ->
+                                "Review Booking";
+
+                        case "booking-confirmation" ->
+                                "Booking Confirmed";
 
                         case "trips" ->
                                 "Trips";
@@ -409,10 +438,6 @@ public class MainFrame extends JFrame {
                 setTitle(
                                 "BUSSIN - " + title);
         }
-
-        // ================================================================
-        // PLACEHOLDER
-        // ================================================================
 
         private JPanel createPlaceholder(
                         String title,
@@ -478,10 +503,6 @@ public class MainFrame extends JFrame {
                 return panel;
         }
 
-        // ================================================================
-        // HELPERS
-        // ================================================================
-
         private String normalizeRole(
                         String role) {
 
@@ -496,22 +517,15 @@ public class MainFrame extends JFrame {
                                 .toUpperCase();
         }
 
-        // ================================================================
-        // GETTERS
-        // ================================================================
-
         public String getUserRole() {
-
                 return userRole;
         }
 
         public String getCurrentUserEmail() {
-
                 return currentUserEmail;
         }
 
         public String getCurrentRoute() {
-
                 return currentRoute;
         }
 }
