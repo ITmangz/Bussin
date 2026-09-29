@@ -1,17 +1,21 @@
 com\bussin\desktop\ui\components\QueueCard.class
 com\bussin\desktop\ui\screens\RouteScreen$RouteTableModel.class
+com\bussin\desktop\ui\screens\EmployeeScreen$Employee.class
 com\bussin\desktop\ui\auth\OpeningScreen.class
 com\bussin\desktop\ui\screens\TripScreen$BusOption.class
 com\bussin\desktop\ui\screens\RouteScreen.class
 com\bussin\desktop\ui\screens\BusScreen$Bus.class
 com\bussin\desktop\ui\components\AppLabel.class
+com\bussin\desktop\ui\screens\EmployeeScreen.class
 com\bussin\desktop\ui\components\ResponsiveLayouts$Vertical.class
 com\bussin\desktop\ui\screens\TripScreen$1.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$1.class
 com\bussin\desktop\ui\components\StatCard.class
 com\bussin\desktop\ui\theme\BussinTheme.class
 com\bussin\desktop\ui\screens\DashboardScreen$Booking.class
+com\bussin\desktop\ui\screens\EmployeeScreen$2.class
 com\bussin\desktop\ui\auth\RegistrationStep2Screen.class
+com\bussin\desktop\ui\screens\EmployeeScreen$EmployeeTableModel.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen.class
 com\bussin\desktop\ui\screens\RouteScreen$StatusCellRenderer.class
 com\bussin\desktop\ui\screens\TripScreen$HorizontalScrollHolder$Body.class
@@ -19,6 +23,7 @@ com\bussin\desktop\ui\screens\BusScreen$BusTableModel.class
 com\bussin\desktop\ui\screens\TripScreen$Trip.class
 com\bussin\desktop\ui\screens\QueueScreen.class
 com\bussin\desktop\ui\screens\BookingScreen$1.class
+com\bussin\desktop\ui\screens\EmployeeScreen$StatusCellRenderer.class
 com\bussin\desktop\ui\components\Sidebar.class
 com\bussin\desktop\ui\components\AppCard.class
 com\bussin\desktop\ui\MainFrame.class
@@ -38,6 +43,7 @@ com\bussin\desktop\ui\auth\LoginScreen$1.class
 com\bussin\desktop\ui\components\ResponsiveLayouts.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$RoundedFieldPanel.class
 com\bussin\desktop\ui\screens\QueueScreen$QueueEntry.class
+com\bussin\desktop\ui\screens\EmployeeScreen$1.class
 com\bussin\desktop\ui\screens\BusScreen$2.class
 com\bussin\desktop\ui\auth\OpeningScreen$BackgroundPanel.class
 com\bussin\desktop\ui\auth\RegistrationStep2Screen$1.class

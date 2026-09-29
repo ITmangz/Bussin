@@ -1,8 +1,15 @@
 package com.bussin.desktop.ui.components;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+
 import com.bussin.desktop.ui.theme.BussinTheme;
-import java.awt.*;
-import javax.swing.*;
 
 public class BusCard extends AppCard {
 
@@ -15,6 +22,15 @@ public class BusCard extends AppCard {
                         String status) {
 
                 setLayout(new BorderLayout(0, 14));
+
+                // --------------------------------------------------------
+                // Normalize occupancy values
+                // --------------------------------------------------------
+
+                int safeTotalSeats = Math.max(totalSeats, 1);
+                int safeOccupiedSeats = Math.max(
+                                0,
+                                Math.min(occupiedSeats, safeTotalSeats));
 
                 // --------------------------------------------------------
                 // Header
@@ -32,17 +48,24 @@ public class BusCard extends AppCard {
 
                 JLabel busLabel = new JLabel(busNumber);
                 busLabel.setFont(BussinTheme.CARD_TITLE);
-                busLabel.setForeground(BussinTheme.TEXT_PRIMARY);
+                busLabel.setForeground(
+                                BussinTheme.TEXT_PRIMARY);
 
                 JLabel routeLabel = new JLabel(route);
                 routeLabel.setFont(BussinTheme.SMALL);
-                routeLabel.setForeground(BussinTheme.TEXT_SECONDARY);
+                routeLabel.setForeground(
+                                BussinTheme.TEXT_SECONDARY);
 
                 busInfo.add(busLabel);
                 busInfo.add(Box.createVerticalStrut(3));
                 busInfo.add(routeLabel);
 
+                // --------------------------------------------------------
+                // Status
+                // --------------------------------------------------------
+
                 AppBadge.Status badgeStatus = switch (status.toLowerCase()) {
+
                         case "boarding", "on route" ->
                                 AppBadge.Status.INFO;
 
@@ -63,10 +86,17 @@ public class BusCard extends AppCard {
                                 status,
                                 badgeStatus);
 
-                header.add(busInfo, BorderLayout.WEST);
-                header.add(badge, BorderLayout.EAST);
+                header.add(
+                                busInfo,
+                                BorderLayout.WEST);
 
-                add(header, BorderLayout.NORTH);
+                header.add(
+                                badge,
+                                BorderLayout.EAST);
+
+                add(
+                                header,
+                                BorderLayout.NORTH);
 
                 // --------------------------------------------------------
                 // Departure
@@ -77,13 +107,17 @@ public class BusCard extends AppCard {
 
                 departurePanel.setOpaque(false);
 
-                JLabel departureTitle = new JLabel("Departure");
+                JLabel departureTitle = new JLabel(
+                                "Departure");
 
-                departureTitle.setFont(BussinTheme.SMALL);
+                departureTitle.setFont(
+                                BussinTheme.SMALL);
+
                 departureTitle.setForeground(
                                 BussinTheme.TEXT_MUTED);
 
-                JLabel departureValue = new JLabel(departure);
+                JLabel departureValue = new JLabel(
+                                departure);
 
                 departureValue.setFont(
                                 BussinTheme.BODY_MEDIUM);
@@ -99,31 +133,41 @@ public class BusCard extends AppCard {
                                 departureValue,
                                 BorderLayout.EAST);
 
-                add(departurePanel, BorderLayout.CENTER);
+                add(
+                                departurePanel,
+                                BorderLayout.CENTER);
 
                 // --------------------------------------------------------
                 // Occupancy
                 // --------------------------------------------------------
 
                 JPanel occupancy = new JPanel();
+
                 occupancy.setOpaque(false);
 
-                occupancy.setLayout(new BoxLayout(
-                                occupancy,
-                                BoxLayout.Y_AXIS));
+                occupancy.setLayout(
+                                new BoxLayout(
+                                                occupancy,
+                                                BoxLayout.Y_AXIS));
 
-                JPanel occupancyText = new JPanel(new BorderLayout());
+                JPanel occupancyText = new JPanel(
+                                new BorderLayout());
 
                 occupancyText.setOpaque(false);
 
-                JLabel seatsLabel = new JLabel("Seat occupancy");
+                JLabel seatsLabel = new JLabel(
+                                "Seat occupancy");
 
-                seatsLabel.setFont(BussinTheme.SMALL);
+                seatsLabel.setFont(
+                                BussinTheme.SMALL);
+
                 seatsLabel.setForeground(
                                 BussinTheme.TEXT_SECONDARY);
 
                 JLabel seatsValue = new JLabel(
-                                occupiedSeats + " / " + totalSeats);
+                                safeOccupiedSeats
+                                                + " / "
+                                                + totalSeats);
 
                 seatsValue.setFont(
                                 BussinTheme.SMALL_BOLD);
@@ -139,21 +183,39 @@ public class BusCard extends AppCard {
                                 seatsValue,
                                 BorderLayout.EAST);
 
+                // --------------------------------------------------------
+                // Progress bar
+                // --------------------------------------------------------
+
                 JProgressBar progress = new JProgressBar(
                                 0,
-                                totalSeats);
+                                safeTotalSeats);
 
-                progress.setValue(occupiedSeats);
+                progress.setValue(
+                                safeOccupiedSeats);
+
                 progress.setStringPainted(false);
                 progress.setBorderPainted(false);
+
                 progress.setPreferredSize(
                                 new Dimension(100, 7));
 
-                occupancy.add(occupancyText);
+                progress.setMaximumSize(
+                                new Dimension(
+                                                Integer.MAX_VALUE,
+                                                7));
+
+                occupancy.add(
+                                occupancyText);
+
                 occupancy.add(
                                 Box.createVerticalStrut(6));
-                occupancy.add(progress);
 
-                add(occupancy, BorderLayout.SOUTH);
+                occupancy.add(
+                                progress);
+
+                add(
+                                occupancy,
+                                BorderLayout.SOUTH);
         }
 }

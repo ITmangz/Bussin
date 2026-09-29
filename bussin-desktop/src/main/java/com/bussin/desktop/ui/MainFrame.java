@@ -1,17 +1,26 @@
 package com.bussin.desktop.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridBagLayout;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
 import com.bussin.desktop.ui.components.Sidebar;
 import com.bussin.desktop.ui.components.TopBar;
 import com.bussin.desktop.ui.screens.BookingScreen;
 import com.bussin.desktop.ui.screens.BusScreen;
 import com.bussin.desktop.ui.screens.DashboardScreen;
+import com.bussin.desktop.ui.screens.EmployeeScreen;
 import com.bussin.desktop.ui.screens.QueueScreen;
 import com.bussin.desktop.ui.screens.RouteScreen;
 import com.bussin.desktop.ui.screens.TripScreen;
 import com.bussin.desktop.ui.theme.BussinTheme;
-
-import javax.swing.*;
-import java.awt.*;
 
 public class MainFrame extends JFrame {
 
@@ -177,9 +186,7 @@ public class MainFrame extends JFrame {
                                 new RouteScreen();
 
                         case "employees" ->
-                                createPlaceholder(
-                                                "Employee Management",
-                                                "Manage BUSSIN staff accounts, roles, and employee information.");
+                                new EmployeeScreen();
 
                         case "reports" ->
                                 createPlaceholder(
@@ -265,7 +272,8 @@ public class MainFrame extends JFrame {
                 titleLabel.setAlignmentX(
                                 Component.CENTER_ALIGNMENT);
 
-                JLabel descriptionLabel = new JLabel(description);
+                JLabel descriptionLabel = new JLabel(
+                                description);
 
                 descriptionLabel.setFont(
                                 BussinTheme.BODY);
