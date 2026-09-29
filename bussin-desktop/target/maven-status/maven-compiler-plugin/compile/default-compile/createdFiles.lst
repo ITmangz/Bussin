@@ -44,6 +44,7 @@ com\bussin\desktop\ui\screens\BookingScreen.class
 com\bussin\desktop\ui\auth\AuthBackground$1.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$RoundedActionButton.class
 com\bussin\desktop\ui\screens\BookingScreen$2.class
+com\bussin\desktop\ui\screens\QueueScreen$Trip.class
 com\bussin\desktop\ui\auth\LoginScreen$PasswordEyeIcon.class
 com\bussin\desktop\ui\components\Sidebar$1.class
 com\bussin\desktop\ui\screens\RouteScreen$2.class
@@ -63,6 +64,7 @@ com\bussin\desktop\ui\components\TopBar.class
 com\bussin\desktop\ui\auth\ForgotPasswordScreen.class
 com\bussin\desktop\ui\screens\DashboardScreen$QueueEntry.class
 com\bussin\desktop\ui\auth\LoginScreen$RoundedActionButton.class
+com\bussin\desktop\ui\screens\BookingScreen$3.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$PasswordEyeIcon.class
 com\bussin\desktop\ui\components\BusCard.class
 com\bussin\desktop\ui\screens\BookingScreen$StatusCellRenderer.class
@@ -74,3 +76,4 @@ com\bussin\desktop\ui\auth\RegistrationStep1Screen$RoundedAuthCard.class
 com\bussin\desktop\ui\auth\RegistrationData.class
 com\bussin\desktop\ui\screens\TripScreen$TripTableModel.class
 com\bussin\desktop\services\MockAuthService.class
+com\bussin\desktop\ui\screens\QueueScreen$1.class

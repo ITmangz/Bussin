@@ -4,832 +4,611 @@ import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
 import com.bussin.desktop.ui.components.AppLabel;
+import com.bussin.desktop.ui.components.DataGrid;
 import com.bussin.desktop.ui.components.IconFactory;
+import com.bussin.desktop.ui.components.PageContent;
+import com.bussin.desktop.ui.components.QueueCard;
+import com.bussin.desktop.ui.components.ResponsiveLayouts;
+import com.bussin.desktop.ui.components.SectionHeader;
+import com.bussin.desktop.ui.components.StatCard;
 import com.bussin.desktop.ui.theme.BussinTheme;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
+/**
+ * Queue Management (frontend only, mock data).
+ *
+ * Passengers queue per trip. Staff call the next waiting passenger to board,
+ * complete boarding, or skip a no-show. Statuses: Waiting, Boarding,
+ * Completed, Skipped.
+ */
 public class QueueScreen extends JPanel {
 
-    private final List<QueueEntry> queueEntries = new ArrayList<>();
+    private static final String ALL_TRIPS = "All trips";
+    private static final String ALL_STATUS = "All statuses";
 
-    private final JLabel waitingValue = new JLabel("0");
-    private final JLabel servingValue = new JLabel("0");
-    private final JLabel completedValue = new JLabel("0");
-    private final JLabel skippedValue = new JLabel("0");
+    private static final String WAITING = "Waiting";
+    private static final String BOARDING = "Boarding";
+    private static final String COMPLETED = "Completed";
+    private static final String SKIPPED = "Skipped";
 
-    private final JPanel waitingListPanel = new JPanel();
-    private final JPanel currentServingPanel = new JPanel();
+    private final List<Trip> trips = new ArrayList<>();
+    private final List<QueueEntry> entries = new ArrayList<>();
+
+    private final JTextField searchField = new JTextField();
+    private final JComboBox<String> tripFilter = new JComboBox<>();
+    private final JComboBox<String> statusFilter = new JComboBox<>(new String[] {
+            ALL_STATUS, WAITING, BOARDING, COMPLETED, SKIPPED });
+
+    private final JPanel statsHolder = transparent();
+    private final JPanel boardingHolder = transparent();
+    private final JPanel waitingHolder = transparent();
+    private final JPanel historyHolder = transparent();
+
+    private final AppButton callNextButton = new AppButton("Call Next");
 
     public QueueScreen() {
+
         initializeData();
-        initializeUI();
-        refreshQueue();
+
+        setBackground(BussinTheme.BACKGROUND);
+        setLayout(new BorderLayout());
+
+        PageContent page = new PageContent();
+
+        page.addBlock(createHeader(), 0);
+        page.addBlock(statsHolder, 24);
+        page.addBlock(createFilterBar(), 18);
+        page.addBlock(boardingHolder, 18);
+        page.addBlock(waitingHolder, 18);
+        page.addBlock(historyHolder, 18);
+
+        add(page.inScrollPane(), BorderLayout.CENTER);
+
+        refresh();
     }
+
+    // ================================================================
+    // MOCK DATA
+    // ================================================================
 
     private void initializeData() {
 
-        queueEntries.add(
-                new QueueEntry(
-                        "A-024",
-                        "Juan Dela Cruz",
-                        "Manila → Batangas",
-                        "09:15 AM",
-                        "Waiting"));
+        Trip t1 = new Trip("10:00 AM", "Manila → Batangas", "BUS-101", "A");
+        Trip t2 = new Trip("10:30 AM", "Manila → Lucena", "BUS-104", "B");
+        Trip t3 = new Trip("11:00 AM", "Manila → Nasugbu", "BUS-107", "C");
 
-        queueEntries.add(
-                new QueueEntry(
-                        "A-025",
-                        "Maria Santos",
-                        "Manila → Batangas",
-                        "09:18 AM",
-                        "Waiting"));
+        trips.add(t1);
+        trips.add(t2);
+        trips.add(t3);
 
-        queueEntries.add(
-                new QueueEntry(
-                        "A-026",
-                        "Carlo Reyes",
-                        "Manila → Batangas",
-                        "09:21 AM",
-                        "Waiting"));
+        tripFilter.addItem(ALL_TRIPS);
+        for (Trip t : trips) {
+            tripFilter.addItem(t.label());
+        }
 
-        queueEntries.add(
-                new QueueEntry(
-                        "A-027",
-                        "Angela Cruz",
-                        "Manila → Batangas",
-                        "09:24 AM",
-                        "Waiting"));
+        add(t1, "A-021", "Mark Villanueva", "0917 555 0121", "Regular", "08:58 AM", COMPLETED);
+        add(t1, "A-022", "Sofia Ramos", "0918 555 0122", "Student", "09:05 AM", COMPLETED);
+        add(t1, "A-023", "Pedro Garcia", "0920 555 0123", "Regular", "09:10 AM", BOARDING);
+        add(t1, "A-020", "Daniel Flores", "0917 555 0120", "Senior", "08:50 AM", SKIPPED);
+        add(t1, "A-024", "Juan Dela Cruz", "0919 555 0124", "Regular", "09:15 AM", WAITING);
+        add(t1, "A-025", "Maria Santos", "0927 555 0125", "PWD", "09:18 AM", WAITING);
+        add(t1, "A-026", "Carlo Reyes", "0917 555 0126", "Regular", "09:21 AM", WAITING);
 
-        queueEntries.add(
-                new QueueEntry(
-                        "A-023",
-                        "Pedro Garcia",
-                        "Manila → Batangas",
-                        "09:10 AM",
-                        "Serving"));
+        add(t2, "B-011", "Liza Mendoza", "0921 555 0211", "Regular", "09:30 AM", BOARDING);
+        add(t2, "B-012", "Rico Bautista", "0917 555 0212", "Student", "09:36 AM", WAITING);
+        add(t2, "B-013", "Angela Cruz", "0935 555 0213", "Regular", "09:41 AM", WAITING);
 
-        queueEntries.add(
-                new QueueEntry(
-                        "A-022",
-                        "Sofia Ramos",
-                        "Manila → Batangas",
-                        "09:05 AM",
-                        "Completed"));
-
-        queueEntries.add(
-                new QueueEntry(
-                        "A-021",
-                        "Mark Villanueva",
-                        "Manila → Batangas",
-                        "08:58 AM",
-                        "Completed"));
-
-        queueEntries.add(
-                new QueueEntry(
-                        "A-020",
-                        "Daniel Flores",
-                        "Manila → Batangas",
-                        "08:50 AM",
-                        "Skipped"));
+        add(t3, "C-004", "Nina Aquino", "0917 555 0304", "Senior", "09:44 AM", COMPLETED);
+        add(t3, "C-005", "Paolo Navarro", "0908 555 0305", "Regular", "09:50 AM", WAITING);
     }
 
-    private void initializeUI() {
+    private void add(Trip trip, String number, String passenger, String contact,
+            String fareType, String joined, String status) {
 
-        setOpaque(true);
-        setBackground(BussinTheme.BACKGROUND);
-
-        setLayout(new BorderLayout());
-
-        add(createContent(), BorderLayout.CENTER);
+        entries.add(new QueueEntry(trip, number, passenger, contact, fareType, joined, status));
     }
 
-    private JComponent createContent() {
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-
-        content.setBorder(
-                new EmptyBorder(
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING));
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        content.add(createHeader());
-
-        content.add(
-                Box.createVerticalStrut(
-                        BussinTheme.SPACE_XL));
-
-        content.add(createStatistics());
-
-        content.add(
-                Box.createVerticalStrut(
-                        BussinTheme.SPACE_XL));
-
-        content.add(createMainSection());
-
-        content.add(
-                Box.createVerticalGlue());
-
-        JScrollPane scrollPane = new JScrollPane(content);
-
-        scrollPane.setBorder(null);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-
-        scrollPane.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-
-        return scrollPane;
-    }
+    // ================================================================
+    // HEADER + FILTERS
+    // ================================================================
 
     private JPanel createHeader() {
 
-        JPanel header = new JPanel(new BorderLayout());
+        JPanel header = new JPanel(new BorderLayout(24, 0));
         header.setOpaque(false);
 
-        JPanel titlePanel = new JPanel();
-        titlePanel.setOpaque(false);
+        JPanel text = new JPanel();
+        text.setOpaque(false);
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+        text.add(AppLabel.title("Queue Management"));
+        text.add(Box.createVerticalStrut(4));
+        text.add(AppLabel.secondary(
+                "Call passengers to board, track queue position per trip, and clear no-shows."));
 
-        titlePanel.setLayout(
-                new BoxLayout(
-                        titlePanel,
-                        BoxLayout.Y_AXIS));
+        AppButton refresh = new AppButton("Refresh", AppButton.Variant.SECONDARY);
+        refresh.setIcon(IconFactory.create("arrow-right", 16, BussinTheme.TEXT_PRIMARY));
+        refresh.addActionListener(e -> refresh());
 
-        AppLabel title = AppLabel.title("Queue Management");
+        callNextButton.addActionListener(e -> callNext());
 
-        AppLabel subtitle = AppLabel.secondary(
-                "Monitor passenger queues and manage the current boarding flow.");
-
-        titlePanel.add(title);
-        titlePanel.add(
-                Box.createVerticalStrut(5));
-        titlePanel.add(subtitle);
-
-        JPanel actions = new JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        10,
-                        0));
-
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
+        actions.add(refresh);
+        actions.add(callNextButton);
 
-        AppButton refreshButton = new AppButton(
-                "Refresh",
-                AppButton.Variant.SECONDARY);
+        JPanel actionHolder = new JPanel(new BorderLayout());
+        actionHolder.setOpaque(false);
+        actionHolder.add(actions, BorderLayout.SOUTH);
 
-        refreshButton.setIcon(
-                IconFactory.create(
-                        "arrow-right",
-                        16,
-                        BussinTheme.TEXT_PRIMARY));
-
-        refreshButton.addActionListener(
-                event -> refreshQueue());
-
-        actions.add(refreshButton);
-
-        header.add(
-                titlePanel,
-                BorderLayout.WEST);
-
-        header.add(
-                actions,
-                BorderLayout.EAST);
+        header.add(text, BorderLayout.CENTER);
+        header.add(actionHolder, BorderLayout.EAST);
 
         return header;
     }
 
-    private JPanel createStatistics() {
-
-        JPanel statistics = new JPanel(
-                new GridLayout(
-                        1,
-                        4,
-                        14,
-                        0));
-
-        statistics.setOpaque(false);
-
-        statistics.add(
-                createQueueStat(
-                        "WAITING",
-                        waitingValue,
-                        BussinTheme.WARNING));
-
-        statistics.add(
-                createQueueStat(
-                        "SERVING",
-                        servingValue,
-                        BussinTheme.RED));
-
-        statistics.add(
-                createQueueStat(
-                        "COMPLETED",
-                        completedValue,
-                        BussinTheme.SUCCESS));
-
-        statistics.add(
-                createQueueStat(
-                        "SKIPPED",
-                        skippedValue,
-                        BussinTheme.DANGER));
-
-        return statistics;
-    }
-
-    private AppCard createQueueStat(
-            String title,
-            JLabel value,
-            Color accent) {
+    private JPanel createFilterBar() {
 
         AppCard card = new AppCard();
+        card.setLayout(new ResponsiveLayouts.Grid(4, 180, 12));
 
-        card.setLayout(
-                new BorderLayout(
-                        14,
-                        0));
+        searchField.setToolTipText("Search by passenger or queue number");
+        searchField.putClientProperty("JTextField.placeholderText", "Search passenger or queue no.");
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { refresh(); }
+            @Override public void removeUpdate(DocumentEvent e) { refresh(); }
+            @Override public void changedUpdate(DocumentEvent e) { refresh(); }
+        });
 
-        JPanel indicator = new JPanel();
-        indicator.setPreferredSize(
-                new Dimension(
-                        4,
-                        55));
+        tripFilter.addActionListener(e -> refresh());
+        statusFilter.addActionListener(e -> refresh());
 
-        indicator.setBackground(accent);
+        AppButton clear = new AppButton("Clear Filters", AppButton.Variant.SECONDARY);
+        clear.addActionListener(e -> {
+            searchField.setText("");
+            tripFilter.setSelectedIndex(0);
+            statusFilter.setSelectedIndex(0);
+        });
 
-        card.add(
-                indicator,
-                BorderLayout.WEST);
-
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        JLabel titleLabel = new JLabel(title);
-
-        titleLabel.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        titleLabel.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        value.setFont(
-                BussinTheme.STAT_VALUE);
-
-        value.setForeground(
-                BussinTheme.TEXT_PRIMARY);
-
-        content.add(titleLabel);
-
-        content.add(
-                Box.createVerticalStrut(5));
-
-        content.add(value);
-
-        card.add(
-                content,
-                BorderLayout.CENTER);
+        card.add(searchField);
+        card.add(tripFilter);
+        card.add(statusFilter);
+        card.add(clear);
 
         return card;
     }
 
-    private JPanel createMainSection() {
-
-        JPanel main = new JPanel(
-                new GridLayout(
-                        1,
-                        2,
-                        18,
-                        0));
-
-        main.setOpaque(false);
-
-        main.add(
-                createCurrentServingCard());
-
-        main.add(
-                createWaitingQueueCard());
-
-        return main;
-    }
-
-    private AppCard createCurrentServingCard() {
-
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BorderLayout(
-                        0,
-                        18));
-
-        JPanel header = new JPanel(
-                new BorderLayout());
-
-        header.setOpaque(false);
-
-        AppLabel title = AppLabel.section(
-                "Current Serving");
-
-        AppBadge badge = new AppBadge(
-                "SERVING",
-                AppBadge.Status.INFO);
-
-        header.add(
-                title,
-                BorderLayout.WEST);
-
-        header.add(
-                badge,
-                BorderLayout.EAST);
-
-        currentServingPanel.setOpaque(false);
-
-        currentServingPanel.setLayout(
-                new BorderLayout());
-
-        card.add(
-                header,
-                BorderLayout.NORTH);
-
-        card.add(
-                currentServingPanel,
-                BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private AppCard createWaitingQueueCard() {
-
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BorderLayout(
-                        0,
-                        14));
-
-        JPanel header = new JPanel(
-                new BorderLayout());
-
-        header.setOpaque(false);
-
-        AppLabel title = AppLabel.section(
-                "Waiting Queue");
-
-        JLabel count = new JLabel();
-
-        count.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        count.setForeground(
-                BussinTheme.TEXT_MUTED);
-
-        header.add(
-                title,
-                BorderLayout.WEST);
-
-        header.add(
-                count,
-                BorderLayout.EAST);
-
-        waitingListPanel.setOpaque(false);
-
-        waitingListPanel.setLayout(
-                new BoxLayout(
-                        waitingListPanel,
-                        BoxLayout.Y_AXIS));
-
-        JScrollPane scroll = new JScrollPane(
-                waitingListPanel);
-
-        scroll.setBorder(null);
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-
-        scroll.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        scroll.getVerticalScrollBar().setUnitIncrement(12);
-
-        card.add(
-                header,
-                BorderLayout.NORTH);
-
-        card.add(
-                scroll,
-                BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private JPanel createServingContent(
-            QueueEntry entry) {
-
-        JPanel content = new JPanel();
-
-        content.setOpaque(false);
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        JLabel queueNumber = new JLabel(
-                entry.queueNumber);
-
-        queueNumber.setFont(
-                new Font(
-                        "Segoe UI",
-                        Font.BOLD,
-                        32));
-
-        queueNumber.setForeground(
-                BussinTheme.RED);
-
-        JLabel passenger = new JLabel(
-                entry.passenger);
-
-        passenger.setFont(
-                BussinTheme.SECTION_TITLE);
-
-        passenger.setForeground(
-                BussinTheme.TEXT_PRIMARY);
-
-        JLabel destination = new JLabel(
-                entry.destination);
-
-        destination.setFont(
-                BussinTheme.BODY);
-
-        destination.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        JLabel time = new JLabel(
-                "Queued at " + entry.time);
-
-        time.setFont(
-                BussinTheme.SMALL);
-
-        time.setForeground(
-                BussinTheme.TEXT_MUTED);
-
-        content.add(queueNumber);
-
-        content.add(
-                Box.createVerticalStrut(4));
-
-        content.add(passenger);
-
-        content.add(
-                Box.createVerticalStrut(4));
-
-        content.add(destination);
-
-        content.add(
-                Box.createVerticalStrut(8));
-
-        content.add(time);
-
-        content.add(
-                Box.createVerticalStrut(18));
-
-        JPanel actions = new JPanel(
-                new FlowLayout(
-                        FlowLayout.LEFT,
-                        8,
-                        0));
-
-        actions.setOpaque(false);
-
-        AppButton complete = new AppButton(
-                "Complete");
-
-        AppButton skip = new AppButton(
-                "Skip",
-                AppButton.Variant.SECONDARY);
-
-        complete.addActionListener(
-                event -> completeEntry(entry));
-
-        skip.addActionListener(
-                event -> skipEntry(entry));
-
-        actions.add(complete);
-        actions.add(skip);
-
-        content.add(actions);
-
-        return content;
-    }
-
-    private JPanel createWaitingEntry(
-            QueueEntry entry,
-            int position) {
-
-        JPanel item = new JPanel(
-                new BorderLayout(
-                        12,
-                        0));
-
-        item.setOpaque(false);
-
-        item.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(
-                                0,
-                                0,
-                                1,
-                                0,
-                                BussinTheme.BORDER),
-                        BorderFactory.createEmptyBorder(
-                                12,
-                                4,
-                                12,
-                                4)));
-
-        JLabel positionLabel = new JLabel(
-                String.format(
-                        ("%02d"),
-                        position));
-
-        positionLabel.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        positionLabel.setForeground(
-                BussinTheme.MUTED_SILVER);
-
-        positionLabel.setPreferredSize(
-                new Dimension(
-                        30,
-                        30));
-
-        JPanel information = new JPanel();
-
-        information.setOpaque(false);
-
-        information.setLayout(
-                new BoxLayout(
-                        information,
-                        BoxLayout.Y_AXIS));
-
-        JLabel queue = new JLabel(
-                entry.queueNumber
-                        + "  •  "
-                        + entry.passenger);
-
-        queue.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        queue.setForeground(
-                BussinTheme.TEXT_PRIMARY);
-
-        JLabel destination = new JLabel(
-                entry.destination
-                        + "  •  "
-                        + entry.time);
-
-        destination.setFont(
-                BussinTheme.SMALL);
-
-        destination.setForeground(
-                BussinTheme.TEXT_MUTED);
-
-        information.add(queue);
-
-        information.add(
-                Box.createVerticalStrut(3));
-
-        information.add(destination);
-
-        JButton callButton = new JButton();
-
-        callButton.setIcon(
-                IconFactory.create(
-                        "arrow-right",
-                        15,
-                        BussinTheme.RED));
-
-        callButton.setToolTipText(
-                "Call passenger");
-
-        callButton.setFocusPainted(false);
-        callButton.setBorderPainted(false);
-        callButton.setContentAreaFilled(false);
-        callButton.setCursor(
-                Cursor.getPredefinedCursor(
-                        Cursor.HAND_CURSOR));
-
-        callButton.addActionListener(
-                event -> callEntry(entry));
-
-        item.add(
-                positionLabel,
-                BorderLayout.WEST);
-
-        item.add(
-                information,
-                BorderLayout.CENTER);
-
-        item.add(
-                callButton,
-                BorderLayout.EAST);
-
-        return item;
-    }
-
-    private void refreshQueue() {
-
-        waitingListPanel.removeAll();
-        currentServingPanel.removeAll();
-
-        int waiting = 0;
-        int serving = 0;
-        int completed = 0;
-        int skipped = 0;
-
-        QueueEntry currentServing = null;
-
-        for (QueueEntry entry : queueEntries) {
-
-            switch (entry.status) {
-
-                case "Waiting" -> waiting++;
-
-                case "Serving" -> {
-                    serving++;
-                    currentServing = entry;
-                }
-
-                case "Completed" -> completed++;
-
-                case "Skipped" -> skipped++;
+    // ================================================================
+    // REFRESH / RENDER
+    // ================================================================
+
+    private void refresh() {
+
+        // Statistics reflect the trip filter only, so the numbers stay meaningful
+        // while the user narrows the lists by status or search.
+        Trip selectedTrip = selectedTrip();
+
+        int waiting = 0, boarding = 0, completed = 0, skipped = 0;
+
+        for (QueueEntry e : entries) {
+            if (selectedTrip != null && e.trip != selectedTrip) {
+                continue;
+            }
+            switch (e.status) {
+                case WAITING -> waiting++;
+                case BOARDING -> boarding++;
+                case COMPLETED -> completed++;
+                case SKIPPED -> skipped++;
+                default -> { }
             }
         }
 
-        waitingValue.setText(
-                String.valueOf(waiting));
+        statsHolder.removeAll();
+        statsHolder.setLayout(new ResponsiveLayouts.Grid(4, 200, 14));
+        statsHolder.add(new StatCard("WAITING", String.valueOf(waiting),
+                "in line", "queue"));
+        statsHolder.add(new StatCard("BOARDING", String.valueOf(boarding),
+                "called to bus", "bus"));
+        statsHolder.add(new StatCard("COMPLETED", String.valueOf(completed),
+                "boarded today", "seat"));
+        statsHolder.add(new StatCard("SKIPPED", String.valueOf(skipped),
+                "no-shows", "users"));
 
-        servingValue.setText(
-                String.valueOf(serving));
+        List<QueueEntry> visible = new ArrayList<>();
+        for (QueueEntry e : entries) {
+            if (matches(e)) {
+                visible.add(e);
+            }
+        }
 
-        completedValue.setText(
-                String.valueOf(completed));
+        renderBoarding(visible);
+        renderWaiting(visible);
+        renderHistory(visible);
 
-        skippedValue.setText(
-                String.valueOf(skipped));
+        callNextButton.setEnabled(nextWaiting() != null);
 
-        if (currentServing != null) {
+        revalidate();
+        repaint();
+    }
 
-            currentServingPanel.add(
-                    createServingContent(
-                            currentServing),
+    private void renderBoarding(List<QueueEntry> visible) {
+
+        List<QueueEntry> boarding = filterByStatus(visible, BOARDING);
+
+        boardingHolder.removeAll();
+        boardingHolder.setLayout(new BorderLayout());
+
+        AppCard card = new AppCard();
+        card.setLayout(new BorderLayout(0, 14));
+        card.add(new SectionHeader("Now Boarding",
+                boarding.size() + " passenger(s) called to the bus"), BorderLayout.NORTH);
+
+        if (boarding.isEmpty()) {
+
+            card.add(emptyState("No passengers are boarding. Use Call Next to start boarding."),
                     BorderLayout.CENTER);
 
         } else {
 
-            JPanel empty = createEmptyState(
-                    "No passenger is currently serving.");
+            JPanel grid = new JPanel(new ResponsiveLayouts.Grid(3, 280, 14));
+            grid.setOpaque(false);
 
-            currentServingPanel.add(
-                    empty,
-                    BorderLayout.CENTER);
-        }
+            for (QueueEntry e : boarding) {
 
-        int position = 1;
+                JPanel holder = new JPanel(new BorderLayout(0, 10));
+                holder.setOpaque(false);
 
-        for (QueueEntry entry : queueEntries) {
+                holder.add(new QueueCard(
+                        e.number,
+                        e.passenger,
+                        e.trip.label(),
+                        e.status,
+                        countFor(e.trip, WAITING),
+                        countFor(e.trip, BOARDING),
+                        countFor(e.trip, COMPLETED)), BorderLayout.CENTER);
 
-            if (!entry.status.equals("Waiting")) {
-                continue;
+                AppButton complete = small("Complete", AppButton.Variant.PRIMARY);
+                complete.addActionListener(ev -> setStatus(e, COMPLETED));
+
+                AppButton skip = small("Skip", AppButton.Variant.SECONDARY);
+                skip.addActionListener(ev -> setStatus(e, SKIPPED));
+
+                JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+                actions.setOpaque(false);
+                actions.add(complete);
+                actions.add(skip);
+
+                holder.add(actions, BorderLayout.SOUTH);
+
+                grid.add(holder);
             }
 
-            waitingListPanel.add(
-                    createWaitingEntry(
-                            entry,
-                            position++));
+            card.add(grid, BorderLayout.CENTER);
         }
 
-        if (position == 1) {
+        boardingHolder.add(card, BorderLayout.CENTER);
+    }
 
-            waitingListPanel.add(
-                    createEmptyState(
-                            "No passengers are waiting."));
+    private void renderWaiting(List<QueueEntry> visible) {
+
+        List<QueueEntry> waiting = filterByStatus(visible, WAITING);
+
+        waitingHolder.removeAll();
+        waitingHolder.setLayout(new BorderLayout());
+
+        AppCard card = new AppCard();
+        card.setLayout(new BorderLayout(0, 10));
+        card.add(new SectionHeader("Waiting Queue",
+                waiting.size() + " passenger(s) waiting, ordered by queue position"),
+                BorderLayout.NORTH);
+
+        if (waiting.isEmpty()) {
+
+            card.add(emptyState("No waiting passengers match the current filters."),
+                    BorderLayout.CENTER);
+
+        } else {
+
+            DataGrid grid = new DataGrid(
+                    new String[] { "Pos.", "Queue No.", "Passenger", "Trip", "Fare", "Joined", "Actions" },
+                    new double[] { 0.4, 0.8, 1.6, 2.0, 0.8, 0.9, 1.7 });
+
+            for (QueueEntry e : waiting) {
+
+                AppButton call = small("Call", AppButton.Variant.PRIMARY);
+                call.addActionListener(ev -> callEntry(e));
+
+                AppButton skip = small("Skip", AppButton.Variant.SECONDARY);
+                skip.addActionListener(ev -> setStatus(e, SKIPPED));
+
+                JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+                actions.setOpaque(false);
+                actions.add(call);
+                actions.add(skip);
+
+                grid.addRow(
+                        DataGrid.colored(String.valueOf(positionOf(e)), BussinTheme.RED),
+                        DataGrid.strong(e.number),
+                        passengerCell(e),
+                        DataGrid.text(e.trip.label()),
+                        DataGrid.text(e.fareType),
+                        DataGrid.text(e.joined),
+                        actions);
+            }
+
+            card.add(grid, BorderLayout.CENTER);
         }
 
-        waitingListPanel.revalidate();
-        waitingListPanel.repaint();
-
-        currentServingPanel.revalidate();
-        currentServingPanel.repaint();
+        waitingHolder.add(card, BorderLayout.CENTER);
     }
 
-    private JPanel createEmptyState(
-            String message) {
+    private void renderHistory(List<QueueEntry> visible) {
 
-        JPanel panel = new JPanel(
-                new GridBagLayout());
-
-        panel.setOpaque(false);
-
-        JLabel label = new JLabel(
-                message);
-
-        label.setFont(
-                BussinTheme.BODY);
-
-        label.setForeground(
-                BussinTheme.TEXT_MUTED);
-
-        panel.add(label);
-
-        return panel;
-    }
-
-    private void callEntry(
-            QueueEntry entry) {
-
-        QueueEntry current = findServingEntry();
-
-        if (current != null) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Please complete or skip the current passenger before calling the next queue.",
-                    "Queue In Progress",
-                    JOptionPane.INFORMATION_MESSAGE);
-
-            return;
+        List<QueueEntry> history = new ArrayList<>();
+        for (QueueEntry e : visible) {
+            if (e.status.equals(COMPLETED) || e.status.equals(SKIPPED)) {
+                history.add(e);
+            }
         }
 
-        entry.status = "Serving";
+        historyHolder.removeAll();
+        historyHolder.setLayout(new BorderLayout());
 
-        refreshQueue();
+        AppCard card = new AppCard();
+        card.setLayout(new BorderLayout(0, 10));
+        card.add(new SectionHeader("Completed & Skipped",
+                history.size() + " entr" + (history.size() == 1 ? "y" : "ies")),
+                BorderLayout.NORTH);
+
+        if (history.isEmpty()) {
+
+            card.add(emptyState("No completed or skipped passengers match the current filters."),
+                    BorderLayout.CENTER);
+
+        } else {
+
+            DataGrid grid = new DataGrid(
+                    new String[] { "Queue No.", "Passenger", "Trip", "Joined", "Status", "Actions" },
+                    new double[] { 0.8, 1.6, 2.0, 0.9, 1.0, 1.2 });
+
+            for (QueueEntry e : history) {
+
+                JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+                actions.setOpaque(false);
+
+                if (e.status.equals(SKIPPED)) {
+                    AppButton requeue = small("Requeue", AppButton.Variant.SECONDARY);
+                    requeue.addActionListener(ev -> setStatus(e, WAITING));
+                    actions.add(requeue);
+                } else {
+                    actions.add(DataGrid.text("—"));
+                }
+
+                grid.addRow(
+                        DataGrid.strong(e.number),
+                        passengerCell(e),
+                        DataGrid.text(e.trip.label()),
+                        DataGrid.text(e.joined),
+                        new AppBadge(e.status, e.status.equals(COMPLETED)
+                                ? AppBadge.Status.SUCCESS : AppBadge.Status.DANGER),
+                        actions);
+            }
+
+            card.add(grid, BorderLayout.CENTER);
+        }
+
+        historyHolder.add(card, BorderLayout.CENTER);
     }
 
-    private void completeEntry(
-            QueueEntry entry) {
+    // ================================================================
+    // ACTIONS (mock state changes)
+    // ================================================================
 
-        entry.status = "Completed";
+    private void callNext() {
 
-        refreshQueue();
+        QueueEntry next = nextWaiting();
+
+        if (next != null) {
+            callEntry(next);
+        }
     }
 
-    private void skipEntry(
-            QueueEntry entry) {
+    /** First waiting passenger for the selected trip (or overall, by trip departure). */
+    private QueueEntry nextWaiting() {
 
-        entry.status = "Skipped";
+        Trip selected = selectedTrip();
 
-        refreshQueue();
-    }
-
-    private QueueEntry findServingEntry() {
-
-        for (QueueEntry entry : queueEntries) {
-
-            if (entry.status.equals("Serving")) {
-                return entry;
+        for (Trip t : trips) {
+            if (selected != null && t != selected) {
+                continue;
+            }
+            for (QueueEntry e : entries) {
+                if (e.trip == t && e.status.equals(WAITING)) {
+                    return e;
+                }
             }
         }
 
         return null;
     }
 
+    private void callEntry(QueueEntry entry) {
+
+        setStatus(entry, BOARDING);
+    }
+
+    private void setStatus(QueueEntry entry, String status) {
+
+        entry.status = status;
+
+        refresh();
+    }
+
+    // ================================================================
+    // HELPERS
+    // ================================================================
+
+    private boolean matches(QueueEntry e) {
+
+        Trip selected = selectedTrip();
+
+        if (selected != null && e.trip != selected) {
+            return false;
+        }
+
+        Object status = statusFilter.getSelectedItem();
+
+        if (status != null && !status.equals(ALL_STATUS) && !status.equals(e.status)) {
+            return false;
+        }
+
+        String q = searchField.getText().trim().toLowerCase();
+
+        return q.isEmpty()
+                || e.passenger.toLowerCase().contains(q)
+                || e.number.toLowerCase().contains(q);
+    }
+
+    private Trip selectedTrip() {
+
+        int index = tripFilter.getSelectedIndex();
+
+        return index <= 0 ? null : trips.get(index - 1);
+    }
+
+    private List<QueueEntry> filterByStatus(List<QueueEntry> source, String status) {
+
+        List<QueueEntry> result = new ArrayList<>();
+
+        for (QueueEntry e : source) {
+            if (e.status.equals(status)) {
+                result.add(e);
+            }
+        }
+
+        return result;
+    }
+
+    private int countFor(Trip trip, String status) {
+
+        int count = 0;
+
+        for (QueueEntry e : entries) {
+            if (e.trip == trip && e.status.equals(status)) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /** Position within the trip's waiting line (1 = next to be called). */
+    private int positionOf(QueueEntry target) {
+
+        int position = 1;
+
+        for (QueueEntry e : entries) {
+            if (e == target) {
+                return position;
+            }
+            if (e.trip == target.trip && e.status.equals(WAITING)) {
+                position++;
+            }
+        }
+
+        return position;
+    }
+
+    private Component passengerCell(QueueEntry e) {
+
+        JPanel cell = transparent();
+        cell.setLayout(new BoxLayout(cell, BoxLayout.Y_AXIS));
+
+        JLabel name = DataGrid.strong(e.passenger);
+        JLabel contact = new JLabel(e.contact);
+        contact.setFont(BussinTheme.SMALL);
+        contact.setForeground(BussinTheme.TEXT_MUTED);
+
+        cell.add(name);
+        cell.add(contact);
+
+        return cell;
+    }
+
+    private AppButton small(String text, AppButton.Variant variant) {
+
+        AppButton button = new AppButton(text, variant);
+        button.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+
+        return button;
+    }
+
+    private JPanel emptyState(String message) {
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 0, 24, 0));
+
+        JLabel label = new JLabel(message);
+        label.setFont(BussinTheme.BODY);
+        label.setForeground(BussinTheme.TEXT_MUTED);
+        panel.add(label);
+
+        return panel;
+    }
+
+    private static JPanel transparent() {
+
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+
+        return panel;
+    }
+
+    // ================================================================
+    // MODEL
+    // ================================================================
+
+    private record Trip(String departure, String route, String bus, String prefix) {
+
+        String label() {
+            return departure + " · " + route;
+        }
+    }
+
     private static class QueueEntry {
 
-        private final String queueNumber;
+        private final Trip trip;
+        private final String number;
         private final String passenger;
-        private final String destination;
-        private final String time;
+        private final String contact;
+        private final String fareType;
+        private final String joined;
 
         private String status;
 
-        private QueueEntry(
-                String queueNumber,
-                String passenger,
-                String destination,
-                String time,
-                String status) {
+        private QueueEntry(Trip trip, String number, String passenger, String contact,
+                String fareType, String joined, String status) {
 
-            this.queueNumber = queueNumber;
+            this.trip = trip;
+            this.number = number;
             this.passenger = passenger;
-            this.destination = destination;
-            this.time = time;
+            this.contact = contact;
+            this.fareType = fareType;
+            this.joined = joined;
             this.status = status;
         }
     }

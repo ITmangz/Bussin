@@ -36,7 +36,7 @@ public class QueueCard extends AppCard {
 
                 AppBadge.Status badgeStatus = switch (status.toLowerCase()) {
 
-                        case "serving" ->
+                        case "serving", "boarding" ->
                                 AppBadge.Status.INFO;
 
                         case "completed" ->
@@ -117,7 +117,7 @@ public class QueueCard extends AppCard {
 
                 stats.add(
                                 createStat(
-                                                "Serving",
+                                                "Boarding",
                                                 String.valueOf(serving)));
 
                 stats.add(

@@ -52,6 +52,18 @@ public class AppButton extends JButton {
                 applyForeground();
         }
 
+        @Override
+        public void setEnabled(boolean enabled) {
+
+                super.setEnabled(enabled);
+
+                if (enabled) {
+                        applyForeground();
+                } else {
+                        setForeground(BussinTheme.TEXT_MUTED);
+                }
+        }
+
         private void applyForeground() {
 
                 switch (variant) {
@@ -80,7 +92,11 @@ public class AppButton extends JButton {
 
                 Color background;
 
-                if (getModel().isPressed()) {
+                if (!isEnabled()) {
+
+                        background = BussinTheme.SURFACE_ALT;
+
+                } else if (getModel().isPressed()) {
 
                         background = switch (variant) {
 

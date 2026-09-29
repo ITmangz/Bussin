@@ -5,6 +5,8 @@ import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
 import com.bussin.desktop.ui.components.AppLabel;
 import com.bussin.desktop.ui.components.IconFactory;
+import com.bussin.desktop.ui.components.PageContent;
+import com.bussin.desktop.ui.components.ResponsiveLayouts;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
 import javax.swing.*;
@@ -25,19 +27,38 @@ public class BookingScreen extends JPanel {
 
     private final BookingTableModel tableModel = new BookingTableModel();
 
-    private final JTable bookingTable = new JTable(tableModel);
+    private final JTable bookingTable = new JTable(tableModel) {
+
+        // Fill the card when there is room, scroll sideways instead of crushing columns.
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+
+            return getParent() instanceof JViewport viewport
+                    && viewport.getWidth() >= 780;
+        }
+    };
 
     private final JTextField searchField = new JTextField();
 
     private final JComboBox<String> statusFilter = new JComboBox<>(
             new String[] {
                     "All Status",
-                    "Confirmed",
                     "Pending",
+                    "Confirmed",
+                    "Completed",
                     "Cancelled"
             });
 
+    private final JComboBox<String> paymentFilter = new JComboBox<>(
+            new String[] {
+                    "All Payments",
+                    "Paid",
+                    "Unpaid",
+                    "Refunded"
+            });
+
     private final JLabel totalValue = new JLabel("0");
+    private final JLabel completedValue = new JLabel("0");
     private final JLabel confirmedValue = new JLabel("0");
     private final JLabel pendingValue = new JLabel("0");
     private final JLabel cancelledValue = new JLabel("0");
@@ -56,8 +77,19 @@ public class BookingScreen extends JPanel {
             AppBadge.Status.NEUTRAL);
 
     private final AppButton cancelButton = new AppButton(
-            "Cancel Booking",
+            "Cancel",
             AppButton.Variant.DANGER);
+
+    private final AppButton confirmButton = new AppButton("Confirm");
+    private final AppButton payButton = new AppButton(
+            "Mark Paid",
+            AppButton.Variant.SECONDARY);
+    private final AppButton completeButton = new AppButton(
+            "Complete",
+            AppButton.Variant.SECONDARY);
+
+    private static final DateTimeFormatter TABLE_TIME_FORMAT = DateTimeFormatter.ofPattern(
+            "MMM d, h:mm a");
 
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern(
             "MMM dd, yyyy • hh:mm a");
@@ -71,71 +103,25 @@ public class BookingScreen extends JPanel {
 
     private void initializeData() {
 
-        bookings.add(
-                new Booking(
-                        "BK-1001",
-                        "Juan Dela Cruz",
-                        "Trip 102 • 09:30 AM",
-                        "Manila → Batangas",
-                        "12A",
-                        450.00,
-                        "Paid",
-                        "Confirmed"));
+        LocalDateTime now = LocalDateTime.now().withSecond(0).withNano(0);
 
-        bookings.add(
-                new Booking(
-                        "BK-1002",
-                        "Maria Santos",
-                        "Trip 102 • 09:30 AM",
-                        "Manila → Batangas",
-                        "12B",
-                        450.00,
-                        "Paid",
-                        "Confirmed"));
+        // Trips match the departures used on the Queue screen.
+        add("BK-1001", "Juan Dela Cruz", "Trip 102 • 10:00 AM", "Manila → Batangas", "12A", 450, "Paid", "Completed", now.minusDays(1).withHour(16).withMinute(20));
+        add("BK-1002", "Maria Santos", "Trip 102 • 10:00 AM", "Manila → Batangas", "12B", 360, "Paid", "Confirmed", now.minusHours(20));
+        add("BK-1003", "Carlo Reyes", "Trip 114 • 10:30 AM", "Manila → Lucena", "08A", 520, "Unpaid", "Pending", now.minusHours(3).minusMinutes(12));
+        add("BK-1004", "Angela Cruz", "Trip 114 • 10:30 AM", "Manila → Lucena", "08B", 520, "Paid", "Confirmed", now.minusHours(5));
+        add("BK-1005", "Pedro Garcia", "Trip 121 • 11:00 AM", "Manila → Nasugbu", "22A", 380, "Refunded", "Cancelled", now.minusDays(1).withHour(9).withMinute(45));
+        add("BK-1006", "Sofia Ramos", "Trip 121 • 11:00 AM", "Manila → Nasugbu", "22B", 380, "Paid", "Confirmed", now.minusHours(2).minusMinutes(30));
+        add("BK-1007", "Mark Villanueva", "Trip 102 • 10:00 AM", "Manila → Batangas", "05C", 450, "Unpaid", "Pending", now.minusMinutes(50));
+        add("BK-1008", "Liza Mendoza", "Trip 114 • 10:30 AM", "Manila → Lucena", "10A", 416, "Paid", "Completed", now.minusDays(2).withHour(14).withMinute(5));
+        add("BK-1009", "Rico Bautista", "Trip 121 • 11:00 AM", "Manila → Nasugbu", "14D", 380, "Unpaid", "Cancelled", now.minusDays(2).withHour(11).withMinute(30));
+        add("BK-1010", "Nina Aquino", "Trip 102 • 10:00 AM", "Manila → Batangas", "03A", 360, "Paid", "Confirmed", now.minusHours(1).minusMinutes(5));
+    }
 
-        bookings.add(
-                new Booking(
-                        "BK-1003",
-                        "Carlo Reyes",
-                        "Trip 114 • 10:00 AM",
-                        "Manila → Lucena",
-                        "08A",
-                        520.00,
-                        "Unpaid",
-                        "Pending"));
+    private void add(String id, String passenger, String trip, String route, String seat,
+            double fare, String payment, String status, LocalDateTime createdAt) {
 
-        bookings.add(
-                new Booking(
-                        "BK-1004",
-                        "Angela Cruz",
-                        "Trip 114 • 10:00 AM",
-                        "Manila → Lucena",
-                        "08B",
-                        520.00,
-                        "Paid",
-                        "Confirmed"));
-
-        bookings.add(
-                new Booking(
-                        "BK-1005",
-                        "Pedro Garcia",
-                        "Trip 121 • 11:30 AM",
-                        "Manila → Bicol",
-                        "22A",
-                        680.00,
-                        "Paid",
-                        "Cancelled"));
-
-        bookings.add(
-                new Booking(
-                        "BK-1006",
-                        "Sofia Ramos",
-                        "Trip 121 • 11:30 AM",
-                        "Manila → Bicol",
-                        "22B",
-                        680.00,
-                        "Paid",
-                        "Confirmed"));
+        bookings.add(new Booking(id, passenger, trip, route, seat, fare, payment, status, createdAt));
     }
 
     private void initializeUI() {
@@ -152,52 +138,13 @@ public class BookingScreen extends JPanel {
 
     private JComponent createContent() {
 
-        JPanel content = new JPanel();
+        PageContent page = new PageContent();
 
-        content.setOpaque(false);
+        page.addBlock(createHeader(), 0);
+        page.addBlock(createStatistics(), 24);
+        page.addBlock(createMainSection(), 18);
 
-        content.setBorder(
-                BorderFactory.createEmptyBorder(
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING));
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        content.add(createHeader());
-
-        content.add(
-                Box.createVerticalStrut(
-                        BussinTheme.SPACE_XL));
-
-        content.add(createStatistics());
-
-        content.add(
-                Box.createVerticalStrut(
-                        BussinTheme.SPACE_XL));
-
-        content.add(createMainSection());
-
-        content.add(
-                Box.createVerticalGlue());
-
-        JScrollPane scrollPane = new JScrollPane(content);
-
-        scrollPane.setBorder(null);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-
-        scrollPane.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        scrollPane.getVerticalScrollBar()
-                .setUnitIncrement(16);
-
-        return scrollPane;
+        return page.inScrollPane();
     }
 
     private JPanel createHeader() {
@@ -263,19 +210,15 @@ public class BookingScreen extends JPanel {
     private JPanel createStatistics() {
 
         JPanel statistics = new JPanel(
-                new GridLayout(
-                        1,
-                        4,
-                        14,
-                        0));
+                new ResponsiveLayouts.Grid(4, 200, 14));
 
         statistics.setOpaque(false);
 
         statistics.add(
                 createStatCard(
-                        "TOTAL BOOKINGS",
-                        totalValue,
-                        BussinTheme.CHARCOAL));
+                        "PENDING",
+                        pendingValue,
+                        BussinTheme.WARNING));
 
         statistics.add(
                 createStatCard(
@@ -285,9 +228,9 @@ public class BookingScreen extends JPanel {
 
         statistics.add(
                 createStatCard(
-                        "PENDING",
-                        pendingValue,
-                        BussinTheme.WARNING));
+                        "COMPLETED",
+                        completedValue,
+                        BussinTheme.CHARCOAL));
 
         statistics.add(
                 createStatCard(
@@ -363,11 +306,7 @@ public class BookingScreen extends JPanel {
     private JPanel createMainSection() {
 
         JPanel main = new JPanel(
-                new GridLayout(
-                        1,
-                        2,
-                        18,
-                        0));
+                new ResponsiveLayouts.Split(18, 1000, 3, 1));
 
         main.setOpaque(false);
 
@@ -445,25 +384,6 @@ public class BookingScreen extends JPanel {
                 tableScroll,
                 BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(
-                new FlowLayout(
-                        FlowLayout.LEFT,
-                        8,
-                        0));
-
-        actions.setOpaque(false);
-
-        cancelButton.setEnabled(false);
-
-        cancelButton.addActionListener(
-                event -> cancelSelectedBooking());
-
-        actions.add(cancelButton);
-
-        center.add(
-                actions,
-                BorderLayout.SOUTH);
-
         card.add(
                 center,
                 BorderLayout.CENTER);
@@ -474,32 +394,20 @@ public class BookingScreen extends JPanel {
     private JPanel createFilterBar() {
 
         JPanel filters = new JPanel(
-                new BorderLayout(
-                        10,
-                        0));
+                new ResponsiveLayouts.Grid(3, 150, 10));
 
         filters.setOpaque(false);
 
-        searchField.setPreferredSize(
-                new Dimension(
-                        240,
-                        40));
-
         searchField.setToolTipText(
-                "Search booking ID, passenger, route, or seat");
+                "Search booking ID, passenger, route, trip, or seat");
 
-        statusFilter.setPreferredSize(
-                new Dimension(
-                        140,
-                        40));
+        searchField.putClientProperty(
+                "JTextField.placeholderText",
+                "Search ID, passenger, route, seat");
 
-        filters.add(
-                createSearchField(),
-                BorderLayout.CENTER);
-
-        filters.add(
-                statusFilter,
-                BorderLayout.EAST);
+        filters.add(createSearchField());
+        filters.add(statusFilter);
+        filters.add(paymentFilter);
 
         searchField
                 .getDocument()
@@ -526,6 +434,9 @@ public class BookingScreen extends JPanel {
                         });
 
         statusFilter.addActionListener(
+                event -> refreshBookings());
+
+        paymentFilter.addActionListener(
                 event -> refreshBookings());
 
         return filters;
@@ -574,7 +485,7 @@ public class BookingScreen extends JPanel {
 
     private void configureTable() {
 
-        bookingTable.setRowHeight(42);
+        bookingTable.setRowHeight(40);
 
         bookingTable.setFont(
                 BussinTheme.SMALL);
@@ -610,38 +521,36 @@ public class BookingScreen extends JPanel {
                 .setBackground(
                         BussinTheme.SURFACE_ALT);
 
-        bookingTable.getColumnModel()
-                .getColumn(0)
-                .setPreferredWidth(85);
+        bookingTable.getColumnModel().getColumn(0).setPreferredWidth(70);
 
-        bookingTable.getColumnModel()
-                .getColumn(1)
-                .setPreferredWidth(130);
+        bookingTable.getColumnModel().getColumn(1).setPreferredWidth(110);
 
-        bookingTable.getColumnModel()
-                .getColumn(2)
-                .setPreferredWidth(145);
+        bookingTable.getColumnModel().getColumn(2).setPreferredWidth(108);
 
-        bookingTable.getColumnModel()
-                .getColumn(3)
-                .setPreferredWidth(160);
+        bookingTable.getColumnModel().getColumn(3).setPreferredWidth(125);
 
-        bookingTable.getColumnModel()
-                .getColumn(4)
-                .setPreferredWidth(55);
+        bookingTable.getColumnModel().getColumn(4).setPreferredWidth(42);
 
-        bookingTable.getColumnModel()
-                .getColumn(5)
-                .setPreferredWidth(80);
+        bookingTable.getColumnModel().getColumn(5).setPreferredWidth(68);
 
-        bookingTable.getColumnModel()
-                .getColumn(6)
-                .setPreferredWidth(100);
+        bookingTable.getColumnModel().getColumn(6).setPreferredWidth(92);
+
+        bookingTable.getColumnModel().getColumn(7).setPreferredWidth(92);
+
+        bookingTable.getColumnModel().getColumn(8).setPreferredWidth(118);
 
         bookingTable.getColumnModel()
                 .getColumn(6)
                 .setCellRenderer(
                         new StatusCellRenderer());
+
+        bookingTable.getColumnModel()
+                .getColumn(7)
+                .setCellRenderer(
+                        new StatusCellRenderer());
+
+        bookingTable.setAutoResizeMode(
+                JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         bookingTable
                 .getSelectionModel()
@@ -670,7 +579,7 @@ public class BookingScreen extends JPanel {
 
         header.add(
                 AppLabel.section(
-                        "Booking Details"),
+                        "Details"),
                 BorderLayout.WEST);
 
         header.add(
@@ -759,6 +668,42 @@ public class BookingScreen extends JPanel {
                 scroll,
                 BorderLayout.CENTER);
 
+        JPanel actions = new JPanel(
+                new ResponsiveLayouts.Grid(2, 120, 8));
+
+        actions.setOpaque(false);
+
+        for (AppButton button : new AppButton[] {
+                confirmButton, payButton, completeButton, cancelButton }) {
+
+            button.setEnabled(false);
+        }
+
+        confirmButton.addActionListener(
+                event -> updateSelected(
+                        "Confirmed", null,
+                        "Confirm this booking?"));
+
+        payButton.addActionListener(
+                event -> updateSelected(
+                        null, "Paid", null));
+
+        completeButton.addActionListener(
+                event -> updateSelected(
+                        "Completed", null, null));
+
+        cancelButton.addActionListener(
+                event -> cancelSelectedBooking());
+
+        actions.add(confirmButton);
+        actions.add(payButton);
+        actions.add(completeButton);
+        actions.add(cancelButton);
+
+        card.add(
+                actions,
+                BorderLayout.SOUTH);
+
         return card;
     }
 
@@ -832,6 +777,11 @@ public class BookingScreen extends JPanel {
         String selectedStatus = String.valueOf(
                 statusFilter.getSelectedItem());
 
+        String selectedPayment = String.valueOf(
+                paymentFilter.getSelectedItem());
+
+        String previousId = selectedBookingId();
+
         filteredBookings.clear();
 
         for (Booking booking : bookings) {
@@ -858,7 +808,12 @@ public class BookingScreen extends JPanel {
                     || booking.status.equals(
                             selectedStatus);
 
-            if (matchesSearch && matchesStatus) {
+            boolean matchesPayment = selectedPayment.equals(
+                    "All Payments")
+                    || booking.paymentStatus.equals(
+                            selectedPayment);
+
+            if (matchesSearch && matchesStatus && matchesPayment) {
                 filteredBookings.add(
                         booking);
             }
@@ -872,17 +827,85 @@ public class BookingScreen extends JPanel {
 
             clearDetails();
 
-        } else if (bookingTable.getSelectedRow() == -1) {
+        } else {
 
-            bookingTable.setRowSelectionInterval(
-                    0,
-                    0);
+            int row = 0;
+
+            for (int i = 0; i < filteredBookings.size(); i++) {
+
+                if (filteredBookings.get(i).bookingId.equals(previousId)) {
+                    row = i;
+                    break;
+                }
+            }
+
+            int viewRow = bookingTable.convertRowIndexToView(row);
+
+            bookingTable.setRowSelectionInterval(viewRow, viewRow);
+
+            updateSelectedBooking();
         }
+    }
+
+    private String selectedBookingId() {
+
+        Booking booking = selectedBooking();
+
+        return booking == null ? null : booking.bookingId;
+    }
+
+    private Booking selectedBooking() {
+
+        int row = bookingTable.getSelectedRow();
+
+        if (row < 0) {
+            return null;
+        }
+
+        int modelRow = bookingTable.convertRowIndexToModel(row);
+
+        return modelRow >= 0 && modelRow < filteredBookings.size()
+                ? filteredBookings.get(modelRow)
+                : null;
+    }
+
+    /** Applies a status and/or payment change to the selected booking (mock). */
+    private void updateSelected(String status, String payment, String confirmMessage) {
+
+        Booking booking = selectedBooking();
+
+        if (booking == null) {
+            return;
+        }
+
+        if (confirmMessage != null
+                && JOptionPane.showConfirmDialog(
+                        this,
+                        confirmMessage + "\n" + booking.bookingId + " · " + booking.passenger,
+                        "Confirm Booking",
+                        JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        if (status != null) {
+            booking.status = status;
+        }
+
+        if (payment != null) {
+            booking.paymentStatus = payment;
+
+            if (booking.status.equals("Pending") && payment.equals("Paid")) {
+                booking.status = "Confirmed";
+            }
+        }
+
+        refreshBookings();
     }
 
     private void updateStatistics() {
 
         int total = bookings.size();
+        int completed = 0;
         int confirmed = 0;
         int pending = 0;
         int cancelled = 0;
@@ -893,6 +916,8 @@ public class BookingScreen extends JPanel {
 
                 case "Confirmed" -> confirmed++;
 
+                case "Completed" -> completed++;
+
                 case "Pending" -> pending++;
 
                 case "Cancelled" -> cancelled++;
@@ -901,6 +926,9 @@ public class BookingScreen extends JPanel {
 
         totalValue.setText(
                 String.valueOf(total));
+
+        completedValue.setText(
+                String.valueOf(completed));
 
         confirmedValue.setText(
                 String.valueOf(confirmed));
@@ -964,9 +992,21 @@ public class BookingScreen extends JPanel {
         updateStatusBadge(
                 booking.status);
 
-        cancelButton.setEnabled(
-                !booking.status.equals(
-                        "Cancelled"));
+        updateActionStates(booking);
+    }
+
+    private void updateActionStates(Booking booking) {
+
+        boolean open = !booking.status.equals("Cancelled")
+                && !booking.status.equals("Completed");
+
+        confirmButton.setEnabled(booking.status.equals("Pending"));
+
+        payButton.setEnabled(open && booking.paymentStatus.equals("Unpaid"));
+
+        completeButton.setEnabled(booking.status.equals("Confirmed"));
+
+        cancelButton.setEnabled(open);
     }
 
     private void clearDetails() {
@@ -983,6 +1023,9 @@ public class BookingScreen extends JPanel {
         updateStatusBadge(
                 "No Status");
 
+        confirmButton.setEnabled(false);
+        payButton.setEnabled(false);
+        completeButton.setEnabled(false);
         cancelButton.setEnabled(false);
     }
 
@@ -1001,6 +1044,18 @@ public class BookingScreen extends JPanel {
 
             case "Cancelled" ->
                 badgeStatus = AppBadge.Status.DANGER;
+
+            case "Completed" ->
+                badgeStatus = AppBadge.Status.INFO;
+
+            case "Paid" ->
+                badgeStatus = AppBadge.Status.SUCCESS;
+
+            case "Unpaid" ->
+                badgeStatus = AppBadge.Status.WARNING;
+
+            case "Refunded" ->
+                badgeStatus = AppBadge.Status.NEUTRAL;
 
             default ->
                 badgeStatus = AppBadge.Status.NEUTRAL;
@@ -1062,8 +1117,8 @@ public class BookingScreen extends JPanel {
         Booking booking = filteredBookings.get(
                 modelRow);
 
-        if (booking.status.equals(
-                "Cancelled")) {
+        if (booking.status.equals("Cancelled")
+                || booking.status.equals("Completed")) {
             return;
         }
 
@@ -1073,7 +1128,10 @@ public class BookingScreen extends JPanel {
                         + booking.bookingId
                         + " for "
                         + booking.passenger
-                        + "?",
+                        + "?"
+                        + (booking.paymentStatus.equals("Paid")
+                                ? "\nThe payment will be marked as refunded."
+                                : ""),
                 "Cancel Booking",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
@@ -1081,6 +1139,10 @@ public class BookingScreen extends JPanel {
         if (result == JOptionPane.YES_OPTION) {
 
             booking.status = "Cancelled";
+
+            if (booking.paymentStatus.equals("Paid")) {
+                booking.paymentStatus = "Refunded";
+            }
 
             refreshBookings();
         }
@@ -1099,12 +1161,12 @@ public class BookingScreen extends JPanel {
 
         dialog.setMinimumSize(
                 new Dimension(
-                        540,
-                        520));
+                        480,
+                        620));
 
         dialog.setSize(
-                540,
-                520);
+                520,
+                640);
 
         dialog.setLocationRelativeTo(this);
 
@@ -1144,17 +1206,23 @@ public class BookingScreen extends JPanel {
 
         JComboBox<String> tripCombo = new JComboBox<>(
                 new String[] {
-                        "Trip 102 • 09:30 AM",
-                        "Trip 114 • 10:00 AM",
-                        "Trip 121 • 11:30 AM"
+                        "Trip 102 • 10:00 AM",
+                        "Trip 114 • 10:30 AM",
+                        "Trip 121 • 11:00 AM"
                 });
 
         JComboBox<String> routeCombo = new JComboBox<>(
                 new String[] {
                         "Manila → Batangas",
                         "Manila → Lucena",
-                        "Manila → Bicol"
+                        "Manila → Nasugbu"
                 });
+
+        routeCombo.setEnabled(false);
+
+        tripCombo.addActionListener(
+                event -> routeCombo.setSelectedIndex(
+                        tripCombo.getSelectedIndex()));
 
         JTextField seatField = new JTextField();
 
@@ -1162,8 +1230,8 @@ public class BookingScreen extends JPanel {
 
         JComboBox<String> paymentCombo = new JComboBox<>(
                 new String[] {
-                        "Paid",
-                        "Unpaid"
+                        "Unpaid",
+                        "Paid"
                 });
 
         int row = 0;
@@ -1200,7 +1268,7 @@ public class BookingScreen extends JPanel {
                 content,
                 gbc,
                 row,
-                "Fare",
+                "Fare (₱)",
                 fareField);
 
         addFormRow(
@@ -1320,7 +1388,8 @@ public class BookingScreen extends JPanel {
                                     paymentCombo.getSelectedItem()
                                             .equals("Paid")
                                                     ? "Confirmed"
-                                                    : "Pending"));
+                                                    : "Pending",
+                                    LocalDateTime.now()));
 
                     refreshBookings();
 
@@ -1415,7 +1484,7 @@ public class BookingScreen extends JPanel {
         private final String route;
         private final String seat;
         private final double fare;
-        private final String paymentStatus;
+        private String paymentStatus;
         private final LocalDateTime createdAt;
 
         private String status;
@@ -1428,7 +1497,8 @@ public class BookingScreen extends JPanel {
                 String seat,
                 double fare,
                 String paymentStatus,
-                String status) {
+                String status,
+                LocalDateTime createdAt) {
 
             this.bookingId = bookingId;
             this.passenger = passenger;
@@ -1438,7 +1508,7 @@ public class BookingScreen extends JPanel {
             this.fare = fare;
             this.paymentStatus = paymentStatus;
             this.status = status;
-            this.createdAt = LocalDateTime.now();
+            this.createdAt = createdAt;
         }
     }
 
@@ -1446,13 +1516,15 @@ public class BookingScreen extends JPanel {
             extends AbstractTableModel {
 
         private final String[] columns = {
-                "Booking ID",
+                "Ref. No.",
                 "Passenger",
                 "Trip",
                 "Route",
                 "Seat",
                 "Fare",
-                "Status"
+                "Status",
+                "Payment",
+                "Booked"
         };
 
         @Override
@@ -1483,13 +1555,15 @@ public class BookingScreen extends JPanel {
 
                 case 0 -> booking.bookingId;
                 case 1 -> booking.passenger;
-                case 2 -> booking.trip;
+                case 2 -> booking.trip.replace("Trip ", "");
                 case 3 -> booking.route;
                 case 4 -> booking.seat;
                 case 5 -> String.format(
                         "₱%,.2f",
                         booking.fare);
                 case 6 -> booking.status;
+                case 7 -> booking.paymentStatus;
+                case 8 -> booking.createdAt.format(TABLE_TIME_FORMAT);
 
                 default -> "";
             };
@@ -1530,6 +1604,18 @@ public class BookingScreen extends JPanel {
                 case "Cancelled" ->
                     badgeStatus = AppBadge.Status.DANGER;
 
+                case "Completed" ->
+                    badgeStatus = AppBadge.Status.INFO;
+
+                case "Paid" ->
+                    badgeStatus = AppBadge.Status.SUCCESS;
+
+                case "Unpaid" ->
+                    badgeStatus = AppBadge.Status.WARNING;
+
+                case "Refunded" ->
+                    badgeStatus = AppBadge.Status.NEUTRAL;
+
                 default ->
                     badgeStatus = AppBadge.Status.NEUTRAL;
             }
@@ -1539,23 +1625,33 @@ public class BookingScreen extends JPanel {
                     badgeStatus);
 
             JPanel wrapper = new JPanel(
+                    new BorderLayout());
+
+            wrapper.setOpaque(true);
+
+            wrapper.setBackground(
+                    isSelected
+                            ? table.getSelectionBackground()
+                            : table.getBackground());
+
+            wrapper.setBorder(
+                    BorderFactory.createEmptyBorder(
+                            7,
+                            0,
+                            7,
+                            0));
+
+            JPanel left = new JPanel(
                     new FlowLayout(
                             FlowLayout.LEFT,
                             0,
-                            7));
+                            0));
 
-            wrapper.setOpaque(
-                    !isSelected);
+            left.setOpaque(false);
 
-            if (isSelected) {
-                wrapper.setBackground(
-                        table.getSelectionBackground());
-            } else {
-                wrapper.setBackground(
-                        table.getBackground());
-            }
+            left.add(badge);
 
-            wrapper.add(badge);
+            wrapper.add(left, BorderLayout.WEST);
 
             return wrapper;
         }
