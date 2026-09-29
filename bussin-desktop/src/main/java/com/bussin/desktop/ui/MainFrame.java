@@ -15,12 +15,14 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
+import com.bussin.desktop.App;
 import com.bussin.desktop.ui.components.Sidebar;
 import com.bussin.desktop.ui.components.TopBar;
 import com.bussin.desktop.ui.screens.BookingScreen;
 import com.bussin.desktop.ui.screens.BusScreen;
 import com.bussin.desktop.ui.screens.DashboardScreen;
 import com.bussin.desktop.ui.screens.EmployeeScreen;
+import com.bussin.desktop.ui.screens.ProfileScreen;
 import com.bussin.desktop.ui.screens.QueueScreen;
 import com.bussin.desktop.ui.screens.ReportScreen;
 import com.bussin.desktop.ui.screens.RouteScreen;
@@ -29,7 +31,16 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class MainFrame extends JFrame {
 
+        // ================================================================
+        // CURRENT USER
+        // ================================================================
+
         private final String userRole;
+        private final String currentUserEmail;
+
+        // ================================================================
+        // MAIN UI
+        // ================================================================
 
         private final JPanel contentPanel = new JPanel(new BorderLayout());
 
@@ -37,11 +48,22 @@ public class MainFrame extends JFrame {
 
         private Sidebar sidebar;
         private TopBar topBar;
+
         private String currentRoute;
 
-        public MainFrame(String userRole) {
+        // ================================================================
+        // CONSTRUCTOR
+        // ================================================================
+
+        public MainFrame(
+                        String userRole,
+                        String currentUserEmail) {
 
                 this.userRole = normalizeRole(userRole);
+
+                this.currentUserEmail = currentUserEmail == null
+                                ? ""
+                                : currentUserEmail.trim();
 
                 setTitle("BUSSIN");
 
@@ -63,6 +85,10 @@ public class MainFrame extends JFrame {
 
                 navigate("dashboard");
         }
+
+        // ================================================================
+        // INITIALIZE UI
+        // ================================================================
 
         private void initializeUI() {
 
@@ -110,15 +136,37 @@ public class MainFrame extends JFrame {
                                 rightPanel,
                                 BorderLayout.CENTER);
 
-                setContentPane(mainPanel);
+                setContentPane(
+                                mainPanel);
         }
+
+        // ================================================================
+        // NAVIGATION
+        // ================================================================
 
         private void navigate(
                         String route) {
 
-                if (route == null || route.isBlank()) {
+                if (route == null
+                                || route.isBlank()) {
+
                         return;
                 }
+
+                // ------------------------------------------------------------
+                // LOGOUT
+                // ------------------------------------------------------------
+
+                if ("logout".equals(route)) {
+
+                        handleLogout();
+
+                        return;
+                }
+
+                // ------------------------------------------------------------
+                // ACCESS CONTROL
+                // ------------------------------------------------------------
 
                 if (!hasAccess(route)) {
 
@@ -142,12 +190,46 @@ public class MainFrame extends JFrame {
                                 BorderLayout.CENTER);
 
                 contentPanel.revalidate();
+
                 contentPanel.repaint();
 
-                sidebar.setActiveRoute(route);
+                sidebar.setActiveRoute(
+                                route);
 
                 updateTitle(route);
         }
+
+        // ================================================================
+        // LOGOUT
+        // ================================================================
+
+        private void handleLogout() {
+
+                int result = JOptionPane.showConfirmDialog(
+                                this,
+                                "Are you sure you want to log out?",
+                                "Confirm Logout",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE);
+
+                if (result != JOptionPane.YES_OPTION) {
+
+                        return;
+                }
+
+                /*
+                 * Dispose the authenticated application window first.
+                 * Then return to the login screen.
+                 */
+
+                dispose();
+
+                App.showLogin();
+        }
+
+        // ================================================================
+        // SCREEN CACHE
+        // ================================================================
 
         private JPanel getOrCreateScreen(
                         String route) {
@@ -166,6 +248,10 @@ public class MainFrame extends JFrame {
                 return screen;
         }
 
+        // ================================================================
+        // SCREEN CREATION
+        // ================================================================
+
         private JPanel createScreen(
                         String route) {
 
@@ -178,7 +264,9 @@ public class MainFrame extends JFrame {
                                 new QueueScreen();
 
                         case "bookings" ->
-                                new BookingScreen();
+                                new BookingScreen(
+                                                userRole,
+                                                currentUserEmail);
 
                         case "trips" ->
                                 new TripScreen();
@@ -195,12 +283,20 @@ public class MainFrame extends JFrame {
                         case "reports" ->
                                 new ReportScreen();
 
+                        case "profile" ->
+                                new ProfileScreen(
+                                                userRole);
+
                         default ->
                                 createPlaceholder(
                                                 "Page Not Found",
                                                 "The requested section does not exist.");
                 };
         }
+
+        // ================================================================
+        // ROLE ACCESS
+        // ================================================================
 
         private boolean hasAccess(
                         String route) {
@@ -219,7 +315,8 @@ public class MainFrame extends JFrame {
                                                         "queue",
                                                         "bookings",
                                                         "trips",
-                                                        "buses" ->
+                                                        "buses",
+                                                        "profile" ->
                                                 true;
 
                                         default -> false;
@@ -233,13 +330,18 @@ public class MainFrame extends JFrame {
 
                                         case "dashboard",
                                                         "queue",
-                                                        "bookings" ->
+                                                        "bookings",
+                                                        "profile" ->
                                                 true;
 
                                         default -> false;
                                 };
                 }
         }
+
+        // ================================================================
+        // WINDOW TITLE
+        // ================================================================
 
         private void updateTitle(
                         String route) {
@@ -270,6 +372,9 @@ public class MainFrame extends JFrame {
                         case "reports" ->
                                 "Reports & Analytics";
 
+                        case "profile" ->
+                                "My Profile";
+
                         default ->
                                 "BUSSIN";
                 };
@@ -277,6 +382,10 @@ public class MainFrame extends JFrame {
                 setTitle(
                                 "BUSSIN - " + title);
         }
+
+        // ================================================================
+        // PLACEHOLDER
+        // ================================================================
 
         private JPanel createPlaceholder(
                         String title,
@@ -330,22 +439,29 @@ public class MainFrame extends JFrame {
                 messageLabel.setAlignmentX(
                                 Component.CENTER_ALIGNMENT);
 
-                card.add(titleLabel);
+                card.add(
+                                titleLabel);
 
                 card.add(
                                 Box.createVerticalStrut(10));
 
-                card.add(messageLabel);
+                card.add(
+                                messageLabel);
 
                 panel.add(card);
 
                 return panel;
         }
 
+        // ================================================================
+        // HELPERS
+        // ================================================================
+
         private String normalizeRole(
                         String role) {
 
-                if (role == null || role.isBlank()) {
+                if (role == null
+                                || role.isBlank()) {
 
                         return "USER";
                 }
@@ -355,9 +471,18 @@ public class MainFrame extends JFrame {
                                 .toUpperCase();
         }
 
+        // ================================================================
+        // GETTERS
+        // ================================================================
+
         public String getUserRole() {
 
                 return userRole;
+        }
+
+        public String getCurrentUserEmail() {
+
+                return currentUserEmail;
         }
 
         public String getCurrentRoute() {

@@ -83,6 +83,7 @@ com\bussin\desktop\ui\components\AppBadge$Status.class
 com\bussin\desktop\ui\screens\BusScreen$StatusCellRenderer.class
 com\bussin\desktop\ui\auth\LoginScreen.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$RoundedAuthCard.class
+com\bussin\desktop\ui\screens\ProfileScreen.class
 com\bussin\desktop\ui\auth\RegistrationData.class
 com\bussin\desktop\ui\screens\ReportScreen$ReportData.class
 com\bussin\desktop\services\MockAuthService.class

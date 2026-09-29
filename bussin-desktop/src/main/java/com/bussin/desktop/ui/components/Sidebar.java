@@ -28,9 +28,9 @@ public class Sidebar extends JPanel {
 
         private final Map<String, JButton> navigationButtons = new HashMap<>();
 
-        private String activeRoute;
-
         private final String userRole;
+
+        private String activeRoute;
 
         public Sidebar(
                         Consumer<String> navigationHandler,
@@ -68,8 +68,7 @@ public class Sidebar extends JPanel {
         // ROLE
         // ================================================================
 
-        private String normalizeRole(
-                        String role) {
+        private String normalizeRole(String role) {
 
                 if (role == null || role.isBlank()) {
                         return "USER";
@@ -78,32 +77,41 @@ public class Sidebar extends JPanel {
                 return role.trim().toUpperCase();
         }
 
-        private boolean hasAccess(
-                        String route) {
+        private boolean hasAccess(String route) {
 
                 switch (userRole) {
 
                         case "ADMIN":
+
                                 return true;
 
                         case "EMPLOYEE":
+
                                 return switch (route) {
+
                                         case "dashboard",
                                                         "queue",
                                                         "bookings",
                                                         "trips",
-                                                        "buses" ->
+                                                        "buses",
+                                                        "profile",
+                                                        "logout" ->
                                                 true;
 
                                         default -> false;
                                 };
 
                         case "USER":
+
                         default:
+
                                 return switch (route) {
+
                                         case "dashboard",
                                                         "queue",
-                                                        "bookings" ->
+                                                        "bookings",
+                                                        "profile",
+                                                        "logout" ->
                                                 true;
 
                                         default -> false;
@@ -242,6 +250,29 @@ public class Sidebar extends JPanel {
                                 "reports",
                                 "report");
 
+                content.add(
+                                Box.createVerticalStrut(26));
+
+                // ============================================================
+                // ACCOUNT
+                // ============================================================
+
+                content.add(
+                                createSectionLabel(
+                                                "ACCOUNT"));
+
+                addNavigationButton(
+                                content,
+                                "Profile",
+                                "profile",
+                                "employee");
+
+                addNavigationButton(
+                                content,
+                                "Logout",
+                                "logout",
+                                "logout");
+
                 return content;
         }
 
@@ -270,8 +301,7 @@ public class Sidebar extends JPanel {
         // SECTION LABEL
         // ================================================================
 
-        private JLabel createSectionLabel(
-                        String text) {
+        private JLabel createSectionLabel(String text) {
 
                 JLabel label = new JLabel(text);
 
@@ -306,8 +336,7 @@ public class Sidebar extends JPanel {
                 JButton button = new JButton(text) {
 
                         @Override
-                        protected void paintComponent(
-                                        Graphics g) {
+                        protected void paintComponent(Graphics g) {
 
                                 Graphics2D g2 = (Graphics2D) g.create();
 
@@ -406,10 +435,15 @@ public class Sidebar extends JPanel {
                 button.addActionListener(
                                 event -> {
 
-                                        setActiveRoute(route);
+                                        /*
+                                         * Logout is handled by MainFrame.
+                                         * It is not a normal screen.
+                                         */
+                                        if (!"logout".equals(route)) {
+                                                setActiveRoute(route);
+                                        }
 
-                                        navigationHandler.accept(
-                                                        route);
+                                        navigationHandler.accept(route);
                                 });
 
                 return button;
@@ -419,15 +453,13 @@ public class Sidebar extends JPanel {
         // ACTIVE ROUTE
         // ================================================================
 
-        public void setActiveRoute(
-                        String route) {
+        public void setActiveRoute(String route) {
 
                 activeRoute = route;
 
                 for (Map.Entry<String, JButton> entry : navigationButtons.entrySet()) {
 
-                        boolean active = entry.getKey()
-                                        .equals(route);
+                        boolean active = entry.getKey().equals(route);
 
                         updateButtonAppearance(
                                         entry.getValue(),
@@ -451,8 +483,7 @@ public class Sidebar extends JPanel {
                 button.setForeground(
                                 active
                                                 ? Color.WHITE
-                                                : Color.decode(
-                                                                "#D1D5DB"));
+                                                : Color.decode("#D1D5DB"));
 
                 button.setIcon(
                                 IconFactory.create(
@@ -491,10 +522,6 @@ public class Sidebar extends JPanel {
                                                                 16,
                                                                 18)));
 
-                // ------------------------------------------------------------
-                // USER ICON
-                // ------------------------------------------------------------
-
                 JLabel icon = new JLabel();
 
                 icon.setIcon(
@@ -509,10 +536,6 @@ public class Sidebar extends JPanel {
                                                 0,
                                                 0,
                                                 10));
-
-                // ------------------------------------------------------------
-                // USER DETAILS
-                // ------------------------------------------------------------
 
                 JPanel userInfo = new JPanel();
 
@@ -566,18 +589,30 @@ public class Sidebar extends JPanel {
         private String getDisplayName() {
 
                 return switch (userRole) {
-                        case "ADMIN" -> "Administrator";
-                        case "EMPLOYEE" -> "Employee";
-                        default -> "Commuter";
+
+                        case "ADMIN" ->
+                                "Administrator";
+
+                        case "EMPLOYEE" ->
+                                "Employee";
+
+                        default ->
+                                "Commuter";
                 };
         }
 
         private String getDisplayRole() {
 
                 return switch (userRole) {
-                        case "ADMIN" -> "BUSSIN Administrator";
-                        case "EMPLOYEE" -> "BUSSIN Staff";
-                        default -> "BUSSIN User";
+
+                        case "ADMIN" ->
+                                "BUSSIN Administrator";
+
+                        case "EMPLOYEE" ->
+                                "BUSSIN Staff";
+
+                        default ->
+                                "BUSSIN User";
                 };
         }
 }

@@ -51,7 +51,7 @@ public class App {
     // LOGIN
     // ================================================================
 
-    private static void showLogin() {
+    public static void showLogin() {
 
         JFrame frame = createAuthFrame();
 
@@ -81,23 +81,53 @@ public class App {
                         default -> {
 
                             /*
-                             * Successful login now sends:
+                             * Successful login sends:
                              *
                              * authenticated:ADMIN
                              * authenticated:EMPLOYEE
                              * authenticated:USER
+                             *
+                             * The LoginScreen also stores the email
+                             * internally, so the route now additionally
+                             * supports:
+                             *
+                             * authenticated:ROLE:EMAIL
+                             *
+                             * Example:
+                             *
+                             * authenticated:USER:user@bussin.com
+                             *
+                             * This allows MainFrame and BookingScreen
+                             * to know which account owns a booking.
                              */
 
                             if (route.startsWith(
                                     "authenticated:")) {
 
-                                String role = route.substring(
+                                String authenticationData = route.substring(
                                         "authenticated:"
                                                 .length());
 
+                                String role = authenticationData;
+                                String email = "";
+
+                                int separator = authenticationData.indexOf(':');
+
+                                if (separator >= 0) {
+
+                                    role = authenticationData.substring(
+                                            0,
+                                            separator);
+
+                                    email = authenticationData.substring(
+                                            separator + 1);
+                                }
+
                                 frame.dispose();
 
-                                MainFrame mainFrame = new MainFrame(role);
+                                MainFrame mainFrame = new MainFrame(
+                                        role,
+                                        email);
 
                                 mainFrame.setVisible(true);
                             }
@@ -139,8 +169,7 @@ public class App {
 
                             frame.dispose();
 
-                            showRegistrationStep2(
-                                    data);
+                            showRegistrationStep2(data);
                         }
 
                         default -> {

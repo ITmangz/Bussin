@@ -668,7 +668,10 @@ public class LoginScreen extends JPanel {
                                 String role = user.getRole();
 
                                 navigationHandler.accept(
-                                                "authenticated:" + role);
+                                                "authenticated:"
+                                                                + user.getRole()
+                                                                + ":"
+                                                                + email);
                         }
 
                         return;

@@ -1,8 +1,11 @@
 package com.bussin.desktop.ui.components;
 
+import java.awt.Color;
+import java.awt.Font;
+
+import javax.swing.JLabel;
+
 import com.bussin.desktop.ui.theme.BussinTheme;
-import java.awt.*;
-import javax.swing.*;
 
 public class AppLabel extends JLabel {
 
