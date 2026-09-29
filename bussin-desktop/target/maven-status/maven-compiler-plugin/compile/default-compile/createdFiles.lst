@@ -10,6 +10,7 @@ com\bussin\desktop\ui\screens\EmployeeScreen.class
 com\bussin\desktop\ui\components\ResponsiveLayouts$Vertical.class
 com\bussin\desktop\ui\screens\TripScreen$1.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$1.class
+com\bussin\desktop\ui\screens\ReportScreen.class
 com\bussin\desktop\ui\components\StatCard.class
 com\bussin\desktop\ui\theme\BussinTheme.class
 com\bussin\desktop\ui\screens\DashboardScreen$Booking.class
@@ -61,6 +62,7 @@ com\bussin\desktop\ui\auth\AuthBackground.class
 com\bussin\desktop\ui\components\ResponsiveLayouts$Grid.class
 com\bussin\desktop\ui\auth\LoginScreen$RoundedAuthCard.class
 com\bussin\desktop\ui\screens\TripScreen.class
+com\bussin\desktop\reports\ReportExporter.class
 com\bussin\desktop\ui\components\PageContent.class
 com\bussin\desktop\ui\components\AppButton$Variant.class
 com\bussin\desktop\ui\components\ResponsiveLayouts$Split.class
@@ -82,5 +84,6 @@ com\bussin\desktop\ui\screens\BusScreen$StatusCellRenderer.class
 com\bussin\desktop\ui\auth\LoginScreen.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$RoundedAuthCard.class
 com\bussin\desktop\ui\auth\RegistrationData.class
+com\bussin\desktop\ui\screens\ReportScreen$ReportData.class
 com\bussin\desktop\services\MockAuthService.class
 com\bussin\desktop\ui\screens\QueueScreen$1.class

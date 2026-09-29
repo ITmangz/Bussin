@@ -1,5 +1,20 @@
 package com.bussin.desktop.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridBagLayout;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+
 import com.bussin.desktop.ui.components.Sidebar;
 import com.bussin.desktop.ui.components.TopBar;
 import com.bussin.desktop.ui.screens.BookingScreen;
@@ -7,38 +22,36 @@ import com.bussin.desktop.ui.screens.BusScreen;
 import com.bussin.desktop.ui.screens.DashboardScreen;
 import com.bussin.desktop.ui.screens.EmployeeScreen;
 import com.bussin.desktop.ui.screens.QueueScreen;
+import com.bussin.desktop.ui.screens.ReportScreen;
 import com.bussin.desktop.ui.screens.RouteScreen;
 import com.bussin.desktop.ui.screens.TripScreen;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
-import javax.swing.*;
-import java.awt.*;
-
 public class MainFrame extends JFrame {
-
-        private final Sidebar sidebar;
-        private final TopBar topBar;
-        private final JPanel screenContainer;
 
         private final String userRole;
 
+        private final JPanel contentPanel = new JPanel(new BorderLayout());
+
+        private final Map<String, JPanel> screenCache = new HashMap<>();
+
+        private Sidebar sidebar;
+        private TopBar topBar;
         private String currentRoute;
 
-        public MainFrame(
-                        String userRole) {
+        public MainFrame(String userRole) {
 
-                this.userRole = userRole;
+                this.userRole = normalizeRole(userRole);
 
-                setTitle(
-                                "BUSSIN Desktop");
+                setTitle("BUSSIN");
 
                 setDefaultCloseOperation(
                                 JFrame.EXIT_ON_CLOSE);
 
                 setMinimumSize(
                                 new Dimension(
-                                                1100,
-                                                700));
+                                                1200,
+                                                760));
 
                 setSize(
                                 1440,
@@ -46,9 +59,12 @@ public class MainFrame extends JFrame {
 
                 setLocationRelativeTo(null);
 
-                // ============================================================
-                // COMPONENTS
-                // ============================================================
+                initializeUI();
+
+                navigate("dashboard");
+        }
+
+        private void initializeUI() {
 
                 sidebar = new Sidebar(
                                 this::navigate,
@@ -56,118 +72,99 @@ public class MainFrame extends JFrame {
 
                 topBar = new TopBar();
 
-                screenContainer = new JPanel(
-                                new BorderLayout());
-
-                screenContainer.setBackground(
+                contentPanel.setBackground(
                                 BussinTheme.BACKGROUND);
 
-                // ============================================================
-                // MAIN AREA
-                // ============================================================
+                contentPanel.setBorder(
+                                BorderFactory.createEmptyBorder(
+                                                0,
+                                                0,
+                                                0,
+                                                0));
 
-                JPanel mainArea = new JPanel(
+                JPanel mainPanel = new JPanel(
                                 new BorderLayout());
 
-                mainArea.setBackground(
+                mainPanel.setBackground(
                                 BussinTheme.BACKGROUND);
 
-                mainArea.add(
-                                topBar,
-                                BorderLayout.NORTH);
-
-                mainArea.add(
-                                screenContainer,
-                                BorderLayout.CENTER);
-
-                // ============================================================
-                // FRAME
-                // ============================================================
-
-                setLayout(
-                                new BorderLayout());
-
-                add(
+                mainPanel.add(
                                 sidebar,
                                 BorderLayout.WEST);
 
-                add(
-                                mainArea,
+                JPanel rightPanel = new JPanel(
+                                new BorderLayout());
+
+                rightPanel.setBackground(
+                                BussinTheme.BACKGROUND);
+
+                rightPanel.add(
+                                topBar,
+                                BorderLayout.NORTH);
+
+                rightPanel.add(
+                                contentPanel,
                                 BorderLayout.CENTER);
 
-                // ============================================================
-                // INITIAL SCREEN
-                // ============================================================
+                mainPanel.add(
+                                rightPanel,
+                                BorderLayout.CENTER);
 
-                navigate(
-                                "dashboard");
+                setContentPane(mainPanel);
         }
-
-        // ================================================================
-        // ROLE
-        // ================================================================
-
-        public String getUserRole() {
-
-                return userRole;
-        }
-
-        // ================================================================
-        // NAVIGATION
-        // ================================================================
 
         private void navigate(
                         String route) {
 
-                if (route == null
-                                || route.isBlank()) {
+                if (route == null || route.isBlank()) {
+                        return;
+                }
+
+                if (!hasAccess(route)) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "You do not have permission to access this section.",
+                                        "Access Denied",
+                                        JOptionPane.WARNING_MESSAGE);
 
                         return;
                 }
 
-                /*
-                 * Prevent unnecessary screen recreation
-                 * when the user clicks the currently active
-                 * navigation item.
-                 */
-                if (route.equals(currentRoute)
-                                && screenContainer
-                                                .getComponentCount() > 0) {
+                currentRoute = route;
 
-                        return;
+                JPanel screen = getOrCreateScreen(route);
+
+                contentPanel.removeAll();
+
+                contentPanel.add(
+                                screen,
+                                BorderLayout.CENTER);
+
+                contentPanel.revalidate();
+                contentPanel.repaint();
+
+                sidebar.setActiveRoute(route);
+
+                updateTitle(route);
+        }
+
+        private JPanel getOrCreateScreen(
+                        String route) {
+
+                if (screenCache.containsKey(route)) {
+
+                        return screenCache.get(route);
                 }
 
                 JPanel screen = createScreen(route);
 
-                if (screen == null) {
+                screenCache.put(
+                                route,
+                                screen);
 
-                        screen = createPlaceholder(
-                                        "Page Not Found",
-                                        "The requested BUSSIN module could not be found.");
-                }
-
-                screenContainer.removeAll();
-
-                screenContainer.add(
-                                screen,
-                                BorderLayout.CENTER);
-
-                currentRoute = route;
-
-                topBar.setPageTitle(
-                                getPageTitle(route));
-
-                sidebar.setActiveRoute(
-                                route);
-
-                screenContainer.revalidate();
-
-                screenContainer.repaint();
+                return screen;
         }
-
-        // ================================================================
-        // SCREEN FACTORY
-        // ================================================================
 
         private JPanel createScreen(
                         String route) {
@@ -196,37 +193,70 @@ public class MainFrame extends JFrame {
                                 new EmployeeScreen();
 
                         case "reports" ->
-                                createPlaceholder(
-                                                "Reports",
-                                                "View operational, booking, queue, and revenue reports.");
+                                new ReportScreen();
 
                         default ->
                                 createPlaceholder(
                                                 "Page Not Found",
-                                                "The requested BUSSIN module could not be found.");
+                                                "The requested section does not exist.");
                 };
         }
 
-        // ================================================================
-        // PAGE TITLES
-        // ================================================================
-
-        private String getPageTitle(
+        private boolean hasAccess(
                         String route) {
 
-                return switch (route) {
+                switch (userRole) {
+
+                        case "ADMIN":
+
+                                return true;
+
+                        case "EMPLOYEE":
+
+                                return switch (route) {
+
+                                        case "dashboard",
+                                                        "queue",
+                                                        "bookings",
+                                                        "trips",
+                                                        "buses" ->
+                                                true;
+
+                                        default -> false;
+                                };
+
+                        case "USER":
+
+                        default:
+
+                                return switch (route) {
+
+                                        case "dashboard",
+                                                        "queue",
+                                                        "bookings" ->
+                                                true;
+
+                                        default -> false;
+                                };
+                }
+        }
+
+        private void updateTitle(
+                        String route) {
+
+                String title = switch (route) {
 
                         case "dashboard" ->
                                 "Dashboard";
 
                         case "queue" ->
-                                "Queue Management";
+                                "Queue";
 
                         case "bookings" ->
-                                "Booking Management";
+                                "Bookings";
 
                         case "trips" ->
-                                "Trip Management";
+                                "Trips";
 
                         case "buses" ->
                                 "Bus Management";
@@ -238,20 +268,19 @@ public class MainFrame extends JFrame {
                                 "Employee Management";
 
                         case "reports" ->
-                                "Reports";
+                                "Reports & Analytics";
 
                         default ->
                                 "BUSSIN";
                 };
-        }
 
-        // ================================================================
-        // PLACEHOLDER
-        // ================================================================
+                setTitle(
+                                "BUSSIN - " + title);
+        }
 
         private JPanel createPlaceholder(
                         String title,
-                        String description) {
+                        String message) {
 
                 JPanel panel = new JPanel(
                                 new GridBagLayout());
@@ -259,19 +288,30 @@ public class MainFrame extends JFrame {
                 panel.setBackground(
                                 BussinTheme.BACKGROUND);
 
-                JPanel content = new JPanel();
+                JPanel card = new JPanel();
 
-                content.setOpaque(false);
+                card.setBackground(
+                                BussinTheme.SURFACE);
 
-                content.setLayout(
+                card.setBorder(
+                                BorderFactory.createCompoundBorder(
+                                                BorderFactory.createLineBorder(
+                                                                BussinTheme.BORDER_DARK),
+                                                BorderFactory.createEmptyBorder(
+                                                                32,
+                                                                40,
+                                                                32,
+                                                                40)));
+
+                card.setLayout(
                                 new BoxLayout(
-                                                content,
+                                                card,
                                                 BoxLayout.Y_AXIS));
 
                 JLabel titleLabel = new JLabel(title);
 
                 titleLabel.setFont(
-                                BussinTheme.PAGE_TITLE);
+                                BussinTheme.BODY);
 
                 titleLabel.setForeground(
                                 BussinTheme.TEXT_PRIMARY);
@@ -279,30 +319,49 @@ public class MainFrame extends JFrame {
                 titleLabel.setAlignmentX(
                                 Component.CENTER_ALIGNMENT);
 
-                JLabel descriptionLabel = new JLabel(
-                                description);
+                JLabel messageLabel = new JLabel(message);
 
-                descriptionLabel.setFont(
+                messageLabel.setFont(
                                 BussinTheme.BODY);
 
-                descriptionLabel.setForeground(
+                messageLabel.setForeground(
                                 BussinTheme.TEXT_SECONDARY);
 
-                descriptionLabel.setAlignmentX(
+                messageLabel.setAlignmentX(
                                 Component.CENTER_ALIGNMENT);
 
-                content.add(
-                                titleLabel);
+                card.add(titleLabel);
 
-                content.add(
-                                Box.createVerticalStrut(
-                                                8));
+                card.add(
+                                Box.createVerticalStrut(10));
 
-                content.add(
-                                descriptionLabel);
+                card.add(messageLabel);
 
-                panel.add(content);
+                panel.add(card);
 
                 return panel;
+        }
+
+        private String normalizeRole(
+                        String role) {
+
+                if (role == null || role.isBlank()) {
+
+                        return "USER";
+                }
+
+                return role
+                                .trim()
+                                .toUpperCase();
+        }
+
+        public String getUserRole() {
+
+                return userRole;
+        }
+
+        public String getCurrentRoute() {
+
+                return currentRoute;
         }
 }
