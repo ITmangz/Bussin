@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ============================================================= -->
+    <!-- Project Information                                            -->
+    <!-- ============================================================= -->
+
+    <groupId>com.bussin</groupId>
+    <artifactId>bussin-desktop</artifactId>
+    <version>1.0.0</version>
+
+    <name>BUSSIN Desktop</name>
+
+    <description>
+        BUSSIN Bus Commuter Queue and Booking System - Desktop Application
+    </description>
+
+    <!-- ============================================================= -->
+    <!-- Properties                                                     -->
+    <!-- ============================================================= -->
+
+    <properties>
+
+        <!-- Java -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>25</maven.compiler.release>
+
+        <!-- Libraries -->
+        <flatlaf.version>3.6.2</flatlaf.version>
+        <gson.version>2.13.2</gson.version>
+        <junit.version>5.13.4</junit.version>
+
+    </properties>
+
+    <!-- ============================================================= -->
+    <!-- Dependencies                                                   -->
+    <!-- ============================================================= -->
+
+    <dependencies>
+
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>${flatlaf.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-extras</artifactId>
+            <version>${flatlaf.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <!-- ============================================================= -->
+    <!-- Build Configuration                                             -->
+    <!-- ============================================================= -->
+
+    <build>
+
+        <plugins>
+
+            <!-- ===================================================== -->
+            <!-- Java Compiler                                          -->
+            <!-- ===================================================== -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
+
+                <configuration>
+                    <release>25</release>
+                </configuration>
+            </plugin>
+
+
+            <!-- ===================================================== -->
+            <!-- Unit Testing                                            -->
+            <!-- ===================================================== -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.3</version>
+            </plugin>
+
+
+            <!-- ===================================================== -->
+            <!-- JAR                                                      -->
+            <!-- ===================================================== -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>
+                                com.bussin.desktop.App
+                            </mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+
+            <!-- ===================================================== -->
+            <!-- Shade Plugin                                             -->
+            <!-- Packages dependencies inside the executable JAR        -->
+            <!-- ===================================================== -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+
+                <executions>
+
+                    <execution>
+
+                        <phase>package</phase>
+
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+
+                        <configuration>
+
+                            <!-- Keep the original POM unchanged -->
+                            <createDependencyReducedPom>
+                                false
+                            </createDependencyReducedPom>
+
+                            <!-- Set the executable JAR entry point -->
+                            <transformers>
+
+                                <transformer
+                                    implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+
+                                    <mainClass>
+                                        com.bussin.desktop.App
+                                    </mainClass>
+
+                                </transformer>
+
+                            </transformers>
+
+                        </configuration>
+
+                    </execution>
+
+                </executions>
+
+            </plugin>
+
+        </plugins>
+
+    </build>
+
+</project>
