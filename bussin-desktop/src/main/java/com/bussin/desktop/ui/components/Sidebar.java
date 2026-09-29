@@ -1,12 +1,26 @@
 package com.bussin.desktop.ui.components;
 
-import com.bussin.desktop.ui.theme.BussinTheme;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+
+import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class Sidebar extends JPanel {
 
@@ -16,10 +30,14 @@ public class Sidebar extends JPanel {
 
         private String activeRoute;
 
+        private final String userRole;
+
         public Sidebar(
-                        Consumer<String> navigationHandler) {
+                        Consumer<String> navigationHandler,
+                        String userRole) {
 
                 this.navigationHandler = navigationHandler;
+                this.userRole = normalizeRole(userRole);
 
                 setPreferredSize(
                                 new Dimension(
@@ -44,6 +62,53 @@ public class Sidebar extends JPanel {
                 add(
                                 createFooter(),
                                 BorderLayout.SOUTH);
+        }
+
+        // ================================================================
+        // ROLE
+        // ================================================================
+
+        private String normalizeRole(
+                        String role) {
+
+                if (role == null || role.isBlank()) {
+                        return "USER";
+                }
+
+                return role.trim().toUpperCase();
+        }
+
+        private boolean hasAccess(
+                        String route) {
+
+                switch (userRole) {
+
+                        case "ADMIN":
+                                return true;
+
+                        case "EMPLOYEE":
+                                return switch (route) {
+                                        case "dashboard",
+                                                        "queue",
+                                                        "bookings",
+                                                        "trips",
+                                                        "buses" ->
+                                                true;
+
+                                        default -> false;
+                                };
+
+                        case "USER":
+                        default:
+                                return switch (route) {
+                                        case "dashboard",
+                                                        "queue",
+                                                        "bookings" ->
+                                                true;
+
+                                        default -> false;
+                                };
+                }
         }
 
         // ================================================================
@@ -118,41 +183,41 @@ public class Sidebar extends JPanel {
                                 createSectionLabel(
                                                 "OPERATIONS"));
 
-                content.add(
-                                createNavButton(
-                                                "Dashboard",
-                                                "dashboard",
-                                                "dashboard"));
+                addNavigationButton(
+                                content,
+                                "Dashboard",
+                                "dashboard",
+                                "dashboard");
 
-                content.add(
-                                createNavButton(
-                                                "Queue",
-                                                "queue",
-                                                "queue"));
+                addNavigationButton(
+                                content,
+                                "Queue",
+                                "queue",
+                                "queue");
 
-                content.add(
-                                createNavButton(
-                                                "Bookings",
-                                                "bookings",
-                                                "booking"));
+                addNavigationButton(
+                                content,
+                                "Bookings",
+                                "bookings",
+                                "booking");
 
-                content.add(
-                                createNavButton(
-                                                "Trips",
-                                                "trips",
-                                                "trip"));
+                addNavigationButton(
+                                content,
+                                "Trips",
+                                "trips",
+                                "trip");
 
-                content.add(
-                                createNavButton(
-                                                "Buses",
-                                                "buses",
-                                                "bus"));
+                addNavigationButton(
+                                content,
+                                "Buses",
+                                "buses",
+                                "bus");
 
-                content.add(
-                                createNavButton(
-                                                "Routes",
-                                                "routes",
-                                                "route"));
+                addNavigationButton(
+                                content,
+                                "Routes",
+                                "routes",
+                                "route");
 
                 content.add(
                                 Box.createVerticalStrut(26));
@@ -165,19 +230,40 @@ public class Sidebar extends JPanel {
                                 createSectionLabel(
                                                 "MANAGEMENT"));
 
-                content.add(
-                                createNavButton(
-                                                "Employees",
-                                                "employees",
-                                                "employee"));
+                addNavigationButton(
+                                content,
+                                "Employees",
+                                "employees",
+                                "employee");
 
-                content.add(
-                                createNavButton(
-                                                "Reports",
-                                                "reports",
-                                                "report"));
+                addNavigationButton(
+                                content,
+                                "Reports",
+                                "reports",
+                                "report");
 
                 return content;
+        }
+
+        // ================================================================
+        // ADD NAVIGATION BUTTON
+        // ================================================================
+
+        private void addNavigationButton(
+                        JPanel content,
+                        String text,
+                        String route,
+                        String iconName) {
+
+                if (!hasAccess(route)) {
+                        return;
+                }
+
+                content.add(
+                                createNavButton(
+                                                text,
+                                                route,
+                                                iconName));
         }
 
         // ================================================================
@@ -365,7 +451,8 @@ public class Sidebar extends JPanel {
                 button.setForeground(
                                 active
                                                 ? Color.WHITE
-                                                : Color.decode("#D1D5DB"));
+                                                : Color.decode(
+                                                                "#D1D5DB"));
 
                 button.setIcon(
                                 IconFactory.create(
@@ -437,7 +524,7 @@ public class Sidebar extends JPanel {
                                                 BoxLayout.Y_AXIS));
 
                 JLabel name = new JLabel(
-                                "Administrator");
+                                getDisplayName());
 
                 name.setFont(
                                 BussinTheme.SMALL_BOLD);
@@ -446,7 +533,7 @@ public class Sidebar extends JPanel {
                                 Color.WHITE);
 
                 JLabel role = new JLabel(
-                                "BUSSIN Staff");
+                                getDisplayRole());
 
                 role.setFont(
                                 BussinTheme.SMALL);
@@ -470,5 +557,27 @@ public class Sidebar extends JPanel {
                                 BorderLayout.CENTER);
 
                 return footer;
+        }
+
+        // ================================================================
+        // FOOTER ROLE DISPLAY
+        // ================================================================
+
+        private String getDisplayName() {
+
+                return switch (userRole) {
+                        case "ADMIN" -> "Administrator";
+                        case "EMPLOYEE" -> "Employee";
+                        default -> "Commuter";
+                };
+        }
+
+        private String getDisplayRole() {
+
+                return switch (userRole) {
+                        case "ADMIN" -> "BUSSIN Administrator";
+                        case "EMPLOYEE" -> "BUSSIN Staff";
+                        default -> "BUSSIN User";
+                };
         }
 }

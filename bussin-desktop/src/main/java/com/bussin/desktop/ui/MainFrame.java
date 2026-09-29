@@ -1,16 +1,5 @@
 package com.bussin.desktop.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.GridBagLayout;
-
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-
 import com.bussin.desktop.ui.components.Sidebar;
 import com.bussin.desktop.ui.components.TopBar;
 import com.bussin.desktop.ui.screens.BookingScreen;
@@ -22,15 +11,23 @@ import com.bussin.desktop.ui.screens.RouteScreen;
 import com.bussin.desktop.ui.screens.TripScreen;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
+import javax.swing.*;
+import java.awt.*;
+
 public class MainFrame extends JFrame {
 
         private final Sidebar sidebar;
         private final TopBar topBar;
         private final JPanel screenContainer;
 
+        private final String userRole;
+
         private String currentRoute;
 
-        public MainFrame() {
+        public MainFrame(
+                        String userRole) {
+
+                this.userRole = userRole;
 
                 setTitle(
                                 "BUSSIN Desktop");
@@ -54,7 +51,8 @@ public class MainFrame extends JFrame {
                 // ============================================================
 
                 sidebar = new Sidebar(
-                                this::navigate);
+                                this::navigate,
+                                userRole);
 
                 topBar = new TopBar();
 
@@ -103,6 +101,15 @@ public class MainFrame extends JFrame {
 
                 navigate(
                                 "dashboard");
+        }
+
+        // ================================================================
+        // ROLE
+        // ================================================================
+
+        public String getUserRole() {
+
+                return userRole;
         }
 
         // ================================================================

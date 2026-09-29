@@ -4,6 +4,7 @@ public class RegistrationData {
 
     private String email;
     private String password;
+    private String role;
 
     private String firstName;
     private String middleName;
@@ -13,6 +14,10 @@ public class RegistrationData {
     private String dateOfBirth;
     private String contactNumber;
 
+    // ================================================================
+    // EMAIL
+    // ================================================================
+
     public String getEmail() {
         return email;
     }
@@ -20,6 +25,10 @@ public class RegistrationData {
     public void setEmail(String email) {
         this.email = email;
     }
+
+    // ================================================================
+    // PASSWORD
+    // ================================================================
 
     public String getPassword() {
         return password;
@@ -29,6 +38,22 @@ public class RegistrationData {
         this.password = password;
     }
 
+    // ================================================================
+    // ROLE
+    // ================================================================
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    // ================================================================
+    // FIRST NAME
+    // ================================================================
+
     public String getFirstName() {
         return firstName;
     }
@@ -36,6 +61,10 @@ public class RegistrationData {
     public void setFirstName(String firstName) {
         this.firstName = firstName;
     }
+
+    // ================================================================
+    // MIDDLE NAME
+    // ================================================================
 
     public String getMiddleName() {
         return middleName;
@@ -45,6 +74,10 @@ public class RegistrationData {
         this.middleName = middleName;
     }
 
+    // ================================================================
+    // LAST NAME
+    // ================================================================
+
     public String getLastName() {
         return lastName;
     }
@@ -52,6 +85,10 @@ public class RegistrationData {
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
+
+    // ================================================================
+    // GENDER
+    // ================================================================
 
     public String getGender() {
         return gender;
@@ -61,6 +98,10 @@ public class RegistrationData {
         this.gender = gender;
     }
 
+    // ================================================================
+    // AGE
+    // ================================================================
+
     public String getAge() {
         return age;
     }
@@ -69,6 +110,10 @@ public class RegistrationData {
         this.age = age;
     }
 
+    // ================================================================
+    // DATE OF BIRTH
+    // ================================================================
+
     public String getDateOfBirth() {
         return dateOfBirth;
     }
@@ -76,6 +121,10 @@ public class RegistrationData {
     public void setDateOfBirth(String dateOfBirth) {
         this.dateOfBirth = dateOfBirth;
     }
+
+    // ================================================================
+    // CONTACT NUMBER
+    // ================================================================
 
     public String getContactNumber() {
         return contactNumber;

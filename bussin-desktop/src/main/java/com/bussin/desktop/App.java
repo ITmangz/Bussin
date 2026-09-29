@@ -58,6 +58,10 @@ public class App {
         LoginScreen screen = new LoginScreen(
                 route -> {
 
+                    if (route == null) {
+                        return;
+                    }
+
                     switch (route) {
 
                         case "register" -> {
@@ -74,17 +78,29 @@ public class App {
                             showForgotPassword();
                         }
 
-                        case "authenticated" -> {
-
-                            frame.dispose();
-
-                            MainFrame mainFrame = new MainFrame();
-
-                            mainFrame.setVisible(true);
-                        }
-
                         default -> {
-                            // No action.
+
+                            /*
+                             * Successful login now sends:
+                             *
+                             * authenticated:ADMIN
+                             * authenticated:EMPLOYEE
+                             * authenticated:USER
+                             */
+
+                            if (route.startsWith(
+                                    "authenticated:")) {
+
+                                String role = route.substring(
+                                        "authenticated:"
+                                                .length());
+
+                                frame.dispose();
+
+                                MainFrame mainFrame = new MainFrame(role);
+
+                                mainFrame.setVisible(true);
+                            }
                         }
                     }
                 });
@@ -118,7 +134,8 @@ public class App {
 
                         case "register-step-2" -> {
 
-                            RegistrationData data = step1Holder[0].getData();
+                            RegistrationData data = step1Holder[0]
+                                    .getData();
 
                             frame.dispose();
 
@@ -132,7 +149,8 @@ public class App {
                     }
                 });
 
-        frame.setContentPane(step1Holder[0]);
+        frame.setContentPane(
+                step1Holder[0]);
 
         frame.setVisible(true);
     }
