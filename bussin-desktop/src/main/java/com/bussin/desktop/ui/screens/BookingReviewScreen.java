@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import com.bussin.desktop.ui.components.AppButton;
@@ -32,17 +33,35 @@ public class BookingReviewScreen extends JPanel {
                 initializeUI();
         }
 
+        // ---------------------------------------------------------------------
+        // UI
+        // ---------------------------------------------------------------------
+
         private void initializeUI() {
 
-                setBackground(BussinTheme.BACKGROUND);
-                setLayout(new BorderLayout());
+                setBackground(
+                                BussinTheme.BACKGROUND);
+
+                setLayout(
+                                new BorderLayout());
 
                 PageContent page = new PageContent();
 
-                page.addBlock(createHeader(), 0);
-                page.addBlock(createSummary(), 20);
-                page.addBlock(createPassengerCard(), 18);
-                page.addBlock(createActions(), 18);
+                page.addBlock(
+                                createHeader(),
+                                0);
+
+                page.addBlock(
+                                createSummary(),
+                                20);
+
+                page.addBlock(
+                                createPassengerCard(),
+                                18);
+
+                page.addBlock(
+                                createActions(),
+                                18);
 
                 add(
                                 page.inScrollPane(),
@@ -52,7 +71,9 @@ public class BookingReviewScreen extends JPanel {
         private JPanel createHeader() {
 
                 JPanel panel = new JPanel();
+
                 panel.setOpaque(false);
+
                 panel.setLayout(
                                 new BoxLayout(
                                                 panel,
@@ -72,6 +93,10 @@ public class BookingReviewScreen extends JPanel {
                 return panel;
         }
 
+        // ---------------------------------------------------------------------
+        // Trip Summary
+        // ---------------------------------------------------------------------
+
         private JPanel createSummary() {
 
                 AppCard card = new AppCard();
@@ -80,7 +105,9 @@ public class BookingReviewScreen extends JPanel {
                                 new BorderLayout());
 
                 JPanel content = new JPanel();
+
                 content.setOpaque(false);
+
                 content.setLayout(
                                 new BoxLayout(
                                                 content,
@@ -89,10 +116,19 @@ public class BookingReviewScreen extends JPanel {
                 CommuterTrip trip = flowState.getSelectedTrip();
 
                 if (trip == null) {
-                        content.add(
-                                        new JLabel(
-                                                        "No trip selected."));
-                        card.add(content);
+
+                        JLabel label = new JLabel(
+                                        "No trip selected.");
+
+                        label.setForeground(
+                                        BussinTheme.DANGER);
+
+                        content.add(label);
+
+                        card.add(
+                                        content,
+                                        BorderLayout.CENTER);
+
                         return card;
                 }
 
@@ -142,6 +178,10 @@ public class BookingReviewScreen extends JPanel {
                 return card;
         }
 
+        // ---------------------------------------------------------------------
+        // Passenger
+        // ---------------------------------------------------------------------
+
         private JPanel createPassengerCard() {
 
                 AppCard card = new AppCard();
@@ -150,7 +190,9 @@ public class BookingReviewScreen extends JPanel {
                                 new BorderLayout());
 
                 JPanel content = new JPanel();
+
                 content.setOpaque(false);
+
                 content.setLayout(
                                 new BoxLayout(
                                                 content,
@@ -184,6 +226,10 @@ public class BookingReviewScreen extends JPanel {
 
                 return card;
         }
+
+        // ---------------------------------------------------------------------
+        // Rows
+        // ---------------------------------------------------------------------
 
         private void addLine(
                         JPanel parent,
@@ -225,9 +271,14 @@ public class BookingReviewScreen extends JPanel {
                                 BorderLayout.EAST);
 
                 parent.add(row);
+
                 parent.add(
                                 Box.createVerticalStrut(10));
         }
+
+        // ---------------------------------------------------------------------
+        // Actions
+        // ---------------------------------------------------------------------
 
         private JPanel createActions() {
 
@@ -259,31 +310,43 @@ public class BookingReviewScreen extends JPanel {
                 return panel;
         }
 
+        // ---------------------------------------------------------------------
+        // Review Validation
+        // ---------------------------------------------------------------------
+
         private void confirmBooking() {
 
                 if (!flowState.hasTrip()
                                 || !flowState.hasSeat()
                                 || !flowState.hasPassengerInformation()) {
 
-                        javax.swing.JOptionPane.showMessageDialog(
+                        JOptionPane.showMessageDialog(
                                         this,
                                         "Some booking information is incomplete.",
                                         "Incomplete Booking",
-                                        javax.swing.JOptionPane.WARNING_MESSAGE);
+                                        JOptionPane.WARNING_MESSAGE);
 
                         return;
                 }
 
                 CommuterTrip trip = flowState.getSelectedTrip();
 
-                if (!trip.isSeatAvailable(
-                                flowState.getSelectedSeat())) {
+                String selectedSeat = flowState.getSelectedSeat();
 
-                        javax.swing.JOptionPane.showMessageDialog(
+                /*
+                 * Check availability again immediately before
+                 * moving to the final confirmation step.
+                 *
+                 * The seat is NOT reserved here.
+                 */
+                if (!trip.isSeatAvailable(
+                                selectedSeat)) {
+
+                        JOptionPane.showMessageDialog(
                                         this,
-                                        "That seat is no longer available.",
+                                        "That seat is no longer available. Please select another seat.",
                                         "Seat Unavailable",
-                                        javax.swing.JOptionPane.WARNING_MESSAGE);
+                                        JOptionPane.WARNING_MESSAGE);
 
                         navigationHandler.accept(
                                         "seat-selection");
@@ -291,54 +354,31 @@ public class BookingReviewScreen extends JPanel {
                         return;
                 }
 
-                int result = javax.swing.JOptionPane.showConfirmDialog(
+                int result = JOptionPane.showConfirmDialog(
                                 this,
                                 "Confirm this booking for "
                                                 + trip.getRoute()
                                                 + "?"
                                                 + "\nSeat: "
-                                                + flowState.getSelectedSeat()
+                                                + selectedSeat
                                                 + "\nFare: ₱"
                                                 + String.format(
                                                                 "%,.2f",
                                                                 trip.getFare()),
                                 "Confirm Booking",
-                                javax.swing.JOptionPane.YES_NO_OPTION,
-                                javax.swing.JOptionPane.QUESTION_MESSAGE);
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE);
 
-                if (result != javax.swing.JOptionPane.YES_OPTION) {
-
+                if (result != JOptionPane.YES_OPTION) {
                         return;
                 }
 
-                String bookingId = com.bussin.desktop.ui.flow.BookingStore
-                                .generateBookingId();
-
-                trip.reserveSeat(
-                                flowState.getSelectedSeat());
-
-                com.bussin.desktop.ui.flow.BookingStore
-                                .addBooking(
-                                                new com.bussin.desktop.ui.flow.BookingStore.UserBooking(
-                                                                bookingId,
-                                                                flowState.getPassengerEmail(),
-                                                                flowState.getPassengerName(),
-                                                                flowState.getPassengerPhone(),
-                                                                flowState.getPassengerEmail(),
-                                                                trip.getTripId(),
-                                                                trip.getRoute(),
-                                                                trip.getDeparture(),
-                                                                trip.getArrival(),
-                                                                trip.getBusNumber(),
-                                                                flowState.getSelectedSeat(),
-                                                                trip.getFare(),
-                                                                "Unpaid",
-                                                                "Pending",
-                                                                java.time.LocalDateTime.now()));
-
-                flowState.setBookingId(
-                                bookingId);
-
+                /*
+                 * Do not create the booking here.
+                 *
+                 * The confirmation screen is responsible for
+                 * performing the final booking transaction once.
+                 */
                 navigationHandler.accept(
                                 "booking-confirmation");
         }

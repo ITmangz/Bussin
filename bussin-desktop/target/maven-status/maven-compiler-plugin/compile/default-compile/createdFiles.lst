@@ -36,6 +36,7 @@ com\bussin\desktop\ui\screens\BookingConfirmationScreen.class
 com\bussin\desktop\ui\screens\PassengerInformationScreen.class
 com\bussin\desktop\ui\screens\TripScreen$RouteOption.class
 com\bussin\desktop\ui\auth\LoginScreen$RoundedFieldPanel.class
+com\bussin\desktop\ui\screens\PassengerInformationScreen$1.class
 com\bussin\desktop\ui\components\AppBadge.class
 com\bussin\desktop\ui\flow\CommuterTrip.class
 com\bussin\desktop\ui\components\ResponsiveLayouts$WidthAware.class

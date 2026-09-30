@@ -9,8 +9,11 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
@@ -22,335 +25,543 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class PassengerInformationScreen extends JPanel {
 
-    private final Consumer<String> navigationHandler;
-    private final BookingFlowState flowState;
-    private final String currentUserEmail;
+        private final Consumer<String> navigationHandler;
+        private final BookingFlowState flowState;
+        private final String currentUserEmail;
 
-    private final JTextField nameField = new JTextField();
-    private final JTextField phoneField = new JTextField();
-    private final JTextField emailField = new JTextField();
+        private final JTextField nameField = new JTextField();
+        private final JTextField phoneField = new JTextField();
+        private final JTextField emailField = new JTextField();
 
-    public PassengerInformationScreen(
-            String currentUserEmail,
-            Consumer<String> navigationHandler,
-            BookingFlowState flowState) {
+        private AppButton continueButton;
 
-        this.currentUserEmail = currentUserEmail == null
-                ? ""
-                : currentUserEmail.trim();
+        public PassengerInformationScreen(
+                        String currentUserEmail,
+                        Consumer<String> navigationHandler,
+                        BookingFlowState flowState) {
 
-        this.navigationHandler = navigationHandler;
-        this.flowState = flowState;
+                this.currentUserEmail = currentUserEmail == null
+                                ? ""
+                                : currentUserEmail.trim();
 
-        initializeDefaults();
-        initializeUI();
-    }
+                this.navigationHandler = navigationHandler;
+                this.flowState = flowState;
 
-    private void initializeDefaults() {
-
-        nameField.setText(
-                getPassengerName());
-
-        phoneField.setText(
-                flowState.getPassengerPhone() == null
-                        ? ""
-                        : flowState.getPassengerPhone());
-
-        emailField.setText(
-                flowState.getPassengerEmail() == null
-                        ? currentUserEmail
-                        : flowState.getPassengerEmail());
-
-        emailField.setEditable(false);
-        emailField.setBackground(
-                BussinTheme.SURFACE_ALT);
-    }
-
-    private void initializeUI() {
-
-        setBackground(BussinTheme.BACKGROUND);
-        setLayout(new BorderLayout());
-
-        PageContent page = new PageContent();
-
-        page.addBlock(createHeader(), 0);
-        page.addBlock(createTripSummary(), 20);
-        page.addBlock(createForm(), 18);
-        page.addBlock(createActions(), 18);
-
-        add(
-                page.inScrollPane(),
-                BorderLayout.CENTER);
-    }
-
-    private JPanel createHeader() {
-
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        panel.setLayout(
-                new BoxLayout(
-                        panel,
-                        BoxLayout.Y_AXIS));
-
-        panel.add(
-                AppLabel.title(
-                        "Passenger Information"));
-
-        panel.add(
-                Box.createVerticalStrut(5));
-
-        panel.add(
-                AppLabel.secondary(
-                        "Enter the information that will be attached to this booking."));
-
-        return panel;
-    }
-
-    private JPanel createTripSummary() {
-
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BorderLayout());
-
-        CommuterTrip trip = flowState.getSelectedTrip();
-
-        if (trip == null) {
-            card.add(
-                    new JLabel(
-                            "No trip selected."),
-                    BorderLayout.CENTER);
-
-            return card;
+                initializeDefaults();
+                initializeUI();
+                attachValidationListeners();
+                updateContinueState();
         }
 
-        JLabel label = new JLabel(
-                trip.getRoute()
-                        + "  •  "
-                        + trip.getDeparture()
-                        + "  •  Seat "
-                        + flowState.getSelectedSeat());
+        // ---------------------------------------------------------------------
+        // Defaults
+        // ---------------------------------------------------------------------
 
-        label.setFont(
-                BussinTheme.BODY_MEDIUM);
+        private void initializeDefaults() {
 
-        label.setForeground(
-                BussinTheme.TEXT_PRIMARY);
+                nameField.setText(
+                                getPassengerName());
 
-        card.add(
-                label,
-                BorderLayout.CENTER);
+                phoneField.setText(
+                                flowState.getPassengerPhone() == null
+                                                ? ""
+                                                : flowState.getPassengerPhone());
 
-        return card;
-    }
-
-    private JPanel createForm() {
-
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BoxLayout(
-                        card,
-                        BoxLayout.Y_AXIS));
-
-        card.add(
-                AppLabel.section(
-                        "Passenger Details"));
-
-        card.add(
-                Box.createVerticalStrut(18));
-
-        card.add(
-                createField(
-                        "FULL NAME",
-                        nameField));
-
-        card.add(
-                Box.createVerticalStrut(16));
-
-        card.add(
-                createField(
-                        "PHONE NUMBER",
-                        phoneField));
-
-        card.add(
-                Box.createVerticalStrut(16));
-
-        card.add(
-                createField(
-                        "EMAIL",
-                        emailField));
-
-        return card;
-    }
-
-    private JPanel createField(
-            String labelText,
-            JTextField field) {
-
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        panel.setLayout(
-                new BoxLayout(
-                        panel,
-                        BoxLayout.Y_AXIS));
-
-        JLabel label = new JLabel(labelText);
-
-        label.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        label.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        field.setPreferredSize(
-                new Dimension(
-                        0,
-                        40));
-
-        field.setMaximumSize(
-                new Dimension(
-                        Integer.MAX_VALUE,
-                        40));
-
-        field.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                BussinTheme.BORDER),
-                        BorderFactory.createEmptyBorder(
-                                0,
-                                10,
-                                0,
-                                10)));
-
-        panel.add(label);
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(field);
-
-        return panel;
-    }
-
-    private JPanel createActions() {
-
-        JPanel panel = new JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        10,
-                        0));
-
-        panel.setOpaque(false);
-
-        AppButton back = new AppButton(
-                "Back",
-                AppButton.Variant.SECONDARY);
-
-        back.addActionListener(
-                event -> navigationHandler.accept(
-                        "seat-selection"));
-
-        AppButton continueButton = new AppButton(
-                "Continue");
-
-        continueButton.addActionListener(
-                event -> continueToReview());
-
-        panel.add(back);
-        panel.add(continueButton);
-
-        return panel;
-    }
-
-    private void continueToReview() {
-
-        String name = nameField.getText().trim();
-
-        String phone = phoneField.getText().trim();
-
-        if (name.isBlank()
-                || phone.isBlank()) {
-
-            javax.swing.JOptionPane.showMessageDialog(
-                    this,
-                    "Please complete your name and phone number.",
-                    "Incomplete Information",
-                    javax.swing.JOptionPane.WARNING_MESSAGE);
-
-            return;
+                /*
+                 * The passenger email always belongs to the authenticated
+                 * commuter. Do not allow the booking flow to change ownership.
+                 */
+                emailField.setText(currentUserEmail);
+                emailField.setEditable(false);
+                emailField.setBackground(
+                                BussinTheme.SURFACE_ALT);
         }
 
-        String digits = phone.replaceAll(
-                "[^0-9+]",
-                "");
+        // ---------------------------------------------------------------------
+        // UI
+        // ---------------------------------------------------------------------
 
-        if (digits.length() < 7) {
+        private void initializeUI() {
 
-            javax.swing.JOptionPane.showMessageDialog(
-                    this,
-                    "Please enter a valid phone number.",
-                    "Invalid Phone Number",
-                    javax.swing.JOptionPane.WARNING_MESSAGE);
+                setBackground(
+                                BussinTheme.BACKGROUND);
 
-            return;
+                setLayout(
+                                new BorderLayout());
+
+                PageContent page = new PageContent();
+
+                page.addBlock(
+                                createHeader(),
+                                0);
+
+                page.addBlock(
+                                createTripSummary(),
+                                20);
+
+                page.addBlock(
+                                createForm(),
+                                18);
+
+                page.addBlock(
+                                createActions(),
+                                18);
+
+                add(
+                                page.inScrollPane(),
+                                BorderLayout.CENTER);
         }
 
-        flowState.setPassengerName(name);
-        flowState.setPassengerPhone(phone);
-        flowState.setPassengerEmail(currentUserEmail);
+        private JPanel createHeader() {
 
-        navigationHandler.accept(
-                "booking-review");
-    }
+                JPanel panel = new JPanel();
 
-    private String getPassengerName() {
+                panel.setOpaque(false);
 
-        if (flowState.getPassengerName() != null
-                && !flowState.getPassengerName().isBlank()) {
+                panel.setLayout(
+                                new BoxLayout(
+                                                panel,
+                                                BoxLayout.Y_AXIS));
 
-            return flowState.getPassengerName();
+                panel.add(
+                                AppLabel.title(
+                                                "Passenger Information"));
+
+                panel.add(
+                                Box.createVerticalStrut(5));
+
+                panel.add(
+                                AppLabel.secondary(
+                                                "Enter the information that will be attached to this booking."));
+
+                return panel;
         }
 
-        if (currentUserEmail.equalsIgnoreCase(
-                "user@bussin.com")) {
+        private JPanel createTripSummary() {
 
-            return "User";
-        }
+                AppCard card = new AppCard();
 
-        int at = currentUserEmail.indexOf('@');
+                card.setLayout(
+                                new BorderLayout());
 
-        if (at > 0) {
+                CommuterTrip trip = flowState.getSelectedTrip();
 
-            String local = currentUserEmail.substring(
-                    0,
-                    at);
+                if (trip == null) {
 
-            String[] parts = local.split("[._-]+");
+                        JLabel label = new JLabel(
+                                        "No trip selected.");
 
-            StringBuilder result = new StringBuilder();
+                        label.setFont(
+                                        BussinTheme.BODY_MEDIUM);
 
-            for (String part : parts) {
+                        label.setForeground(
+                                        BussinTheme.DANGER);
 
-                if (part.isBlank()) {
-                    continue;
+                        card.add(
+                                        label,
+                                        BorderLayout.CENTER);
+
+                        return card;
                 }
 
-                if (result.length() > 0) {
-                    result.append(" ");
-                }
+                String seat = flowState.getSelectedSeat();
 
-                result.append(
-                        Character.toUpperCase(
-                                part.charAt(0)));
+                String summary = trip.getRoute()
+                                + "  •  "
+                                + trip.getDeparture()
+                                + "  •  Seat "
+                                + (seat == null || seat.isBlank()
+                                                ? "Not selected"
+                                                : seat);
 
-                if (part.length() > 1) {
-                    result.append(
-                            part.substring(1)
-                                    .toLowerCase());
-                }
-            }
+                JLabel label = new JLabel(summary);
 
-            return result.toString();
+                label.setFont(
+                                BussinTheme.BODY_MEDIUM);
+
+                label.setForeground(
+                                BussinTheme.TEXT_PRIMARY);
+
+                card.add(
+                                label,
+                                BorderLayout.CENTER);
+
+                return card;
         }
 
-        return "";
-    }
+        private JPanel createForm() {
+
+                AppCard card = new AppCard();
+
+                card.setLayout(
+                                new BoxLayout(
+                                                card,
+                                                BoxLayout.Y_AXIS));
+
+                card.add(
+                                AppLabel.section(
+                                                "Passenger Details"));
+
+                card.add(
+                                Box.createVerticalStrut(18));
+
+                card.add(
+                                createField(
+                                                "FULL NAME",
+                                                nameField));
+
+                card.add(
+                                Box.createVerticalStrut(16));
+
+                card.add(
+                                createField(
+                                                "PHONE NUMBER",
+                                                phoneField));
+
+                card.add(
+                                Box.createVerticalStrut(16));
+
+                card.add(
+                                createField(
+                                                "EMAIL",
+                                                emailField));
+
+                return card;
+        }
+
+        private JPanel createField(
+                        String labelText,
+                        JTextField field) {
+
+                JPanel panel = new JPanel();
+
+                panel.setOpaque(false);
+
+                panel.setLayout(
+                                new BoxLayout(
+                                                panel,
+                                                BoxLayout.Y_AXIS));
+
+                JLabel label = new JLabel(labelText);
+
+                label.setFont(
+                                BussinTheme.SMALL_BOLD);
+
+                label.setForeground(
+                                BussinTheme.TEXT_SECONDARY);
+
+                field.setPreferredSize(
+                                new Dimension(
+                                                0,
+                                                40));
+
+                field.setMaximumSize(
+                                new Dimension(
+                                                Integer.MAX_VALUE,
+                                                40));
+
+                field.setBorder(
+                                BorderFactory.createCompoundBorder(
+                                                BorderFactory.createLineBorder(
+                                                                BussinTheme.BORDER),
+                                                BorderFactory.createEmptyBorder(
+                                                                0,
+                                                                10,
+                                                                0,
+                                                                10)));
+
+                panel.add(label);
+
+                panel.add(
+                                Box.createVerticalStrut(6));
+
+                panel.add(field);
+
+                return panel;
+        }
+
+        private JPanel createActions() {
+
+                JPanel panel = new JPanel(
+                                new FlowLayout(
+                                                FlowLayout.RIGHT,
+                                                10,
+                                                0));
+
+                panel.setOpaque(false);
+
+                AppButton back = new AppButton(
+                                "Back",
+                                AppButton.Variant.SECONDARY);
+
+                back.addActionListener(
+                                event -> goBack());
+
+                continueButton = new AppButton(
+                                "Continue");
+
+                continueButton.addActionListener(
+                                event -> continueToReview());
+
+                panel.add(back);
+                panel.add(continueButton);
+
+                return panel;
+        }
+
+        // ---------------------------------------------------------------------
+        // Validation
+        // ---------------------------------------------------------------------
+
+        private void attachValidationListeners() {
+
+                DocumentListener listener = new DocumentListener() {
+
+                        @Override
+                        public void insertUpdate(
+                                        DocumentEvent event) {
+
+                                updateContinueState();
+                        }
+
+                        @Override
+                        public void removeUpdate(
+                                        DocumentEvent event) {
+
+                                updateContinueState();
+                        }
+
+                        @Override
+                        public void changedUpdate(
+                                        DocumentEvent event) {
+
+                                updateContinueState();
+                        }
+                };
+
+                nameField
+                                .getDocument()
+                                .addDocumentListener(listener);
+
+                phoneField
+                                .getDocument()
+                                .addDocumentListener(listener);
+        }
+
+        private void updateContinueState() {
+
+                if (continueButton == null) {
+                        return;
+                }
+
+                boolean valid = hasRequiredFields()
+                                && hasValidPhone();
+
+                continueButton.setEnabled(valid);
+        }
+
+        private boolean hasRequiredFields() {
+
+                return !nameField
+                                .getText()
+                                .trim()
+                                .isBlank()
+
+                                && !phoneField
+                                                .getText()
+                                                .trim()
+                                                .isBlank()
+
+                                && !currentUserEmail.isBlank();
+        }
+
+        private boolean hasValidPhone() {
+
+                String phone = phoneField
+                                .getText()
+                                .trim();
+
+                if (phone.isBlank()) {
+                        return false;
+                }
+
+                String digits = phone.replaceAll(
+                                "[^0-9]",
+                                "");
+
+                /*
+                 * Accept common Philippine formats such as:
+                 *
+                 * 09171234567
+                 * +639171234567
+                 * 639171234567
+                 *
+                 * Also allow other international/local numbers with
+                 * at least 7 digits.
+                 */
+                return digits.length() >= 7
+                                && digits.length() <= 15;
+        }
+
+        // ---------------------------------------------------------------------
+        // Navigation
+        // ---------------------------------------------------------------------
+
+        private void goBack() {
+
+                navigationHandler.accept(
+                                "seat-selection");
+        }
+
+        private void continueToReview() {
+
+                CommuterTrip trip = flowState.getSelectedTrip();
+
+                if (trip == null) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Please select a trip before entering passenger information.",
+                                        "No Trip Selected",
+                                        JOptionPane.WARNING_MESSAGE);
+
+                        navigationHandler.accept(
+                                        "trip-search");
+
+                        return;
+                }
+
+                String selectedSeat = flowState.getSelectedSeat();
+
+                if (selectedSeat == null
+                                || selectedSeat.isBlank()) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Please select a bus seat before continuing.",
+                                        "No Seat Selected",
+                                        JOptionPane.WARNING_MESSAGE);
+
+                        navigationHandler.accept(
+                                        "seat-selection");
+
+                        return;
+                }
+
+                String name = nameField
+                                .getText()
+                                .trim();
+
+                String phone = phoneField
+                                .getText()
+                                .trim();
+
+                if (name.isBlank()
+                                || phone.isBlank()) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Please complete your name and phone number.",
+                                        "Incomplete Information",
+                                        JOptionPane.WARNING_MESSAGE);
+
+                        updateContinueState();
+
+                        return;
+                }
+
+                if (!hasValidPhone()) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Please enter a valid phone number.",
+                                        "Invalid Phone Number",
+                                        JOptionPane.WARNING_MESSAGE);
+
+                        phoneField.requestFocusInWindow();
+
+                        return;
+                }
+
+                /*
+                 * Store the passenger information in the shared booking flow.
+                 */
+                flowState.setPassengerName(
+                                name);
+
+                flowState.setPassengerPhone(
+                                phone);
+
+                /*
+                 * Always use the authenticated user's email.
+                 * This keeps booking ownership tied to the logged-in account.
+                 */
+                flowState.setPassengerEmail(
+                                currentUserEmail);
+
+                navigationHandler.accept(
+                                "booking-review");
+        }
+
+        // ---------------------------------------------------------------------
+        // Passenger Defaults
+        // ---------------------------------------------------------------------
+
+        private String getPassengerName() {
+
+                if (flowState.getPassengerName() != null
+                                && !flowState
+                                                .getPassengerName()
+                                                .isBlank()) {
+
+                        return flowState
+                                        .getPassengerName();
+                }
+
+                if (currentUserEmail.equalsIgnoreCase(
+                                "user@bussin.com")) {
+
+                        return "User";
+                }
+
+                int at = currentUserEmail.indexOf('@');
+
+                if (at > 0) {
+
+                        String local = currentUserEmail.substring(
+                                        0,
+                                        at);
+
+                        String[] parts = local.split(
+                                        "[._-]+");
+
+                        StringBuilder result = new StringBuilder();
+
+                        for (String part : parts) {
+
+                                if (part.isBlank()) {
+                                        continue;
+                                }
+
+                                if (result.length() > 0) {
+                                        result.append(" ");
+                                }
+
+                                result.append(
+                                                Character.toUpperCase(
+                                                                part.charAt(0)));
+
+                                if (part.length() > 1) {
+
+                                        result.append(
+                                                        part.substring(1)
+                                                                        .toLowerCase());
+                                }
+                        }
+
+                        return result.toString();
+                }
+
+                return "";
+        }
 }
