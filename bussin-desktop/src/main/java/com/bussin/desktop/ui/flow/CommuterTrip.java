@@ -82,7 +82,7 @@ public class CommuterTrip {
      * ------------------------------------------------------------------
      */
 
-    public boolean reserveSeat(String seat) {
+    public synchronized boolean reserveSeat(String seat) {
 
         if (seat == null || seat.isBlank()) {
             return false;
@@ -103,7 +103,7 @@ public class CommuterTrip {
         return true;
     }
 
-    public boolean isSeatAvailable(String seat) {
+    public synchronized boolean isSeatAvailable(String seat) {
 
         if (seat == null || seat.isBlank()) {
             return false;
@@ -126,7 +126,22 @@ public class CommuterTrip {
                 totalSeats - bookedSeats.size());
     }
 
-    private boolean isValidSeat(String seat) {
+    /** Frees a seat claimed in the same transaction if booking creation fails. */
+    public synchronized void releaseSeat(String seat) {
+
+        if (seat != null) {
+            bookedSeats.remove(seat.trim().toUpperCase());
+        }
+    }
+
+    public boolean isValidSeat(String seat) {
+
+        if (seat == null) {
+            return false;
+        }
+
+        seat = seat.trim().toUpperCase();
+
 
         if (seat.length() < 3) {
             return false;

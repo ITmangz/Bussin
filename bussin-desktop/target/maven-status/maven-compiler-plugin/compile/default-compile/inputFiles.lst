@@ -1,6 +1,8 @@
 E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\App.java
 E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\data\QueueStore.java
 E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\data\TripStore.java
+E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\services\BookingException.java
+E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\services\BookingService.java
 E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\services\MockAuthService.java
 E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\ui\auth\AuthBackground.java
 E:\Coding Projects\Prince\Bussin\bussin-desktop\src\main\java\com\bussin\desktop\ui\auth\ForgotPasswordScreen.java

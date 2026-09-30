@@ -304,6 +304,7 @@ public class MainFrame extends JFrame {
 
                         case "booking-confirmation" ->
                                 new BookingConfirmationScreen(
+                                                currentUserEmail,
                                                 this::navigate,
                                                 bookingFlowState);
 

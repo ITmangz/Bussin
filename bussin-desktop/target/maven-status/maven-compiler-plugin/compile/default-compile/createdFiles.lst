@@ -7,8 +7,10 @@ com\bussin\desktop\ui\screens\TripScreen$BusOption.class
 com\bussin\desktop\ui\screens\RouteScreen.class
 com\bussin\desktop\ui\screens\BusScreen$Bus.class
 com\bussin\desktop\ui\components\AppLabel.class
+com\bussin\desktop\services\BookingService.class
 com\bussin\desktop\ui\screens\EmployeeScreen.class
 com\bussin\desktop\ui\components\ResponsiveLayouts$Vertical.class
+com\bussin\desktop\ui\screens\BookingConfirmationScreen$1.class
 com\bussin\desktop\ui\screens\TripScreen$1.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$1.class
 com\bussin\desktop\ui\screens\ReportScreen.class
@@ -35,6 +37,8 @@ com\bussin\desktop\data\QueueStore.class
 com\bussin\desktop\ui\screens\BookingConfirmationScreen.class
 com\bussin\desktop\ui\screens\PassengerInformationScreen.class
 com\bussin\desktop\ui\screens\TripScreen$RouteOption.class
+com\bussin\desktop\services\BookingService$CreateBookingRequest.class
+com\bussin\desktop\services\BookingException.class
 com\bussin\desktop\ui\auth\LoginScreen$RoundedFieldPanel.class
 com\bussin\desktop\ui\screens\PassengerInformationScreen$1.class
 com\bussin\desktop\ui\components\AppBadge.class
@@ -95,10 +99,12 @@ com\bussin\desktop\ui\screens\BookingScreen$StatusCellRenderer.class
 com\bussin\desktop\ui\screens\BookingScreen$Booking.class
 com\bussin\desktop\ui\components\AppBadge$Status.class
 com\bussin\desktop\ui\screens\BusScreen$StatusCellRenderer.class
+com\bussin\desktop\services\BookingException$Kind.class
 com\bussin\desktop\ui\auth\LoginScreen.class
 com\bussin\desktop\ui\auth\RegistrationStep1Screen$RoundedAuthCard.class
 com\bussin\desktop\ui\screens\ProfileScreen.class
 com\bussin\desktop\ui\auth\RegistrationData.class
+com\bussin\desktop\ui\screens\BookingConfirmationScreen$2.class
 com\bussin\desktop\ui\screens\ReportScreen$ReportData.class
 com\bussin\desktop\services\MockAuthService.class
 com\bussin\desktop\ui\flow\BookingFlowState.class
