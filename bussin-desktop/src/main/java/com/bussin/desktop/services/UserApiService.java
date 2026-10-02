@@ -2,6 +2,8 @@ package com.bussin.desktop.services;
 
 import java.lang.reflect.Type;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -152,6 +154,54 @@ public final class UserApiService {
                         throw new IllegalStateException(
                                         "Failed to update current user. "
                                                         + "HTTP "
+                                                        + response.statusCode()
+                                                        + ": "
+                                                        + response.body());
+                }
+
+                return GSON.fromJson(
+                                response.body(),
+                                UserResponse.class);
+        }
+
+        public static List<UserResponse> getAllUsers()
+                        throws Exception {
+
+                var response = ApiClient.get("/users");
+
+                if (response.statusCode() != 200) {
+                        throw new IllegalStateException(
+                                        "Failed to retrieve users. HTTP "
+                                                        + response.statusCode()
+                                                        + ": "
+                                                        + response.body());
+                }
+
+                UserResponse[] users = GSON.fromJson(
+                                response.body(),
+                                UserResponse[].class);
+
+                return Arrays.asList(users);
+        }
+
+        public static UserResponse updateUserRole(
+                        long userId,
+                        String role)
+                        throws Exception {
+
+                JsonObject requestBody = new JsonObject();
+
+                requestBody.addProperty(
+                                "role",
+                                role);
+
+                var response = ApiClient.put(
+                                "/users/" + userId + "/role",
+                                GSON.toJson(requestBody));
+
+                if (response.statusCode() != 200) {
+                        throw new IllegalStateException(
+                                        "Failed to update user role. HTTP "
                                                         + response.statusCode()
                                                         + ": "
                                                         + response.body());

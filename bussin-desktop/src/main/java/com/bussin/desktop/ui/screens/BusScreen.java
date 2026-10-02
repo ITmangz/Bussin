@@ -30,6 +30,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import com.bussin.desktop.services.BusApiService;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
@@ -39,24 +40,12 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class BusScreen extends JPanel {
 
-        // ================================================================
-        // DATA
-        // ================================================================
-
         private final List<Bus> buses = new ArrayList<>();
         private final List<Bus> filteredBuses = new ArrayList<>();
-
-        // ================================================================
-        // TABLE
-        // ================================================================
 
         private final BusTableModel tableModel = new BusTableModel();
 
         private final JTable busTable = new JTable(tableModel);
-
-        // ================================================================
-        // FILTERS
-        // ================================================================
 
         private final JTextField searchField = new JTextField();
 
@@ -64,47 +53,25 @@ public class BusScreen extends JPanel {
                         new String[] {
                                         "All Status",
                                         "Available",
-                                        "Assigned",
-                                        "Boarding",
                                         "Maintenance",
                                         "Inactive"
                         });
 
-        // ================================================================
-        // STATISTICS
-        // ================================================================
-
         private final JLabel totalValue = new JLabel("0");
-
         private final JLabel availableValue = new JLabel("0");
-
         private final JLabel assignedValue = new JLabel("0");
-
         private final JLabel maintenanceValue = new JLabel("0");
 
-        // ================================================================
-        // DETAILS
-        // ================================================================
-
         private final JLabel detailBusNumber = new JLabel("-");
-
         private final JLabel detailPlateNumber = new JLabel("-");
-
         private final JLabel detailType = new JLabel("-");
-
         private final JLabel detailCapacity = new JLabel("-");
-
         private final JLabel detailDriver = new JLabel("-");
-
         private final JLabel detailTrip = new JLabel("-");
 
         private final AppBadge detailStatus = new AppBadge(
                         "NO STATUS",
                         AppBadge.Status.NEUTRAL);
-
-        // ================================================================
-        // ACTION BUTTONS
-        // ================================================================
 
         private final AppButton editButton = new AppButton(
                         "Edit",
@@ -121,97 +88,11 @@ public class BusScreen extends JPanel {
                         "Deactivate",
                         AppButton.Variant.DANGER);
 
-        // ================================================================
-        // CONSTRUCTOR
-        // ================================================================
-
         public BusScreen() {
 
-                initializeData();
                 initializeUI();
                 refreshBuses();
         }
-
-        // ================================================================
-        // INITIAL DATA
-        // ================================================================
-
-        private void initializeData() {
-
-                buses.add(
-                                new Bus(
-                                                "BUS 102",
-                                                "ABC-1023",
-                                                "Provincial Coach",
-                                                50,
-                                                "Pedro Garcia",
-                                                "TR-001",
-                                                "Boarding"));
-
-                buses.add(
-                                new Bus(
-                                                "BUS 108",
-                                                "ABC-1088",
-                                                "Provincial Coach",
-                                                50,
-                                                "Daniel Flores",
-                                                "TR-004",
-                                                "Assigned"));
-
-                buses.add(
-                                new Bus(
-                                                "BUS 114",
-                                                "ABC-1147",
-                                                "Luxury Coach",
-                                                50,
-                                                "Mark Villanueva",
-                                                "TR-002",
-                                                "Assigned"));
-
-                buses.add(
-                                new Bus(
-                                                "BUS 119",
-                                                "ABC-1192",
-                                                "Provincial Coach",
-                                                50,
-                                                "Sofia Ramos",
-                                                "TR-005",
-                                                "Available"));
-
-                buses.add(
-                                new Bus(
-                                                "BUS 121",
-                                                "ABC-1211",
-                                                "Sleeper Coach",
-                                                60,
-                                                "Carlo Reyes",
-                                                "TR-003",
-                                                "Available"));
-
-                buses.add(
-                                new Bus(
-                                                "BUS 125",
-                                                "ABC-1256",
-                                                "Sleeper Coach",
-                                                60,
-                                                "Unassigned",
-                                                "-",
-                                                "Maintenance"));
-
-                buses.add(
-                                new Bus(
-                                                "BUS 130",
-                                                "ABC-1304",
-                                                "Provincial Coach",
-                                                50,
-                                                "Unassigned",
-                                                "-",
-                                                "Inactive"));
-        }
-
-        // ================================================================
-        // UI INITIALIZATION
-        // ================================================================
 
         private void initializeUI() {
 
@@ -227,10 +108,6 @@ public class BusScreen extends JPanel {
                                 createContent(),
                                 BorderLayout.CENTER);
         }
-
-        // ================================================================
-        // CONTENT
-        // ================================================================
 
         private JComponent createContent() {
 
@@ -270,7 +147,6 @@ public class BusScreen extends JPanel {
                 JScrollPane scrollPane = new JScrollPane(content);
 
                 scrollPane.setBorder(null);
-
                 scrollPane.setOpaque(false);
 
                 scrollPane.getViewport()
@@ -284,10 +160,6 @@ public class BusScreen extends JPanel {
 
                 return scrollPane;
         }
-
-        // ================================================================
-        // HEADER
-        // ================================================================
 
         private JPanel createHeader() {
 
@@ -314,7 +186,7 @@ public class BusScreen extends JPanel {
 
                 titlePanel.add(
                                 AppLabel.secondary(
-                                                "Manage BUSSIN vehicles, assignments, capacity, and operational status."));
+                                                "Manage BUSSIN vehicles, capacity, and operational status."));
 
                 AppButton createButton = new AppButton(
                                 "Add Bus");
@@ -348,10 +220,6 @@ public class BusScreen extends JPanel {
 
                 return header;
         }
-
-        // ================================================================
-        // STATISTICS
-        // ================================================================
 
         private JPanel createStatistics() {
 
@@ -454,10 +322,6 @@ public class BusScreen extends JPanel {
                 return card;
         }
 
-        // ================================================================
-        // MAIN SECTION
-        // ================================================================
-
         private JPanel createMainSection() {
 
                 JPanel main = new JPanel(
@@ -477,10 +341,6 @@ public class BusScreen extends JPanel {
 
                 return main;
         }
-
-        // ================================================================
-        // BUS LIST
-        // ================================================================
 
         private AppCard createBusListCard() {
 
@@ -551,10 +411,6 @@ public class BusScreen extends JPanel {
                 return card;
         }
 
-        // ================================================================
-        // FILTER BAR
-        // ================================================================
-
         private JPanel createFilterBar() {
 
                 JPanel filters = new JPanel(
@@ -570,7 +426,7 @@ public class BusScreen extends JPanel {
                                                 40));
 
                 searchField.setToolTipText(
-                                "Search bus number, plate, driver, or trip");
+                                "Search bus number, plate, or bus type");
 
                 statusFilter.setPreferredSize(
                                 new Dimension(
@@ -592,32 +448,32 @@ public class BusScreen extends JPanel {
 
                                                         @Override
                                                         public void insertUpdate(
-                                                                        DocumentEvent e) {
-                                                                refreshBuses();
+                                                                        DocumentEvent event) {
+                                                                applyFilters(
+                                                                                getSelectedBus());
                                                         }
 
                                                         @Override
                                                         public void removeUpdate(
-                                                                        DocumentEvent e) {
-                                                                refreshBuses();
+                                                                        DocumentEvent event) {
+                                                                applyFilters(
+                                                                                getSelectedBus());
                                                         }
 
                                                         @Override
                                                         public void changedUpdate(
-                                                                        DocumentEvent e) {
-                                                                refreshBuses();
+                                                                        DocumentEvent event) {
+                                                                applyFilters(
+                                                                                getSelectedBus());
                                                         }
                                                 });
 
                 statusFilter.addActionListener(
-                                event -> refreshBuses());
+                                event -> applyFilters(
+                                                getSelectedBus()));
 
                 return filters;
         }
-
-        // ================================================================
-        // TABLE CONFIGURATION
-        // ================================================================
 
         private void configureTable() {
 
@@ -666,9 +522,9 @@ public class BusScreen extends JPanel {
                                                         switch (i) {
 
                                                                 case 0 -> 85;
-                                                                case 1 -> 90;
-                                                                case 2 -> 120;
-                                                                case 3 -> 65;
+                                                                case 1 -> 110;
+                                                                case 2 -> 140;
+                                                                case 3 -> 70;
                                                                 case 4 -> 120;
                                                                 case 5 -> 100;
 
@@ -690,10 +546,6 @@ public class BusScreen extends JPanel {
                                                         }
                                                 });
         }
-
-        // ================================================================
-        // BUS DETAILS
-        // ================================================================
 
         private AppCard createBusDetailsCard() {
 
@@ -772,32 +624,16 @@ public class BusScreen extends JPanel {
 
                 actions.setOpaque(false);
 
-                // ------------------------------------------------------------
-                // Edit
-                // ------------------------------------------------------------
-
                 editButton.addActionListener(
                                 event -> showEditBusDialog());
 
-                // ------------------------------------------------------------
-                // Available
-                // ------------------------------------------------------------
-
                 availableButton.addActionListener(
                                 event -> changeBusStatus(
-                                                "Available"));
-
-                // ------------------------------------------------------------
-                // Maintenance
-                // ------------------------------------------------------------
+                                                "ACTIVE"));
 
                 maintenanceButton.addActionListener(
                                 event -> changeBusStatus(
-                                                "Maintenance"));
-
-                // ------------------------------------------------------------
-                // Deactivate
-                // ------------------------------------------------------------
+                                                "MAINTENANCE"));
 
                 deactivateButton.addActionListener(
                                 event -> confirmDeactivateBus());
@@ -817,7 +653,6 @@ public class BusScreen extends JPanel {
                 JScrollPane scroll = new JScrollPane(details);
 
                 scroll.setBorder(null);
-
                 scroll.setOpaque(false);
 
                 scroll.getViewport()
@@ -832,10 +667,6 @@ public class BusScreen extends JPanel {
 
                 return card;
         }
-
-        // ================================================================
-        // DETAIL FIELD
-        // ================================================================
 
         private void addDetail(
                         JPanel panel,
@@ -867,11 +698,50 @@ public class BusScreen extends JPanel {
                                 Box.createVerticalStrut(12));
         }
 
-        // ================================================================
-        // REFRESH BUS LIST
-        // ================================================================
-
         private void refreshBuses() {
+
+                Bus previouslySelected = getSelectedBus();
+
+                try {
+
+                        List<BusApiService.BusResponse> responses = BusApiService.getAllBuses();
+
+                        buses.clear();
+
+                        for (BusApiService.BusResponse response : responses) {
+
+                                buses.add(
+                                                new Bus(
+                                                                response.getId(),
+                                                                response.getPlateNumber(),
+                                                                response.getModel() == null
+                                                                                || response.getModel().isBlank()
+                                                                                                ? "-"
+                                                                                                : response.getModel(),
+                                                                response.getCapacity() == null
+                                                                                ? 0
+                                                                                : response.getCapacity(),
+                                                                "Unassigned",
+                                                                "-",
+                                                                mapStatus(
+                                                                                response.getStatus())));
+                        }
+
+                        applyFilters(previouslySelected);
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to load buses.\n\n"
+                                                        + exception.getMessage(),
+                                        "Bus Management",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
+        }
+
+        private void applyFilters(
+                        Bus previouslySelected) {
 
                 String query = searchField.getText()
                                 .trim()
@@ -880,34 +750,23 @@ public class BusScreen extends JPanel {
                 String selectedStatus = String.valueOf(
                                 statusFilter.getSelectedItem());
 
-                // ------------------------------------------------------------
-                // Preserve currently selected bus
-                // ------------------------------------------------------------
-
-                Bus previouslySelected = getSelectedBus();
-
                 filteredBuses.clear();
 
                 for (Bus bus : buses) {
 
                         boolean matchesSearch = query.isEmpty()
-                                        || bus.busNumber
-                                                        .toLowerCase()
+                                        || String.valueOf(
+                                                        bus.id)
                                                         .contains(query)
                                         || bus.plateNumber
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || bus.driver
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || bus.trip
                                                         .toLowerCase()
                                                         .contains(query)
                                         || bus.type
                                                         .toLowerCase()
                                                         .contains(query);
 
-                        boolean matchesStatus = selectedStatus.equals("All Status")
+                        boolean matchesStatus = selectedStatus.equals(
+                                        "All Status")
                                         || bus.status.equals(
                                                         selectedStatus);
 
@@ -922,10 +781,6 @@ public class BusScreen extends JPanel {
 
                 updateStatistics();
 
-                // ------------------------------------------------------------
-                // Restore selection if possible
-                // ------------------------------------------------------------
-
                 if (previouslySelected != null
                                 && filteredBuses.contains(
                                                 previouslySelected)) {
@@ -936,23 +791,13 @@ public class BusScreen extends JPanel {
                         if (index >= 0
                                         && index < busTable.getRowCount()) {
 
-                                int viewRow = busTable.convertRowIndexToView(
+                                busTable.setRowSelectionInterval(
+                                                index,
                                                 index);
 
-                                if (viewRow >= 0) {
-
-                                        busTable.setRowSelectionInterval(
-                                                        viewRow,
-                                                        viewRow);
-
-                                        return;
-                                }
+                                return;
                         }
                 }
-
-                // ------------------------------------------------------------
-                // Select first result
-                // ------------------------------------------------------------
 
                 if (!filteredBuses.isEmpty()) {
 
@@ -966,9 +811,47 @@ public class BusScreen extends JPanel {
                 }
         }
 
-        // ================================================================
-        // STATISTICS
-        // ================================================================
+        private String mapStatus(
+                        String status) {
+
+                if (status == null) {
+                        return "Inactive";
+                }
+
+                return switch (status.toUpperCase()) {
+
+                        case "ACTIVE" ->
+                                "Available";
+
+                        case "MAINTENANCE" ->
+                                "Maintenance";
+
+                        case "OUT_OF_SERVICE" ->
+                                "Inactive";
+
+                        default ->
+                                "Inactive";
+                };
+        }
+
+        private String toApiStatus(
+                        String status) {
+
+                return switch (status) {
+
+                        case "Available" ->
+                                "ACTIVE";
+
+                        case "Maintenance" ->
+                                "MAINTENANCE";
+
+                        case "Inactive" ->
+                                "OUT_OF_SERVICE";
+
+                        default ->
+                                "ACTIVE";
+                };
+        }
 
         private void updateStatistics() {
 
@@ -989,6 +872,9 @@ public class BusScreen extends JPanel {
 
                                 case "Maintenance" ->
                                         maintenance++;
+
+                                default -> {
+                                }
                         }
                 }
 
@@ -1009,10 +895,6 @@ public class BusScreen extends JPanel {
                                                 maintenance));
         }
 
-        // ================================================================
-        // SELECTED BUS
-        // ================================================================
-
         private void updateSelectedBus() {
 
                 Bus bus = getSelectedBus();
@@ -1025,7 +907,7 @@ public class BusScreen extends JPanel {
                 }
 
                 detailBusNumber.setText(
-                                bus.busNumber);
+                                "BUS-" + bus.id);
 
                 detailPlateNumber.setText(
                                 bus.plateNumber);
@@ -1050,36 +932,32 @@ public class BusScreen extends JPanel {
                                 bus);
         }
 
-        // ================================================================
-        // ACTION BUTTON STATE
-        // ================================================================
-
         private void updateActionButtons(
                         Bus bus) {
 
-                boolean active = !bus.status.equals(
-                                "Inactive");
+                boolean inactive = "Inactive".equals(
+                                bus.status);
+
+                boolean available = "Available".equals(
+                                bus.status);
+
+                boolean maintenance = "Maintenance".equals(
+                                bus.status);
 
                 editButton.setEnabled(
-                                active);
+                                !inactive);
 
                 availableButton.setEnabled(
-                                active
-                                                && !bus.status.equals(
-                                                                "Available"));
+                                !inactive
+                                                && !available);
 
                 maintenanceButton.setEnabled(
-                                active
-                                                && !bus.status.equals(
-                                                                "Maintenance"));
+                                !inactive
+                                                && !maintenance);
 
                 deactivateButton.setEnabled(
-                                active);
+                                !inactive);
         }
-
-        // ================================================================
-        // CLEAR DETAILS
-        // ================================================================
 
         private void clearDetails() {
 
@@ -1094,20 +972,13 @@ public class BusScreen extends JPanel {
                                 "No Status");
 
                 editButton.setEnabled(false);
-
                 availableButton.setEnabled(false);
-
                 maintenanceButton.setEnabled(false);
-
                 deactivateButton.setEnabled(false);
         }
 
-        // ================================================================
-        // CHANGE STATUS
-        // ================================================================
-
         private void changeBusStatus(
-                        String status) {
+                        String apiStatus) {
 
                 Bus bus = getSelectedBus();
 
@@ -1115,22 +986,29 @@ public class BusScreen extends JPanel {
                         return;
                 }
 
-                bus.status = status;
+                try {
 
-                if (status.equals(
-                                "Available")) {
+                        BusApiService.updateBus(
+                                        bus.id,
+                                        bus.plateNumber,
+                                        "-".equals(bus.type)
+                                                        ? null
+                                                        : bus.type,
+                                        bus.capacity,
+                                        apiStatus);
 
-                        bus.trip = "-";
+                        refreshBuses();
 
-                        bus.driver = "Unassigned";
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to update bus status.\n\n"
+                                                        + exception.getMessage(),
+                                        "Bus Management",
+                                        JOptionPane.ERROR_MESSAGE);
                 }
-
-                refreshBuses();
         }
-
-        // ================================================================
-        // DEACTIVATE CONFIRMATION
-        // ================================================================
 
         private void confirmDeactivateBus() {
 
@@ -1142,31 +1020,42 @@ public class BusScreen extends JPanel {
 
                 int result = JOptionPane.showConfirmDialog(
                                 this,
-                                "Deactivate "
-                                                + bus.busNumber
+                                "Deactivate BUS-"
+                                                + bus.id
                                                 + "?\n\n"
-                                                + "The bus will be marked as inactive "
-                                                + "and will no longer be available "
-                                                + "for normal operations.",
+                                                + "The bus will be marked as out of service "
+                                                + "and will no longer be available for normal operations.",
                                 "Deactivate Bus",
                                 JOptionPane.YES_NO_OPTION,
                                 JOptionPane.WARNING_MESSAGE);
 
-                if (result == JOptionPane.YES_OPTION) {
+                if (result != JOptionPane.YES_OPTION) {
+                        return;
+                }
 
-                        bus.status = "Inactive";
+                try {
 
-                        bus.trip = "-";
-
-                        bus.driver = "Unassigned";
+                        BusApiService.updateBus(
+                                        bus.id,
+                                        bus.plateNumber,
+                                        "-".equals(bus.type)
+                                                        ? null
+                                                        : bus.type,
+                                        bus.capacity,
+                                        "OUT_OF_SERVICE");
 
                         refreshBuses();
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to deactivate bus.\n\n"
+                                                        + exception.getMessage(),
+                                        "Bus Management",
+                                        JOptionPane.ERROR_MESSAGE);
                 }
         }
-
-        // ================================================================
-        // GET SELECTED BUS
-        // ================================================================
 
         private Bus getSelectedBus() {
 
@@ -1188,10 +1077,6 @@ public class BusScreen extends JPanel {
                 return filteredBuses.get(
                                 modelRow);
         }
-
-        // ================================================================
-        // STATUS BADGE
-        // ================================================================
 
         private void updateStatusBadge(
                         String status) {
@@ -1269,10 +1154,6 @@ public class BusScreen extends JPanel {
                 }
         }
 
-        // ================================================================
-        // ADD BUS DIALOG
-        // ================================================================
-
         private void showCreateBusDialog() {
 
                 JDialog dialog = new JDialog(
@@ -1286,7 +1167,7 @@ public class BusScreen extends JPanel {
 
                 dialog.setSize(
                                 500,
-                                440);
+                                350);
 
                 dialog.setLocationRelativeTo(
                                 this);
@@ -1324,7 +1205,7 @@ public class BusScreen extends JPanel {
 
                 JPanel form = new JPanel(
                                 new GridLayout(
-                                                5,
+                                                3,
                                                 2,
                                                 12,
                                                 10));
@@ -1338,21 +1219,9 @@ public class BusScreen extends JPanel {
                                                 12,
                                                 24));
 
-                JTextField busField = new JTextField();
-
                 JTextField plateField = new JTextField();
-
                 JTextField typeField = new JTextField();
-
                 JTextField capacityField = new JTextField();
-
-                JTextField driverField = new JTextField(
-                                "Unassigned");
-
-                addFormField(
-                                form,
-                                "Bus Number",
-                                busField);
 
                 addFormField(
                                 form,
@@ -1368,11 +1237,6 @@ public class BusScreen extends JPanel {
                                 form,
                                 "Capacity",
                                 capacityField);
-
-                addFormField(
-                                form,
-                                "Driver",
-                                driverField);
 
                 JPanel buttons = new JPanel(
                                 new FlowLayout(
@@ -1395,9 +1259,6 @@ public class BusScreen extends JPanel {
                 save.addActionListener(
                                 event -> {
 
-                                        String busNumber = busField.getText()
-                                                        .trim();
-
                                         String plate = plateField.getText()
                                                         .trim();
 
@@ -1407,70 +1268,27 @@ public class BusScreen extends JPanel {
                                         String capacityText = capacityField.getText()
                                                         .trim();
 
-                                        String driver = driverField.getText()
-                                                        .trim();
-
-                                        if (busNumber.isEmpty()
-                                                        || plate.isEmpty()
-                                                        || type.isEmpty()
+                                        if (plate.isEmpty()
                                                         || capacityText.isEmpty()) {
 
                                                 showWarning(
                                                                 dialog,
-                                                                "Please complete all required fields.",
+                                                                "Plate number and capacity are required.",
                                                                 "Invalid Bus");
 
                                                 return;
                                         }
 
-                                        if (isDuplicateBusNumber(
-                                                        busNumber,
-                                                        null)) {
-
-                                                showWarning(
-                                                                dialog,
-                                                                "A bus with this bus number already exists.",
-                                                                "Duplicate Bus Number");
-
-                                                return;
-                                        }
-
-                                        if (isDuplicatePlate(
-                                                        plate,
-                                                        null)) {
-
-                                                showWarning(
-                                                                dialog,
-                                                                "A bus with this plate number already exists.",
-                                                                "Duplicate Plate Number");
-
-                                                return;
-                                        }
+                                        int capacity;
 
                                         try {
 
-                                                int capacity = Integer.parseInt(
+                                                capacity = Integer.parseInt(
                                                                 capacityText);
 
                                                 if (capacity <= 0) {
                                                         throw new NumberFormatException();
                                                 }
-
-                                                buses.add(
-                                                                new Bus(
-                                                                                busNumber,
-                                                                                plate,
-                                                                                type,
-                                                                                capacity,
-                                                                                driver.isEmpty()
-                                                                                                ? "Unassigned"
-                                                                                                : driver,
-                                                                                "-",
-                                                                                "Available"));
-
-                                                refreshBuses();
-
-                                                dialog.dispose();
 
                                         } catch (NumberFormatException exception) {
 
@@ -1478,6 +1296,30 @@ public class BusScreen extends JPanel {
                                                                 dialog,
                                                                 "Capacity must be a valid positive number.",
                                                                 "Invalid Capacity");
+
+                                                return;
+                                        }
+
+                                        try {
+
+                                                BusApiService.createBus(
+                                                                plate,
+                                                                type.isEmpty()
+                                                                                ? null
+                                                                                : type,
+                                                                capacity);
+
+                                                refreshBuses();
+
+                                                dialog.dispose();
+
+                                        } catch (Exception exception) {
+
+                                                showWarning(
+                                                                dialog,
+                                                                "Unable to create bus.\n\n"
+                                                                                + exception.getMessage(),
+                                                                "Create Bus Failed");
                                         }
                                 });
 
@@ -1501,15 +1343,22 @@ public class BusScreen extends JPanel {
                 dialog.setVisible(true);
         }
 
-        // ================================================================
-        // EDIT BUS DIALOG
-        // ================================================================
-
         private void showEditBusDialog() {
 
                 Bus bus = getSelectedBus();
 
                 if (bus == null) {
+                        return;
+                }
+
+                if ("Inactive".equals(
+                                bus.status)) {
+
+                        showWarning(
+                                        this,
+                                        "Inactive buses cannot be edited.",
+                                        "Bus Management");
+
                         return;
                 }
 
@@ -1524,7 +1373,7 @@ public class BusScreen extends JPanel {
 
                 dialog.setSize(
                                 500,
-                                440);
+                                350);
 
                 dialog.setLocationRelativeTo(
                                 this);
@@ -1562,7 +1411,7 @@ public class BusScreen extends JPanel {
 
                 JPanel form = new JPanel(
                                 new GridLayout(
-                                                5,
+                                                3,
                                                 2,
                                                 12,
                                                 10));
@@ -1576,26 +1425,17 @@ public class BusScreen extends JPanel {
                                                 12,
                                                 24));
 
-                JTextField busField = new JTextField(
-                                bus.busNumber);
-
                 JTextField plateField = new JTextField(
                                 bus.plateNumber);
 
                 JTextField typeField = new JTextField(
-                                bus.type);
+                                "-".equals(bus.type)
+                                                ? ""
+                                                : bus.type);
 
                 JTextField capacityField = new JTextField(
                                 String.valueOf(
                                                 bus.capacity));
-
-                JTextField driverField = new JTextField(
-                                bus.driver);
-
-                addFormField(
-                                form,
-                                "Bus Number",
-                                busField);
 
                 addFormField(
                                 form,
@@ -1611,11 +1451,6 @@ public class BusScreen extends JPanel {
                                 form,
                                 "Capacity",
                                 capacityField);
-
-                addFormField(
-                                form,
-                                "Driver",
-                                driverField);
 
                 JPanel buttons = new JPanel(
                                 new FlowLayout(
@@ -1638,9 +1473,6 @@ public class BusScreen extends JPanel {
                 save.addActionListener(
                                 event -> {
 
-                                        String busNumber = busField.getText()
-                                                        .trim();
-
                                         String plate = plateField.getText()
                                                         .trim();
 
@@ -1650,42 +1482,13 @@ public class BusScreen extends JPanel {
                                         String capacityText = capacityField.getText()
                                                         .trim();
 
-                                        String driver = driverField.getText()
-                                                        .trim();
-
-                                        if (busNumber.isEmpty()
-                                                        || plate.isEmpty()
-                                                        || type.isEmpty()
+                                        if (plate.isEmpty()
                                                         || capacityText.isEmpty()) {
 
                                                 showWarning(
                                                                 dialog,
-                                                                "Please complete all required fields.",
+                                                                "Plate number and capacity are required.",
                                                                 "Invalid Bus");
-
-                                                return;
-                                        }
-
-                                        if (isDuplicateBusNumber(
-                                                        busNumber,
-                                                        bus)) {
-
-                                                showWarning(
-                                                                dialog,
-                                                                "A different bus already uses this bus number.",
-                                                                "Duplicate Bus Number");
-
-                                                return;
-                                        }
-
-                                        if (isDuplicatePlate(
-                                                        plate,
-                                                        bus)) {
-
-                                                showWarning(
-                                                                dialog,
-                                                                "A different bus already uses this plate number.",
-                                                                "Duplicate Plate Number");
 
                                                 return;
                                         }
@@ -1711,25 +1514,30 @@ public class BusScreen extends JPanel {
                                                 return;
                                         }
 
-                                        // ------------------------------------------------
-                                        // Update existing object
-                                        // ------------------------------------------------
+                                        try {
 
-                                        bus.busNumber = busNumber;
+                                                BusApiService.updateBus(
+                                                                bus.id,
+                                                                plate,
+                                                                type.isEmpty()
+                                                                                ? null
+                                                                                : type,
+                                                                capacity,
+                                                                toApiStatus(
+                                                                                bus.status));
 
-                                        bus.plateNumber = plate;
+                                                refreshBuses();
 
-                                        bus.type = type;
+                                                dialog.dispose();
 
-                                        bus.capacity = capacity;
+                                        } catch (Exception exception) {
 
-                                        bus.driver = driver.isEmpty()
-                                                        ? "Unassigned"
-                                                        : driver;
-
-                                        refreshBuses();
-
-                                        dialog.dispose();
+                                                showWarning(
+                                                                dialog,
+                                                                "Unable to update bus.\n\n"
+                                                                                + exception.getMessage(),
+                                                                "Update Bus Failed");
+                                        }
                                 });
 
                 buttons.add(cancel);
@@ -1751,54 +1559,6 @@ public class BusScreen extends JPanel {
 
                 dialog.setVisible(true);
         }
-
-        // ================================================================
-        // DUPLICATE VALIDATION
-        // ================================================================
-
-        private boolean isDuplicateBusNumber(
-                        String busNumber,
-                        Bus ignoredBus) {
-
-                for (Bus bus : buses) {
-
-                        if (bus == ignoredBus) {
-                                continue;
-                        }
-
-                        if (bus.busNumber.equalsIgnoreCase(
-                                        busNumber)) {
-
-                                return true;
-                        }
-                }
-
-                return false;
-        }
-
-        private boolean isDuplicatePlate(
-                        String plate,
-                        Bus ignoredBus) {
-
-                for (Bus bus : buses) {
-
-                        if (bus == ignoredBus) {
-                                continue;
-                        }
-
-                        if (bus.plateNumber.equalsIgnoreCase(
-                                        plate)) {
-
-                                return true;
-                        }
-                }
-
-                return false;
-        }
-
-        // ================================================================
-        // FORM FIELD
-        // ================================================================
 
         private void addFormField(
                         JPanel panel,
@@ -1824,10 +1584,6 @@ public class BusScreen extends JPanel {
                 panel.add(field);
         }
 
-        // ================================================================
-        // WARNING DIALOG
-        // ================================================================
-
         private void showWarning(
                         Component parent,
                         String message,
@@ -1840,28 +1596,19 @@ public class BusScreen extends JPanel {
                                 JOptionPane.WARNING_MESSAGE);
         }
 
-        // ================================================================
-        // BUS MODEL
-        // ================================================================
-
         private static class Bus {
 
-                private String busNumber;
+                private final long id;
 
                 private String plateNumber;
-
                 private String type;
-
                 private int capacity;
-
-                private String driver;
-
-                private String trip;
-
+                private final String driver;
+                private final String trip;
                 private String status;
 
                 private Bus(
-                                String busNumber,
+                                long id,
                                 String plateNumber,
                                 String type,
                                 int capacity,
@@ -1869,25 +1616,15 @@ public class BusScreen extends JPanel {
                                 String trip,
                                 String status) {
 
-                        this.busNumber = busNumber;
-
+                        this.id = id;
                         this.plateNumber = plateNumber;
-
                         this.type = type;
-
                         this.capacity = capacity;
-
                         this.driver = driver;
-
                         this.trip = trip;
-
                         this.status = status;
                 }
         }
-
-        // ================================================================
-        // TABLE MODEL
-        // ================================================================
 
         private class BusTableModel
                         extends AbstractTableModel {
@@ -1931,7 +1668,7 @@ public class BusScreen extends JPanel {
                         return switch (column) {
 
                                 case 0 ->
-                                        bus.busNumber;
+                                        "BUS-" + bus.id;
 
                                 case 1 ->
                                         bus.plateNumber;
@@ -1962,10 +1699,6 @@ public class BusScreen extends JPanel {
                 }
         }
 
-        // ================================================================
-        // STATUS CELL RENDERER
-        // ================================================================
-
         private static class StatusCellRenderer
                         extends DefaultTableCellRenderer {
 
@@ -1978,8 +1711,7 @@ public class BusScreen extends JPanel {
                                 int row,
                                 int column) {
 
-                        String status = String.valueOf(
-                                        value);
+                        String status = String.valueOf(value);
 
                         AppBadge.Status badgeStatus;
 

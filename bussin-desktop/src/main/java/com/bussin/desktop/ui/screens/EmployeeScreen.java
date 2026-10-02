@@ -3,7 +3,6 @@ package com.bussin.desktop.ui.screens;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -15,7 +14,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -25,12 +23,13 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import com.bussin.desktop.services.UserApiService;
+import com.bussin.desktop.services.UserApiService.UserResponse;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
@@ -40,1934 +39,1357 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class EmployeeScreen extends JPanel {
 
-    private final List<Employee> employees = new ArrayList<>();
+        private final List<UserResponse> users = new ArrayList<>();
 
-    private final List<Employee> filteredEmployees = new ArrayList<>();
+        private final List<UserResponse> filteredUsers = new ArrayList<>();
 
-    private final EmployeeTableModel tableModel = new EmployeeTableModel();
+        private final UserTableModel tableModel = new UserTableModel();
 
-    private final JTable employeeTable = new JTable(tableModel);
+        private final JTable userTable = new JTable(tableModel);
 
-    private final JTextField searchField = new JTextField();
+        private final JTextField searchField = new JTextField();
 
-    private final JComboBox<String> statusFilter = new JComboBox<>(
-            new String[] {
-                    "All Status",
-                    "Active",
-                    "Inactive"
-            });
-
-    private final JLabel totalValue = new JLabel("0");
-
-    private final JLabel activeValue = new JLabel("0");
-
-    private final JLabel inactiveValue = new JLabel("0");
-
-    private final JLabel detailEmployeeId = new JLabel("-");
-
-    private final JLabel detailName = new JLabel("-");
-
-    private final JLabel detailPosition = new JLabel("-");
-
-    private final JLabel detailContact = new JLabel("-");
-
-    private final JLabel detailEmail = new JLabel("-");
-
-    private final JLabel detailDateJoined = new JLabel("-");
-
-    private final AppBadge detailStatus = new AppBadge(
-            "NO STATUS",
-            AppBadge.Status.NEUTRAL);
-
-    private final AppButton editButton = new AppButton(
-            "Edit",
-            AppButton.Variant.SECONDARY);
-
-    private final AppButton toggleStatusButton = new AppButton(
-            "Activate",
-            AppButton.Variant.SECONDARY);
-
-    private final AppButton deleteButton = new AppButton(
-            "Delete",
-            AppButton.Variant.DANGER);
-
-    public EmployeeScreen() {
-
-        initializeData();
-        initializeUI();
-        refreshEmployees();
-    }
-
-    // ================================================================
-    // MOCK DATA
-    // ================================================================
-
-    private void initializeData() {
-
-        employees.add(
-                new Employee(
-                        "EMP-001",
-                        "Juan Dela Cruz",
-                        "Bus Driver",
-                        "09171234567",
-                        "juan.delacruz@bussin.com",
-                        "2025-01-15",
-                        "Active"));
-
-        employees.add(
-                new Employee(
-                        "EMP-002",
-                        "Maria Santos",
-                        "Dispatcher",
-                        "09181234567",
-                        "maria.santos@bussin.com",
-                        "2025-02-10",
-                        "Active"));
-
-        employees.add(
-                new Employee(
-                        "EMP-003",
-                        "Pedro Reyes",
-                        "Bus Driver",
-                        "09191234567",
-                        "pedro.reyes@bussin.com",
-                        "2025-03-05",
-                        "Active"));
-
-        employees.add(
-                new Employee(
-                        "EMP-004",
-                        "Ana Garcia",
-                        "Ticketing Staff",
-                        "09201234567",
-                        "ana.garcia@bussin.com",
-                        "2025-04-20",
-                        "Inactive"));
-
-        employees.add(
-                new Employee(
-                        "EMP-005",
-                        "Carlos Mendoza",
-                        "Fleet Supervisor",
-                        "09211234567",
-                        "carlos.mendoza@bussin.com",
-                        "2025-05-12",
-                        "Active"));
-    }
-
-    // ================================================================
-    // UI INITIALIZATION
-    // ================================================================
-
-    private void initializeUI() {
-
-        setOpaque(true);
-
-        setBackground(
-                BussinTheme.BACKGROUND);
-
-        setLayout(
-                new BorderLayout());
-
-        add(
-                createContent(),
-                BorderLayout.CENTER);
-    }
-
-    private JComponent createContent() {
-
-        JPanel content = new JPanel();
-
-        content.setOpaque(false);
-
-        content.setBorder(
-                BorderFactory.createEmptyBorder(
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING,
-                        BussinTheme.PAGE_PADDING));
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        content.add(
-                createHeader());
-
-        content.add(
-                Box.createVerticalStrut(
-                        BussinTheme.SPACE_XL));
-
-        content.add(
-                createStatistics());
-
-        content.add(
-                Box.createVerticalStrut(
-                        BussinTheme.SPACE_XL));
-
-        content.add(
-                createMainSection());
-
-        JScrollPane scrollPane = new JScrollPane(content);
-
-        scrollPane.setBorder(null);
-
-        scrollPane.setOpaque(false);
-
-        scrollPane.getViewport()
-                .setOpaque(false);
-
-        scrollPane.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        scrollPane.getVerticalScrollBar()
-                .setUnitIncrement(16);
-
-        return scrollPane;
-    }
-
-    // ================================================================
-    // HEADER
-    // ================================================================
-
-    private JPanel createHeader() {
-
-        JPanel header = new JPanel(
-                new BorderLayout());
-
-        header.setOpaque(false);
-
-        JPanel titlePanel = new JPanel();
-
-        titlePanel.setOpaque(false);
-
-        titlePanel.setLayout(
-                new BoxLayout(
-                        titlePanel,
-                        BoxLayout.Y_AXIS));
-
-        titlePanel.add(
-                AppLabel.title(
-                        "Employee Management"));
-
-        titlePanel.add(
-                Box.createVerticalStrut(5));
-
-        titlePanel.add(
-                AppLabel.secondary(
-                        "Manage employee information, positions, and account status."));
-
-        AppButton createButton = new AppButton(
-                "Create Employee");
-
-        createButton.setIcon(
-                IconFactory.create(
-                        "plus",
-                        16,
-                        Color.WHITE));
-
-        createButton.addActionListener(
-                event -> showCreateEmployeeDialog());
-
-        JPanel actionPanel = new JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        0,
-                        0));
-
-        actionPanel.setOpaque(false);
-
-        actionPanel.add(createButton);
-
-        header.add(
-                titlePanel,
-                BorderLayout.WEST);
-
-        header.add(
-                actionPanel,
-                BorderLayout.EAST);
-
-        return header;
-    }
-
-    // ================================================================
-    // STATISTICS
-    // ================================================================
-
-    private JPanel createStatistics() {
-
-        JPanel statistics = new JPanel(
-                new GridLayout(
-                        1,
-                        3,
-                        14,
-                        0));
-
-        statistics.setOpaque(false);
-
-        statistics.add(
-                createStatCard(
-                        "TOTAL EMPLOYEES",
-                        totalValue,
-                        BussinTheme.CHARCOAL));
-
-        statistics.add(
-                createStatCard(
-                        "ACTIVE",
-                        activeValue,
-                        BussinTheme.SUCCESS));
-
-        statistics.add(
-                createStatCard(
-                        "INACTIVE",
-                        inactiveValue,
-                        BussinTheme.RED));
-
-        return statistics;
-    }
-
-    private AppCard createStatCard(
-            String title,
-            JLabel value,
-            Color accent) {
-
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BorderLayout(
-                        14,
-                        0));
-
-        JPanel indicator = new JPanel();
-
-        indicator.setBackground(
-                accent);
-
-        indicator.setPreferredSize(
-                new Dimension(
-                        4,
-                        54));
-
-        JPanel content = new JPanel();
-
-        content.setOpaque(false);
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        JLabel titleLabel = new JLabel(title);
-
-        titleLabel.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        titleLabel.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        value.setFont(
-                BussinTheme.STAT_VALUE);
-
-        value.setForeground(
-                BussinTheme.TEXT_PRIMARY);
-
-        content.add(titleLabel);
-
-        content.add(
-                Box.createVerticalStrut(5));
-
-        content.add(value);
-
-        card.add(
-                indicator,
-                BorderLayout.WEST);
-
-        card.add(
-                content,
-                BorderLayout.CENTER);
-
-        return card;
-    }
-
-    // ================================================================
-    // MAIN SECTION
-    // ================================================================
-
-    private JPanel createMainSection() {
-
-        JPanel main = new JPanel(
-                new GridLayout(
-                        1,
-                        2,
-                        18,
-                        0));
-
-        main.setOpaque(false);
-
-        main.add(
-                createEmployeeListCard());
-
-        main.add(
-                createEmployeeDetailsCard());
-
-        return main;
-    }
-
-    // ================================================================
-    // EMPLOYEE LIST
-    // ================================================================
-
-    private AppCard createEmployeeListCard() {
-
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BorderLayout(
-                        0,
-                        14));
-
-        JPanel heading = new JPanel(
-                new BorderLayout());
-
-        heading.setOpaque(false);
-
-        heading.add(
-                AppLabel.section(
-                        "Employee Directory"),
-                BorderLayout.WEST);
-
-        JLabel hint = new JLabel(
-                "Select an employee to manage");
-
-        hint.setFont(
-                BussinTheme.SMALL);
-
-        hint.setForeground(
-                BussinTheme.TEXT_MUTED);
-
-        heading.add(
-                hint,
-                BorderLayout.EAST);
-
-        card.add(
-                heading,
-                BorderLayout.NORTH);
-
-        JPanel center = new JPanel(
-                new BorderLayout(
-                        0,
-                        10));
-
-        center.setOpaque(false);
-
-        center.add(
-                createFilterBar(),
-                BorderLayout.NORTH);
-
-        configureTable();
-
-        JScrollPane tableScroll = new JScrollPane(
-                employeeTable);
-
-        tableScroll.setBorder(
-                BorderFactory.createLineBorder(
-                        BussinTheme.BORDER));
-
-        tableScroll.getVerticalScrollBar()
-                .setUnitIncrement(12);
-
-        center.add(
-                tableScroll,
-                BorderLayout.CENTER);
-
-        card.add(
-                center,
-                BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private JPanel createFilterBar() {
-
-        JPanel filters = new JPanel(
-                new BorderLayout(
-                        10,
-                        0));
-
-        filters.setOpaque(false);
-
-        searchField.setPreferredSize(
-                new Dimension(
-                        220,
-                        40));
-
-        searchField.setToolTipText(
-                "Search employee ID, name, position, contact, or email");
-
-        statusFilter.setPreferredSize(
-                new Dimension(
-                        140,
-                        40));
-
-        filters.add(
-                searchField,
-                BorderLayout.CENTER);
-
-        filters.add(
-                statusFilter,
-                BorderLayout.EAST);
-
-        searchField
-                .getDocument()
-                .addDocumentListener(
-                        new DocumentListener() {
-
-                            @Override
-                            public void insertUpdate(
-                                    DocumentEvent e) {
-                                refreshEmployees();
-                            }
-
-                            @Override
-                            public void removeUpdate(
-                                    DocumentEvent e) {
-                                refreshEmployees();
-                            }
-
-                            @Override
-                            public void changedUpdate(
-                                    DocumentEvent e) {
-                                refreshEmployees();
-                            }
+        private final JComboBox<String> roleFilter = new JComboBox<>(
+                        new String[] {
+                                        "All Roles",
+                                        "ADMIN",
+                                        "EMPLOYEE",
+                                        "COMMUTER"
                         });
 
-        statusFilter.addActionListener(
-                event -> refreshEmployees());
+        private final JLabel totalValue = new JLabel("0");
 
-        return filters;
-    }
+        private final JLabel adminValue = new JLabel("0");
 
-    private void configureTable() {
+        private final JLabel employeeValue = new JLabel("0");
 
-        employeeTable.setRowHeight(42);
+        private final JLabel commuterValue = new JLabel("0");
 
-        employeeTable.setFont(
-                BussinTheme.SMALL);
+        private final JLabel detailUserId = new JLabel("-");
 
-        employeeTable.setSelectionMode(
-                ListSelectionModel.SINGLE_SELECTION);
+        private final JLabel detailName = new JLabel("-");
 
-        employeeTable.setAutoCreateRowSorter(true);
+        private final JLabel detailEmail = new JLabel("-");
 
-        employeeTable.setShowVerticalLines(false);
+        private final JLabel detailContact = new JLabel("-");
 
-        employeeTable.setShowHorizontalLines(true);
+        private final JLabel detailGender = new JLabel("-");
 
-        employeeTable.setGridColor(
-                BussinTheme.BORDER);
+        private final JLabel detailAge = new JLabel("-");
 
-        employeeTable.setSelectionBackground(
-                BussinTheme.PRIMARY_LIGHT);
+        private final JLabel detailDateOfBirth = new JLabel("-");
 
-        employeeTable.setSelectionForeground(
-                BussinTheme.TEXT_PRIMARY);
+        private final AppBadge detailRole = new AppBadge(
+                        "NO ROLE",
+                        AppBadge.Status.NEUTRAL);
 
-        employeeTable.setFillsViewportHeight(true);
+        private final AppButton changeRoleButton = new AppButton(
+                        "Change Role",
+                        AppButton.Variant.SECONDARY);
 
-        employeeTable.getTableHeader()
-                .setFont(
-                        BussinTheme.SMALL_BOLD);
+        public EmployeeScreen() {
 
-        employeeTable.getTableHeader()
-                .setBackground(
-                        BussinTheme.SURFACE_ALT);
+                initializeUI();
 
-        employeeTable.getTableHeader()
-                .setForeground(
-                        BussinTheme.TEXT_SECONDARY);
-
-        for (int i = 0; i < 7; i++) {
-
-            employeeTable.getColumnModel()
-                    .getColumn(i)
-                    .setPreferredWidth(
-                            switch (i) {
-
-                                case 0 -> 80;
-
-                                case 1 -> 135;
-
-                                case 2 -> 115;
-
-                                case 3 -> 105;
-
-                                case 4 -> 180;
-
-                                case 5 -> 105;
-
-                                case 6 -> 90;
-
-                                default -> 100;
-                            });
+                refreshUsers();
         }
 
-        employeeTable.getColumnModel()
-                .getColumn(6)
-                .setCellRenderer(
-                        new StatusCellRenderer());
+        // ================================================================
+        // UI INITIALIZATION
+        // ================================================================
 
-        employeeTable.getSelectionModel()
-                .addListSelectionListener(
-                        event -> {
+        private void initializeUI() {
 
-                            if (!event.getValueIsAdjusting()) {
-                                updateSelectedEmployee();
-                            }
-                        });
-    }
+                setOpaque(true);
 
-    // ================================================================
-    // EMPLOYEE DETAILS
-    // ================================================================
+                setBackground(
+                                BussinTheme.BACKGROUND);
 
-    private AppCard createEmployeeDetailsCard() {
+                setLayout(
+                                new BorderLayout());
 
-        AppCard card = new AppCard();
-
-        card.setLayout(
-                new BorderLayout(
-                        0,
-                        18));
-
-        JPanel header = new JPanel(
-                new BorderLayout());
-
-        header.setOpaque(false);
-
-        header.add(
-                AppLabel.section(
-                        "Employee Details"),
-                BorderLayout.WEST);
-
-        header.add(
-                detailStatus,
-                BorderLayout.EAST);
-
-        card.add(
-                header,
-                BorderLayout.NORTH);
-
-        JPanel details = new JPanel();
-
-        details.setOpaque(false);
-
-        details.setLayout(
-                new BoxLayout(
-                        details,
-                        BoxLayout.Y_AXIS));
-
-        JLabel idTitle = new JLabel(
-                "EMPLOYEE ID");
-
-        idTitle.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        idTitle.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        detailEmployeeId.setFont(
-                BussinTheme.SECTION_TITLE);
-
-        detailEmployeeId.setForeground(
-                BussinTheme.TEXT_PRIMARY);
-
-        details.add(idTitle);
-
-        details.add(
-                Box.createVerticalStrut(4));
-
-        details.add(
-                detailEmployeeId);
-
-        details.add(
-                Box.createVerticalStrut(14));
-
-        details.add(
-                createSeparator());
-
-        details.add(
-                Box.createVerticalStrut(14));
-
-        addDetail(
-                details,
-                "FULL NAME",
-                detailName);
-
-        addDetail(
-                details,
-                "POSITION",
-                detailPosition);
-
-        addDetail(
-                details,
-                "CONTACT NUMBER",
-                detailContact);
-
-        addDetail(
-                details,
-                "EMAIL",
-                detailEmail);
-
-        addDetail(
-                details,
-                "DATE JOINED",
-                detailDateJoined);
-
-        details.add(
-                Box.createVerticalStrut(8));
-
-        JPanel actions = new JPanel(
-                new FlowLayout(
-                        FlowLayout.LEFT,
-                        8,
-                        0));
-
-        actions.setOpaque(false);
-
-        editButton.setEnabled(false);
-
-        toggleStatusButton.setEnabled(false);
-
-        deleteButton.setEnabled(false);
-
-        editButton.addActionListener(
-                event -> showEditEmployeeDialog());
-
-        toggleStatusButton.addActionListener(
-                event -> toggleEmployeeStatus());
-
-        deleteButton.addActionListener(
-                event -> deleteSelectedEmployee());
-
-        actions.add(editButton);
-
-        actions.add(toggleStatusButton);
-
-        actions.add(deleteButton);
-
-        details.add(actions);
-
-        JScrollPane scroll = new JScrollPane(details);
-
-        scroll.setBorder(null);
-
-        scroll.setOpaque(false);
-
-        scroll.getViewport()
-                .setOpaque(false);
-
-        scroll.setHorizontalScrollBarPolicy(
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        card.add(
-                scroll,
-                BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private void addDetail(
-            JPanel panel,
-            String title,
-            JLabel value) {
-
-        JLabel titleLabel = new JLabel(title);
-
-        titleLabel.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        titleLabel.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        value.setFont(
-                BussinTheme.BODY);
-
-        value.setForeground(
-                BussinTheme.TEXT_PRIMARY);
-
-        panel.add(titleLabel);
-
-        panel.add(
-                Box.createVerticalStrut(3));
-
-        panel.add(value);
-
-        panel.add(
-                Box.createVerticalStrut(12));
-    }
-
-    private JSeparator createSeparator() {
-
-        JSeparator separator = new JSeparator();
-
-        separator.setForeground(
-                BussinTheme.BORDER);
-
-        return separator;
-    }
-
-    // ================================================================
-    // REFRESH
-    // ================================================================
-
-    private void refreshEmployees() {
-
-        String query = searchField.getText()
-                .trim()
-                .toLowerCase();
-
-        String selectedStatus = String.valueOf(
-                statusFilter.getSelectedItem());
-
-        Employee previouslySelected = getSelectedEmployee();
-
-        filteredEmployees.clear();
-
-        for (Employee employee : employees) {
-
-            boolean matchesSearch = query.isEmpty()
-                    || employee.employeeId
-                            .toLowerCase()
-                            .contains(query)
-                    || employee.name
-                            .toLowerCase()
-                            .contains(query)
-                    || employee.position
-                            .toLowerCase()
-                            .contains(query)
-                    || employee.contact
-                            .toLowerCase()
-                            .contains(query)
-                    || employee.email
-                            .toLowerCase()
-                            .contains(query)
-                    || employee.dateJoined
-                            .toLowerCase()
-                            .contains(query);
-
-            boolean matchesStatus = selectedStatus.equals(
-                    "All Status")
-                    || employee.status.equals(
-                            selectedStatus);
-
-            if (matchesSearch
-                    && matchesStatus) {
-
-                filteredEmployees.add(
-                        employee);
-            }
+                add(
+                                createContent(),
+                                BorderLayout.CENTER);
         }
 
-        tableModel.fireTableDataChanged();
+        private JComponent createContent() {
 
-        updateStatistics();
+                JPanel content = new JPanel();
 
-        if (previouslySelected != null
-                && filteredEmployees.contains(
-                        previouslySelected)) {
+                content.setOpaque(false);
 
-            int modelIndex = filteredEmployees.indexOf(
-                    previouslySelected);
+                content.setBorder(
+                                BorderFactory.createEmptyBorder(
+                                                BussinTheme.PAGE_PADDING,
+                                                BussinTheme.PAGE_PADDING,
+                                                BussinTheme.PAGE_PADDING,
+                                                BussinTheme.PAGE_PADDING));
 
-            int viewIndex = employeeTable
-                    .convertRowIndexToView(
-                            modelIndex);
+                content.setLayout(
+                                new BoxLayout(
+                                                content,
+                                                BoxLayout.Y_AXIS));
 
-            if (viewIndex >= 0
-                    && viewIndex < employeeTable.getRowCount()) {
+                content.add(
+                                createHeader());
 
-                employeeTable.setRowSelectionInterval(
-                        viewIndex,
-                        viewIndex);
+                content.add(
+                                Box.createVerticalStrut(
+                                                BussinTheme.SPACE_XL));
 
-                return;
-            }
+                content.add(
+                                createStatistics());
+
+                content.add(
+                                Box.createVerticalStrut(
+                                                BussinTheme.SPACE_XL));
+
+                content.add(
+                                createMainSection());
+
+                JScrollPane scrollPane = new JScrollPane(
+                                content);
+
+                scrollPane.setBorder(null);
+
+                scrollPane.setOpaque(false);
+
+                scrollPane.getViewport()
+                                .setOpaque(false);
+
+                scrollPane.setHorizontalScrollBarPolicy(
+                                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+                scrollPane.getVerticalScrollBar()
+                                .setUnitIncrement(16);
+
+                return scrollPane;
         }
 
-        if (!filteredEmployees.isEmpty()) {
+        // ================================================================
+        // HEADER
+        // ================================================================
 
-            employeeTable.setRowSelectionInterval(
-                    0,
-                    0);
+        private JPanel createHeader() {
 
-        } else {
+                JPanel header = new JPanel(
+                                new BorderLayout());
 
-            clearDetails();
-        }
-    }
+                header.setOpaque(false);
 
-    private void updateStatistics() {
+                JPanel titlePanel = new JPanel();
 
-        int total = employees.size();
+                titlePanel.setOpaque(false);
 
-        int active = 0;
+                titlePanel.setLayout(
+                                new BoxLayout(
+                                                titlePanel,
+                                                BoxLayout.Y_AXIS));
 
-        int inactive = 0;
+                titlePanel.add(
+                                AppLabel.title(
+                                                "User & Employee Management"));
 
-        for (Employee employee : employees) {
+                titlePanel.add(
+                                Box.createVerticalStrut(5));
 
-            if (employee.status.equals(
-                    "Active")) {
+                titlePanel.add(
+                                AppLabel.secondary(
+                                                "Manage BUSSIN users and their system roles."));
 
-                active++;
-            }
+                AppButton refreshButton = new AppButton(
+                                "Refresh");
 
-            if (employee.status.equals(
-                    "Inactive")) {
+                refreshButton.setIcon(
+                                IconFactory.create(
+                                                "refresh-cw",
+                                                16,
+                                                Color.WHITE));
 
-                inactive++;
-            }
-        }
+                refreshButton.addActionListener(
+                                event -> refreshUsers());
 
-        totalValue.setText(
-                String.valueOf(total));
+                JPanel actionPanel = new JPanel(
+                                new FlowLayout(
+                                                FlowLayout.RIGHT,
+                                                0,
+                                                0));
 
-        activeValue.setText(
-                String.valueOf(active));
+                actionPanel.setOpaque(false);
 
-        inactiveValue.setText(
-                String.valueOf(inactive));
-    }
+                actionPanel.add(refreshButton);
 
-    // ================================================================
-    // SELECTED EMPLOYEE
-    // ================================================================
+                header.add(
+                                titlePanel,
+                                BorderLayout.WEST);
 
-    private void updateSelectedEmployee() {
+                header.add(
+                                actionPanel,
+                                BorderLayout.EAST);
 
-        Employee employee = getSelectedEmployee();
-
-        if (employee == null) {
-
-            clearDetails();
-
-            return;
-        }
-
-        detailEmployeeId.setText(
-                employee.employeeId);
-
-        detailName.setText(
-                employee.name);
-
-        detailPosition.setText(
-                employee.position);
-
-        detailContact.setText(
-                employee.contact);
-
-        detailEmail.setText(
-                employee.email);
-
-        detailDateJoined.setText(
-                employee.dateJoined);
-
-        updateStatusBadge(
-                employee.status);
-
-        editButton.setEnabled(true);
-
-        boolean active = employee.status.equals(
-                "Active");
-
-        toggleStatusButton.setText(
-                active
-                        ? "Deactivate"
-                        : "Activate");
-
-        toggleStatusButton.setEnabled(true);
-
-        deleteButton.setEnabled(true);
-    }
-
-    private void clearDetails() {
-
-        detailEmployeeId.setText("-");
-
-        detailName.setText("-");
-
-        detailPosition.setText("-");
-
-        detailContact.setText("-");
-
-        detailEmail.setText("-");
-
-        detailDateJoined.setText("-");
-
-        updateStatusBadge(
-                "No Status");
-
-        editButton.setEnabled(false);
-
-        toggleStatusButton.setText(
-                "Activate");
-
-        toggleStatusButton.setEnabled(false);
-
-        deleteButton.setEnabled(false);
-    }
-
-    private Employee getSelectedEmployee() {
-
-        int selectedRow = employeeTable.getSelectedRow();
-
-        if (selectedRow < 0) {
-            return null;
+                return header;
         }
 
-        int modelRow = employeeTable
-                .convertRowIndexToModel(
-                        selectedRow);
+        // ================================================================
+        // STATISTICS
+        // ================================================================
 
-        if (modelRow < 0
-                || modelRow >= filteredEmployees.size()) {
+        private JPanel createStatistics() {
 
-            return null;
+                JPanel statistics = new JPanel(
+                                new GridLayout(
+                                                1,
+                                                4,
+                                                14,
+                                                0));
+
+                statistics.setOpaque(false);
+
+                statistics.add(
+                                createStatCard(
+                                                "TOTAL USERS",
+                                                totalValue,
+                                                BussinTheme.CHARCOAL));
+
+                statistics.add(
+                                createStatCard(
+                                                "ADMINISTRATORS",
+                                                adminValue,
+                                                BussinTheme.RED));
+
+                statistics.add(
+                                createStatCard(
+                                                "EMPLOYEES",
+                                                employeeValue,
+                                                BussinTheme.SUCCESS));
+
+                statistics.add(
+                                createStatCard(
+                                                "COMMUTERS",
+                                                commuterValue,
+                                                BussinTheme.PRIMARY));
+
+                return statistics;
         }
 
-        return filteredEmployees.get(
-                modelRow);
-    }
+        private AppCard createStatCard(
+                        String title,
+                        JLabel value,
+                        Color accent) {
 
-    // ================================================================
-    // STATUS BADGE
-    // ================================================================
+                AppCard card = new AppCard();
 
-    private void updateStatusBadge(
-            String status) {
+                card.setLayout(
+                                new BorderLayout(
+                                                14,
+                                                0));
 
-        AppBadge.Status badgeStatus;
+                JPanel indicator = new JPanel();
 
-        switch (status) {
+                indicator.setBackground(
+                                accent);
 
-            case "Active" ->
-                badgeStatus = AppBadge.Status.SUCCESS;
+                indicator.setPreferredSize(
+                                new Dimension(
+                                                4,
+                                                54));
 
-            case "Inactive" ->
-                badgeStatus = AppBadge.Status.DANGER;
+                JPanel content = new JPanel();
 
-            default ->
-                badgeStatus = AppBadge.Status.NEUTRAL;
+                content.setOpaque(false);
+
+                content.setLayout(
+                                new BoxLayout(
+                                                content,
+                                                BoxLayout.Y_AXIS));
+
+                JLabel titleLabel = new JLabel(title);
+
+                titleLabel.setFont(
+                                BussinTheme.SMALL_BOLD);
+
+                titleLabel.setForeground(
+                                BussinTheme.TEXT_SECONDARY);
+
+                value.setFont(
+                                BussinTheme.STAT_VALUE);
+
+                value.setForeground(
+                                BussinTheme.TEXT_PRIMARY);
+
+                content.add(titleLabel);
+
+                content.add(
+                                Box.createVerticalStrut(5));
+
+                content.add(value);
+
+                card.add(
+                                indicator,
+                                BorderLayout.WEST);
+
+                card.add(
+                                content,
+                                BorderLayout.CENTER);
+
+                return card;
         }
 
-        detailStatus.setText(
-                status.toUpperCase());
+        // ================================================================
+        // MAIN SECTION
+        // ================================================================
 
-        switch (badgeStatus) {
+        private JPanel createMainSection() {
 
-            case SUCCESS -> {
+                JPanel main = new JPanel(
+                                new GridLayout(
+                                                1,
+                                                2,
+                                                18,
+                                                0));
 
-                detailStatus.setForeground(
-                        BussinTheme.SUCCESS);
+                main.setOpaque(false);
 
-                detailStatus.setBackground(
-                        BussinTheme.SUCCESS_LIGHT);
-            }
+                main.add(
+                                createUserListCard());
 
-            case DANGER -> {
+                main.add(
+                                createUserDetailsCard());
 
-                detailStatus.setForeground(
-                        BussinTheme.DANGER);
-
-                detailStatus.setBackground(
-                        BussinTheme.DANGER_LIGHT);
-            }
-
-            default -> {
-
-                detailStatus.setForeground(
-                        BussinTheme.TEXT_SECONDARY);
-
-                detailStatus.setBackground(
-                        BussinTheme.SURFACE_ALT);
-            }
+                return main;
         }
-    }
 
-    // ================================================================
-    // CREATE EMPLOYEE
-    // ================================================================
+        // ================================================================
+        // USER LIST
+        // ================================================================
 
-    private void showCreateEmployeeDialog() {
+        private AppCard createUserListCard() {
 
-        JDialog dialog = new JDialog(
-                SwingUtilities
-                        .getWindowAncestor(this),
-                "Create Employee",
-                Dialog.ModalityType.APPLICATION_MODAL);
+                AppCard card = new AppCard();
 
-        dialog.setDefaultCloseOperation(
-                JDialog.DISPOSE_ON_CLOSE);
+                card.setLayout(
+                                new BorderLayout(
+                                                0,
+                                                14));
 
-        dialog.setSize(
-                540,
-                500);
+                JPanel heading = new JPanel(
+                                new BorderLayout());
 
-        dialog.setMinimumSize(
-                new Dimension(
-                        540,
-                        500));
+                heading.setOpaque(false);
 
-        dialog.setLocationRelativeTo(this);
+                heading.add(
+                                AppLabel.section(
+                                                "User Directory"),
+                                BorderLayout.WEST);
 
-        JPanel root = new JPanel(
-                new BorderLayout());
+                JLabel hint = new JLabel(
+                                "Select a user to manage");
 
-        root.setBackground(
-                BussinTheme.BACKGROUND);
+                hint.setFont(
+                                BussinTheme.SMALL);
 
-        JLabel title = new JLabel(
-                "Create New Employee");
+                hint.setForeground(
+                                BussinTheme.TEXT_MUTED);
 
-        title.setFont(
-                BussinTheme.SECTION_TITLE);
+                heading.add(
+                                hint,
+                                BorderLayout.EAST);
 
-        title.setForeground(
-                BussinTheme.TEXT_PRIMARY);
+                card.add(
+                                heading,
+                                BorderLayout.NORTH);
 
-        JPanel titlePanel = new JPanel(
-                new BorderLayout());
+                JPanel center = new JPanel(
+                                new BorderLayout(
+                                                0,
+                                                10));
 
-        titlePanel.setOpaque(false);
+                center.setOpaque(false);
 
-        titlePanel.setBorder(
-                BorderFactory.createEmptyBorder(
-                        22,
-                        24,
-                        10,
-                        24));
+                center.add(
+                                createFilterBar(),
+                                BorderLayout.NORTH);
 
-        titlePanel.add(
-                title,
-                BorderLayout.WEST);
+                configureTable();
 
-        JPanel form = new JPanel(
-                new GridLayout(
-                        6,
-                        2,
-                        12,
-                        10));
+                JScrollPane tableScroll = new JScrollPane(
+                                userTable);
 
-        form.setOpaque(false);
+                tableScroll.setBorder(
+                                BorderFactory.createLineBorder(
+                                                BussinTheme.BORDER));
 
-        form.setBorder(
-                BorderFactory.createEmptyBorder(
-                        12,
-                        24,
-                        12,
-                        24));
+                tableScroll.getVerticalScrollBar()
+                                .setUnitIncrement(12);
 
-        JTextField nameField = new JTextField();
+                center.add(
+                                tableScroll,
+                                BorderLayout.CENTER);
 
-        JTextField positionField = new JTextField();
+                card.add(
+                                center,
+                                BorderLayout.CENTER);
 
-        JTextField contactField = new JTextField();
+                return card;
+        }
 
-        JTextField emailField = new JTextField();
+        private JPanel createFilterBar() {
 
-        JTextField dateJoinedField = new JTextField();
+                JPanel filters = new JPanel(
+                                new BorderLayout(
+                                                10,
+                                                0));
 
-        dateJoinedField.setToolTipText(
-                "Format: YYYY-MM-DD");
+                filters.setOpaque(false);
 
-        JComboBox<String> statusField = new JComboBox<>(
-                new String[] {
-                        "Active",
-                        "Inactive"
-                });
+                searchField.setPreferredSize(
+                                new Dimension(
+                                                220,
+                                                40));
 
-        addFormField(
-                form,
-                "Full Name",
-                nameField);
+                searchField.setToolTipText(
+                                "Search by ID, name, email, or contact number");
 
-        addFormField(
-                form,
-                "Position",
-                positionField);
+                roleFilter.setPreferredSize(
+                                new Dimension(
+                                                140,
+                                                40));
 
-        addFormField(
-                form,
-                "Contact Number",
-                contactField);
+                filters.add(
+                                searchField,
+                                BorderLayout.CENTER);
 
-        addFormField(
-                form,
-                "Email",
-                emailField);
+                filters.add(
+                                roleFilter,
+                                BorderLayout.EAST);
 
-        addFormField(
-                form,
-                "Date Joined",
-                dateJoinedField);
+                searchField
+                                .getDocument()
+                                .addDocumentListener(
+                                                new DocumentListener() {
 
-        addFormField(
-                form,
-                "Status",
-                statusField);
+                                                        @Override
+                                                        public void insertUpdate(
+                                                                        DocumentEvent event) {
+                                                                refreshUsers();
+                                                        }
 
-        JPanel buttons = new JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        8,
-                        12));
+                                                        @Override
+                                                        public void removeUpdate(
+                                                                        DocumentEvent event) {
+                                                                refreshUsers();
+                                                        }
 
-        buttons.setOpaque(false);
+                                                        @Override
+                                                        public void changedUpdate(
+                                                                        DocumentEvent event) {
+                                                                refreshUsers();
+                                                        }
+                                                });
 
-        AppButton cancelButton = new AppButton(
-                "Cancel",
-                AppButton.Variant.SECONDARY);
+                roleFilter.addActionListener(
+                                event -> refreshUsers());
 
-        AppButton saveButton = new AppButton(
-                "Create Employee");
+                return filters;
+        }
 
-        cancelButton.addActionListener(
-                event -> dialog.dispose());
+        private void configureTable() {
 
-        saveButton.addActionListener(
-                event -> {
+                userTable.setRowHeight(42);
 
-                    String name = nameField.getText()
-                            .trim();
+                userTable.setFont(
+                                BussinTheme.SMALL);
 
-                    String position = positionField.getText()
-                            .trim();
+                userTable.setSelectionMode(
+                                ListSelectionModel.SINGLE_SELECTION);
 
-                    String contact = contactField.getText()
-                            .trim();
+                userTable.setAutoCreateRowSorter(true);
 
-                    String email = emailField.getText()
-                            .trim();
+                userTable.setShowVerticalLines(false);
 
-                    String dateJoined = dateJoinedField
-                            .getText()
-                            .trim();
+                userTable.setShowHorizontalLines(true);
 
-                    String status = String.valueOf(
-                            statusField
-                                    .getSelectedItem());
+                userTable.setGridColor(
+                                BussinTheme.BORDER);
 
-                    if (!validateEmployeeFields(
-                            dialog,
-                            name,
-                            position,
-                            contact,
-                            email,
-                            dateJoined)) {
+                userTable.setSelectionBackground(
+                                BussinTheme.PRIMARY_LIGHT);
+
+                userTable.setSelectionForeground(
+                                BussinTheme.TEXT_PRIMARY);
+
+                userTable.setFillsViewportHeight(true);
+
+                userTable.getTableHeader()
+                                .setFont(
+                                                BussinTheme.SMALL_BOLD);
+
+                userTable.getTableHeader()
+                                .setBackground(
+                                                BussinTheme.SURFACE_ALT);
+
+                userTable.getTableHeader()
+                                .setForeground(
+                                                BussinTheme.TEXT_SECONDARY);
+
+                for (int i = 0; i < 6; i++) {
+
+                        userTable.getColumnModel()
+                                        .getColumn(i)
+                                        .setPreferredWidth(
+                                                        switch (i) {
+
+                                                                case 0 -> 70;
+
+                                                                case 1 -> 145;
+
+                                                                case 2 -> 180;
+
+                                                                case 3 -> 115;
+
+                                                                case 4 -> 100;
+
+                                                                case 5 -> 100;
+
+                                                                default -> 100;
+                                                        });
+                }
+
+                userTable.getColumnModel()
+                                .getColumn(5)
+                                .setCellRenderer(
+                                                new RoleCellRenderer());
+
+                userTable.getSelectionModel()
+                                .addListSelectionListener(
+                                                event -> {
+
+                                                        if (!event.getValueIsAdjusting()) {
+                                                                updateSelectedUser();
+                                                        }
+                                                });
+        }
+
+        // ================================================================
+        // USER DETAILS
+        // ================================================================
+
+        private AppCard createUserDetailsCard() {
+
+                AppCard card = new AppCard();
+
+                card.setLayout(
+                                new BorderLayout(
+                                                0,
+                                                18));
+
+                JPanel header = new JPanel(
+                                new BorderLayout());
+
+                header.setOpaque(false);
+
+                header.add(
+                                AppLabel.section(
+                                                "User Details"),
+                                BorderLayout.WEST);
+
+                header.add(
+                                detailRole,
+                                BorderLayout.EAST);
+
+                card.add(
+                                header,
+                                BorderLayout.NORTH);
+
+                JPanel details = new JPanel();
+
+                details.setOpaque(false);
+
+                details.setLayout(
+                                new BoxLayout(
+                                                details,
+                                                BoxLayout.Y_AXIS));
+
+                JLabel idTitle = new JLabel(
+                                "USER ID");
+
+                idTitle.setFont(
+                                BussinTheme.SMALL_BOLD);
+
+                idTitle.setForeground(
+                                BussinTheme.TEXT_SECONDARY);
+
+                detailUserId.setFont(
+                                BussinTheme.SECTION_TITLE);
+
+                detailUserId.setForeground(
+                                BussinTheme.TEXT_PRIMARY);
+
+                details.add(idTitle);
+
+                details.add(
+                                Box.createVerticalStrut(4));
+
+                details.add(
+                                detailUserId);
+
+                details.add(
+                                Box.createVerticalStrut(14));
+
+                details.add(
+                                createSeparator());
+
+                details.add(
+                                Box.createVerticalStrut(14));
+
+                addDetail(
+                                details,
+                                "FULL NAME",
+                                detailName);
+
+                addDetail(
+                                details,
+                                "EMAIL",
+                                detailEmail);
+
+                addDetail(
+                                details,
+                                "CONTACT NUMBER",
+                                detailContact);
+
+                addDetail(
+                                details,
+                                "GENDER",
+                                detailGender);
+
+                addDetail(
+                                details,
+                                "AGE",
+                                detailAge);
+
+                addDetail(
+                                details,
+                                "DATE OF BIRTH",
+                                detailDateOfBirth);
+
+                details.add(
+                                Box.createVerticalStrut(8));
+
+                JPanel actions = new JPanel(
+                                new FlowLayout(
+                                                FlowLayout.LEFT,
+                                                8,
+                                                0));
+
+                actions.setOpaque(false);
+
+                changeRoleButton.setEnabled(false);
+
+                changeRoleButton.addActionListener(
+                                event -> showChangeRoleDialog());
+
+                actions.add(
+                                changeRoleButton);
+
+                details.add(actions);
+
+                JScrollPane scroll = new JScrollPane(
+                                details);
+
+                scroll.setBorder(null);
+
+                scroll.setOpaque(false);
+
+                scroll.getViewport()
+                                .setOpaque(false);
+
+                scroll.setHorizontalScrollBarPolicy(
+                                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+                card.add(
+                                scroll,
+                                BorderLayout.CENTER);
+
+                return card;
+        }
+
+        private void addDetail(
+                        JPanel panel,
+                        String title,
+                        JLabel value) {
+
+                JLabel titleLabel = new JLabel(title);
+
+                titleLabel.setFont(
+                                BussinTheme.SMALL_BOLD);
+
+                titleLabel.setForeground(
+                                BussinTheme.TEXT_SECONDARY);
+
+                value.setFont(
+                                BussinTheme.BODY);
+
+                value.setForeground(
+                                BussinTheme.TEXT_PRIMARY);
+
+                panel.add(titleLabel);
+
+                panel.add(
+                                Box.createVerticalStrut(3));
+
+                panel.add(value);
+
+                panel.add(
+                                Box.createVerticalStrut(12));
+        }
+
+        private JSeparator createSeparator() {
+
+                JSeparator separator = new JSeparator();
+
+                separator.setForeground(
+                                BussinTheme.BORDER);
+
+                return separator;
+        }
+
+        // ================================================================
+        // API REFRESH
+        // ================================================================
+
+        private void refreshUsers() {
+
+                try {
+
+                        List<UserResponse> fetchedUsers = UserApiService.getAllUsers();
+
+                        users.clear();
+
+                        users.addAll(
+                                        fetchedUsers);
+
+                        applyFilters();
+
+                } catch (Exception exception) {
+
+                        users.clear();
+
+                        filteredUsers.clear();
+
+                        tableModel.fireTableDataChanged();
+
+                        updateStatistics();
+
+                        clearDetails();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        exception.getMessage(),
+                                        "Failed to Load Users",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
+        }
+
+        private void applyFilters() {
+
+                String query = searchField.getText()
+                                .trim()
+                                .toLowerCase();
+
+                String selectedRole = String.valueOf(
+                                roleFilter.getSelectedItem());
+
+                UserResponse previouslySelected = getSelectedUser();
+
+                filteredUsers.clear();
+
+                for (UserResponse user : users) {
+
+                        String fullName = buildFullName(user);
+
+                        String email = safe(user.getEmail());
+
+                        String contact = safe(user.getContactNumber());
+
+                        String firebaseUid = safe(user.getFirebaseUid());
+
+                        String userId = user.getId() == null
+                                        ? ""
+                                        : String.valueOf(
+                                                        user.getId());
+
+                        String role = safe(user.getRole())
+                                        .toUpperCase();
+
+                        boolean matchesSearch = query.isEmpty()
+                                        || userId.toLowerCase()
+                                                        .contains(query)
+                                        || firebaseUid.toLowerCase()
+                                                        .contains(query)
+                                        || fullName.toLowerCase()
+                                                        .contains(query)
+                                        || email.toLowerCase()
+                                                        .contains(query)
+                                        || contact.toLowerCase()
+                                                        .contains(query);
+
+                        boolean matchesRole = "All Roles".equals(
+                                        selectedRole)
+                                        || role.equals(
+                                                        selectedRole);
+
+                        if (matchesSearch
+                                        && matchesRole) {
+
+                                filteredUsers.add(user);
+                        }
+                }
+
+                tableModel.fireTableDataChanged();
+
+                updateStatistics();
+
+                if (previouslySelected != null
+                                && filteredUsers.contains(
+                                                previouslySelected)) {
+
+                        int modelIndex = filteredUsers.indexOf(
+                                        previouslySelected);
+
+                        int viewIndex = userTable.convertRowIndexToView(
+                                        modelIndex);
+
+                        if (viewIndex >= 0
+                                        && viewIndex < userTable.getRowCount()) {
+
+                                userTable.setRowSelectionInterval(
+                                                viewIndex,
+                                                viewIndex);
+
+                                return;
+                        }
+                }
+
+                if (!filteredUsers.isEmpty()) {
+
+                        userTable.setRowSelectionInterval(
+                                        0,
+                                        0);
+
+                } else {
+
+                        clearDetails();
+                }
+        }
+
+        private void updateStatistics() {
+
+                int total = users.size();
+
+                int admins = 0;
+
+                int employees = 0;
+
+                int commuters = 0;
+
+                for (UserResponse user : users) {
+
+                        String role = safe(
+                                        user.getRole())
+                                        .toUpperCase();
+
+                        switch (role) {
+
+                                case "ADMIN" ->
+                                        admins++;
+
+                                case "EMPLOYEE" ->
+                                        employees++;
+
+                                case "COMMUTER" ->
+                                        commuters++;
+
+                                default -> {
+                                }
+                        }
+                }
+
+                totalValue.setText(
+                                String.valueOf(total));
+
+                adminValue.setText(
+                                String.valueOf(admins));
+
+                employeeValue.setText(
+                                String.valueOf(employees));
+
+                commuterValue.setText(
+                                String.valueOf(commuters));
+        }
+
+        // ================================================================
+        // SELECTED USER
+        // ================================================================
+
+        private void updateSelectedUser() {
+
+                UserResponse user = getSelectedUser();
+
+                if (user == null) {
+
+                        clearDetails();
 
                         return;
-                    }
+                }
 
-                    employees.add(
-                            new Employee(
-                                    generateEmployeeId(),
-                                    name,
-                                    position,
-                                    contact,
-                                    email,
-                                    dateJoined,
-                                    status));
+                detailUserId.setText(
+                                user.getId() == null
+                                                ? "-"
+                                                : String.valueOf(
+                                                                user.getId()));
 
-                    refreshEmployees();
+                detailName.setText(
+                                buildFullName(user));
 
-                    dialog.dispose();
-                });
+                detailEmail.setText(
+                                displayValue(
+                                                user.getEmail()));
 
-        buttons.add(cancelButton);
+                detailContact.setText(
+                                displayValue(
+                                                user.getContactNumber()));
 
-        buttons.add(saveButton);
+                detailGender.setText(
+                                displayValue(
+                                                user.getGender()));
 
-        root.add(
-                titlePanel,
-                BorderLayout.NORTH);
+                detailAge.setText(
+                                user.getAge() == null
+                                                ? "-"
+                                                : String.valueOf(
+                                                                user.getAge()));
 
-        root.add(
-                form,
-                BorderLayout.CENTER);
+                detailDateOfBirth.setText(
+                                user.getDateOfBirth() == null
+                                                ? "-"
+                                                : user.getDateOfBirth()
+                                                                .toString());
 
-        root.add(
-                buttons,
-                BorderLayout.SOUTH);
+                updateRoleBadge(
+                                user.getRole());
 
-        dialog.setContentPane(root);
-
-        dialog.setVisible(true);
-    }
-
-    // ================================================================
-    // EDIT EMPLOYEE
-    // ================================================================
-
-    private void showEditEmployeeDialog() {
-
-        Employee employee = getSelectedEmployee();
-
-        if (employee == null) {
-            return;
+                changeRoleButton.setEnabled(true);
         }
 
-        JDialog dialog = new JDialog(
-                SwingUtilities
-                        .getWindowAncestor(this),
-                "Edit Employee",
-                Dialog.ModalityType.APPLICATION_MODAL);
+        private void clearDetails() {
 
-        dialog.setDefaultCloseOperation(
-                JDialog.DISPOSE_ON_CLOSE);
+                detailUserId.setText("-");
 
-        dialog.setSize(
-                540,
-                500);
+                detailName.setText("-");
 
-        dialog.setMinimumSize(
-                new Dimension(
-                        540,
-                        500));
+                detailEmail.setText("-");
 
-        dialog.setLocationRelativeTo(this);
+                detailContact.setText("-");
 
-        JPanel root = new JPanel(
-                new BorderLayout());
+                detailGender.setText("-");
 
-        root.setBackground(
-                BussinTheme.BACKGROUND);
+                detailAge.setText("-");
 
-        JLabel title = new JLabel(
-                "Edit Employee");
+                detailDateOfBirth.setText("-");
 
-        title.setFont(
-                BussinTheme.SECTION_TITLE);
+                updateRoleBadge(null);
 
-        title.setForeground(
-                BussinTheme.TEXT_PRIMARY);
+                changeRoleButton.setEnabled(false);
+        }
 
-        JPanel titlePanel = new JPanel(
-                new BorderLayout());
+        private UserResponse getSelectedUser() {
 
-        titlePanel.setOpaque(false);
+                int selectedRow = userTable.getSelectedRow();
 
-        titlePanel.setBorder(
-                BorderFactory.createEmptyBorder(
-                        22,
-                        24,
-                        10,
-                        24));
+                if (selectedRow < 0) {
+                        return null;
+                }
 
-        titlePanel.add(
-                title,
-                BorderLayout.WEST);
+                int modelRow = userTable.convertRowIndexToModel(
+                                selectedRow);
 
-        JPanel form = new JPanel(
-                new GridLayout(
-                        7,
-                        2,
-                        12,
-                        10));
+                if (modelRow < 0
+                                || modelRow >= filteredUsers.size()) {
 
-        form.setOpaque(false);
+                        return null;
+                }
 
-        form.setBorder(
-                BorderFactory.createEmptyBorder(
-                        12,
-                        24,
-                        12,
-                        24));
+                return filteredUsers.get(
+                                modelRow);
+        }
 
-        JTextField employeeIdField = new JTextField(
-                employee.employeeId);
+        // ================================================================
+        // ROLE BADGE
+        // ================================================================
 
-        JTextField nameField = new JTextField(
-                employee.name);
+        private void updateRoleBadge(
+                        String role) {
 
-        JTextField positionField = new JTextField(
-                employee.position);
+                String normalizedRole = safe(role)
+                                .toUpperCase();
 
-        JTextField contactField = new JTextField(
-                employee.contact);
+                AppBadge.Status badgeStatus;
 
-        JTextField emailField = new JTextField(
-                employee.email);
+                switch (normalizedRole) {
 
-        JTextField dateJoinedField = new JTextField(
-                employee.dateJoined);
+                        case "ADMIN" ->
+                                badgeStatus = AppBadge.Status.DANGER;
 
-        JComboBox<String> statusField = new JComboBox<>(
-                new String[] {
-                        "Active",
-                        "Inactive"
-                });
+                        case "EMPLOYEE" ->
+                                badgeStatus = AppBadge.Status.SUCCESS;
 
-        statusField.setSelectedItem(
-                employee.status);
+                        case "COMMUTER" ->
+                                badgeStatus = AppBadge.Status.NEUTRAL;
 
-        addFormField(
-                form,
-                "Employee ID",
-                employeeIdField);
+                        default ->
+                                badgeStatus = AppBadge.Status.NEUTRAL;
+                }
 
-        addFormField(
-                form,
-                "Full Name",
-                nameField);
+                detailRole.setText(
+                                normalizedRole.isBlank()
+                                                ? "NO ROLE"
+                                                : normalizedRole);
 
-        addFormField(
-                form,
-                "Position",
-                positionField);
+                switch (badgeStatus) {
 
-        addFormField(
-                form,
-                "Contact Number",
-                contactField);
+                        case SUCCESS -> {
 
-        addFormField(
-                form,
-                "Email",
-                emailField);
+                                detailRole.setForeground(
+                                                BussinTheme.SUCCESS);
 
-        addFormField(
-                form,
-                "Date Joined",
-                dateJoinedField);
+                                detailRole.setBackground(
+                                                BussinTheme.SUCCESS_LIGHT);
+                        }
 
-        addFormField(
-                form,
-                "Status",
-                statusField);
+                        case DANGER -> {
 
-        JPanel buttons = new JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        8,
-                        12));
+                                detailRole.setForeground(
+                                                BussinTheme.DANGER);
 
-        buttons.setOpaque(false);
+                                detailRole.setBackground(
+                                                BussinTheme.DANGER_LIGHT);
+                        }
 
-        AppButton cancelButton = new AppButton(
-                "Cancel",
-                AppButton.Variant.SECONDARY);
+                        default -> {
 
-        AppButton saveButton = new AppButton(
-                "Save Changes");
+                                detailRole.setForeground(
+                                                BussinTheme.TEXT_SECONDARY);
 
-        cancelButton.addActionListener(
-                event -> dialog.dispose());
+                                detailRole.setBackground(
+                                                BussinTheme.SURFACE_ALT);
+                        }
+                }
+        }
 
-        saveButton.addActionListener(
-                event -> {
+        // ================================================================
+        // CHANGE ROLE
+        // ================================================================
 
-                    String employeeId = employeeIdField
-                            .getText()
-                            .trim();
+        private void showChangeRoleDialog() {
 
-                    String name = nameField.getText()
-                            .trim();
+                UserResponse user = getSelectedUser();
 
-                    String position = positionField.getText()
-                            .trim();
-
-                    String contact = contactField.getText()
-                            .trim();
-
-                    String email = emailField.getText()
-                            .trim();
-
-                    String dateJoined = dateJoinedField
-                            .getText()
-                            .trim();
-
-                    String status = String.valueOf(
-                            statusField
-                                    .getSelectedItem());
-
-                    if (employeeId.isEmpty()) {
-
-                        showWarning(
-                                dialog,
-                                "Employee ID cannot be empty.",
-                                "Invalid Employee");
+                if (user == null
+                                || user.getId() == null) {
 
                         return;
-                    }
+                }
 
-                    if (isDuplicateEmployeeId(
-                            employeeId,
-                            employee)) {
+                String currentRole = safe(user.getRole())
+                                .toUpperCase();
 
-                        showWarning(
-                                dialog,
-                                "Another employee already uses this Employee ID.",
-                                "Duplicate Employee ID");
+                JComboBox<String> roleField = new JComboBox<>(
+                                new String[] {
+                                                "ADMIN",
+                                                "EMPLOYEE",
+                                                "COMMUTER"
+                                });
+
+                roleField.setSelectedItem(
+                                currentRole);
+
+                JPanel panel = new JPanel(
+                                new BorderLayout(
+                                                0,
+                                                10));
+
+                JLabel label = new JLabel(
+                                "Select the new role for this user:");
+
+                panel.add(
+                                label,
+                                BorderLayout.NORTH);
+
+                panel.add(
+                                roleField,
+                                BorderLayout.CENTER);
+
+                int result = JOptionPane.showConfirmDialog(
+                                this,
+                                panel,
+                                "Change User Role",
+                                JOptionPane.OK_CANCEL_OPTION,
+                                JOptionPane.PLAIN_MESSAGE);
+
+                if (result != JOptionPane.OK_OPTION) {
+                        return;
+                }
+
+                String newRole = String.valueOf(
+                                roleField.getSelectedItem());
+
+                if (newRole.equals(
+                                currentRole)) {
 
                         return;
-                    }
+                }
 
-                    if (!validateEmployeeFields(
-                            dialog,
-                            name,
-                            position,
-                            contact,
-                            email,
-                            dateJoined)) {
+                int confirmation = JOptionPane.showConfirmDialog(
+                                this,
+                                "Change "
+                                                + buildFullName(user)
+                                                + "'s role from "
+                                                + currentRole
+                                                + " to "
+                                                + newRole
+                                                + "?",
+                                "Confirm Role Change",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.WARNING_MESSAGE);
+
+                if (confirmation != JOptionPane.YES_OPTION) {
+                        return;
+                }
+
+                try {
+
+                        UserApiService.updateUserRole(
+                                        user.getId(),
+                                        newRole);
+
+                        refreshUsers();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "User role updated successfully.",
+                                        "Role Updated",
+                                        JOptionPane.INFORMATION_MESSAGE);
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        exception.getMessage(),
+                                        "Failed to Update Role",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
+        }
+
+        // ================================================================
+        // HELPERS
+        // ================================================================
+
+        private String buildFullName(
+                        UserResponse user) {
+
+                StringBuilder name = new StringBuilder();
+
+                appendNamePart(
+                                name,
+                                user.getFirstName());
+
+                appendNamePart(
+                                name,
+                                user.getMiddleName());
+
+                appendNamePart(
+                                name,
+                                user.getLastName());
+
+                if (name.isEmpty()) {
+                        return "-";
+                }
+
+                return name.toString();
+        }
+
+        private void appendNamePart(
+                        StringBuilder builder,
+                        String value) {
+
+                if (value == null
+                                || value.isBlank()) {
 
                         return;
-                    }
+                }
 
-                    employee.employeeId = employeeId;
+                if (!builder.isEmpty()) {
+                        builder.append(" ");
+                }
 
-                    employee.name = name;
-
-                    employee.position = position;
-
-                    employee.contact = contact;
-
-                    employee.email = email;
-
-                    employee.dateJoined = dateJoined;
-
-                    employee.status = status;
-
-                    refreshEmployees();
-
-                    dialog.dispose();
-                });
-
-        buttons.add(cancelButton);
-
-        buttons.add(saveButton);
-
-        root.add(
-                titlePanel,
-                BorderLayout.NORTH);
-
-        root.add(
-                form,
-                BorderLayout.CENTER);
-
-        root.add(
-                buttons,
-                BorderLayout.SOUTH);
-
-        dialog.setContentPane(root);
-
-        dialog.setVisible(true);
-    }
-
-    // ================================================================
-    // VALIDATION
-    // ================================================================
-
-    private boolean validateEmployeeFields(
-            Component parent,
-            String name,
-            String position,
-            String contact,
-            String email,
-            String dateJoined) {
-
-        if (name.isEmpty()
-                || position.isEmpty()
-                || contact.isEmpty()
-                || email.isEmpty()
-                || dateJoined.isEmpty()) {
-
-            showWarning(
-                    parent,
-                    "Please complete all required fields.",
-                    "Invalid Employee");
-
-            return false;
+                builder.append(
+                                value.trim());
         }
 
-        if (!contact.matches(
-                "\\d{11}")) {
+        private String safe(
+                        String value) {
 
-            showWarning(
-                    parent,
-                    "Contact number must contain exactly 11 digits.",
-                    "Invalid Contact Number");
-
-            return false;
+                return value == null
+                                ? ""
+                                : value.trim();
         }
 
-        if (!email.matches(
-                "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+        private String displayValue(
+                        String value) {
 
-            showWarning(
-                    parent,
-                    "Please enter a valid email address.",
-                    "Invalid Email");
+                String normalized = safe(value);
 
-            return false;
+                return normalized.isBlank()
+                                ? "-"
+                                : normalized;
         }
 
-        if (!dateJoined.matches(
-                "\\d{4}-\\d{2}-\\d{2}")) {
+        // ================================================================
+        // TABLE MODEL
+        // ================================================================
 
-            showWarning(
-                    parent,
-                    "Date Joined must use YYYY-MM-DD format.",
-                    "Invalid Date");
+        private class UserTableModel
+                        extends AbstractTableModel {
 
-            return false;
+                private final String[] columns = {
+                                "User ID",
+                                "Name",
+                                "Email",
+                                "Contact",
+                                "Role",
+                                "Firebase UID"
+                };
+
+                @Override
+                public int getRowCount() {
+
+                        return filteredUsers.size();
+                }
+
+                @Override
+                public int getColumnCount() {
+
+                        return columns.length;
+                }
+
+                @Override
+                public String getColumnName(
+                                int column) {
+
+                        return columns[column];
+                }
+
+                @Override
+                public Object getValueAt(
+                                int row,
+                                int column) {
+
+                        UserResponse user = filteredUsers.get(row);
+
+                        return switch (column) {
+
+                                case 0 ->
+                                        user.getId() == null
+                                                        ? "-"
+                                                        : user.getId();
+
+                                case 1 ->
+                                        buildFullName(user);
+
+                                case 2 ->
+                                        displayValue(
+                                                        user.getEmail());
+
+                                case 3 ->
+                                        displayValue(
+                                                        user.getContactNumber());
+
+                                case 4 ->
+                                        safe(user.getRole())
+                                                        .toUpperCase();
+
+                                case 5 ->
+                                        displayValue(
+                                                        user.getFirebaseUid());
+
+                                default ->
+                                        "";
+                        };
+                }
+
+                @Override
+                public boolean isCellEditable(
+                                int row,
+                                int column) {
+
+                        return false;
+                }
         }
 
-        return true;
-    }
+        // ================================================================
+        // ROLE TABLE RENDERER
+        // ================================================================
 
-    private boolean isDuplicateEmployeeId(
-            String employeeId,
-            Employee ignoredEmployee) {
+        private static class RoleCellRenderer
+                        extends DefaultTableCellRenderer {
 
-        for (Employee employee : employees) {
+                @Override
+                public Component getTableCellRendererComponent(
+                                JTable table,
+                                Object value,
+                                boolean selected,
+                                boolean focus,
+                                int row,
+                                int column) {
 
-            if (employee == ignoredEmployee) {
-                continue;
-            }
+                        String role = String.valueOf(value);
 
-            if (employee.employeeId.equalsIgnoreCase(
-                    employeeId)) {
+                        AppBadge.Status badgeStatus;
 
-                return true;
-            }
+                        switch (role) {
+
+                                case "ADMIN" ->
+                                        badgeStatus = AppBadge.Status.DANGER;
+
+                                case "EMPLOYEE" ->
+                                        badgeStatus = AppBadge.Status.SUCCESS;
+
+                                case "COMMUTER" ->
+                                        badgeStatus = AppBadge.Status.NEUTRAL;
+
+                                default ->
+                                        badgeStatus = AppBadge.Status.NEUTRAL;
+                        }
+
+                        AppBadge badge = new AppBadge(
+                                        role,
+                                        badgeStatus);
+
+                        JPanel wrapper = new JPanel(
+                                        new FlowLayout(
+                                                        FlowLayout.LEFT,
+                                                        0,
+                                                        7));
+
+                        wrapper.setBackground(
+                                        selected
+                                                        ? table.getSelectionBackground()
+                                                        : table.getBackground());
+
+                        wrapper.add(badge);
+
+                        return wrapper;
+                }
         }
-
-        return false;
-    }
-
-    private void showWarning(
-            Component parent,
-            String message,
-            String title) {
-
-        JOptionPane.showMessageDialog(
-                parent,
-                message,
-                title,
-                JOptionPane.WARNING_MESSAGE);
-    }
-
-    // ================================================================
-    // EMPLOYEE ID GENERATION
-    // ================================================================
-
-    private String generateEmployeeId() {
-
-        int highest = 0;
-
-        for (Employee employee : employees) {
-
-            try {
-
-                int number = Integer.parseInt(
-                        employee.employeeId
-                                .substring(4));
-
-                highest = Math.max(
-                        highest,
-                        number);
-
-            } catch (NumberFormatException ignored) {
-                // Ignore unexpected IDs.
-            }
-        }
-
-        return String.format(
-                "EMP-%03d",
-                highest + 1);
-    }
-
-    // ================================================================
-    // STATUS
-    // ================================================================
-
-    private void toggleEmployeeStatus() {
-
-        Employee employee = getSelectedEmployee();
-
-        if (employee == null) {
-            return;
-        }
-
-        boolean deactivate = employee.status.equals(
-                "Active");
-
-        if (deactivate) {
-
-            int result = JOptionPane.showConfirmDialog(
-                    this,
-                    "Deactivate "
-                            + employee.employeeId
-                            + " - "
-                            + employee.name
-                            + "?\n\n"
-                            + "This employee will be marked as inactive.",
-                    "Deactivate Employee",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE);
-
-            if (result != JOptionPane.YES_OPTION) {
-
-                return;
-            }
-
-            employee.status = "Inactive";
-
-        } else {
-
-            employee.status = "Active";
-        }
-
-        refreshEmployees();
-    }
-
-    // ================================================================
-    // DELETE
-    // ================================================================
-
-    private void deleteSelectedEmployee() {
-
-        Employee employee = getSelectedEmployee();
-
-        if (employee == null) {
-            return;
-        }
-
-        int result = JOptionPane.showConfirmDialog(
-                this,
-                "Delete "
-                        + employee.employeeId
-                        + " - "
-                        + employee.name
-                        + "?\n\n"
-                        + "This action cannot be undone.",
-                "Delete Employee",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-
-        if (result == JOptionPane.YES_OPTION) {
-
-            employees.remove(employee);
-
-            refreshEmployees();
-        }
-    }
-
-    // ================================================================
-    // FORM FIELD
-    // ================================================================
-
-    private void addFormField(
-            JPanel panel,
-            String labelText,
-            JComponent field) {
-
-        JLabel label = new JLabel(
-                labelText);
-
-        label.setFont(
-                BussinTheme.SMALL_BOLD);
-
-        label.setForeground(
-                BussinTheme.TEXT_SECONDARY);
-
-        panel.add(label);
-
-        field.setPreferredSize(
-                new Dimension(
-                        0,
-                        36));
-
-        panel.add(field);
-    }
-
-    // ================================================================
-    // EMPLOYEE MODEL
-    // ================================================================
-
-    private static class Employee {
-
-        private String employeeId;
-
-        private String name;
-
-        private String position;
-
-        private String contact;
-
-        private String email;
-
-        private String dateJoined;
-
-        private String status;
-
-        private Employee(
-                String employeeId,
-                String name,
-                String position,
-                String contact,
-                String email,
-                String dateJoined,
-                String status) {
-
-            this.employeeId = employeeId;
-
-            this.name = name;
-
-            this.position = position;
-
-            this.contact = contact;
-
-            this.email = email;
-
-            this.dateJoined = dateJoined;
-
-            this.status = status;
-        }
-    }
-
-    // ================================================================
-    // TABLE MODEL
-    // ================================================================
-
-    private class EmployeeTableModel
-            extends AbstractTableModel {
-
-        private final String[] columns = {
-                "Employee ID",
-                "Name",
-                "Position",
-                "Contact",
-                "Email",
-                "Date Joined",
-                "Status"
-        };
-
-        @Override
-        public int getRowCount() {
-
-            return filteredEmployees.size();
-        }
-
-        @Override
-        public int getColumnCount() {
-
-            return columns.length;
-        }
-
-        @Override
-        public String getColumnName(
-                int column) {
-
-            return columns[column];
-        }
-
-        @Override
-        public Object getValueAt(
-                int row,
-                int column) {
-
-            Employee employee = filteredEmployees.get(
-                    row);
-
-            return switch (column) {
-
-                case 0 ->
-                    employee.employeeId;
-
-                case 1 ->
-                    employee.name;
-
-                case 2 ->
-                    employee.position;
-
-                case 3 ->
-                    employee.contact;
-
-                case 4 ->
-                    employee.email;
-
-                case 5 ->
-                    employee.dateJoined;
-
-                case 6 ->
-                    employee.status;
-
-                default ->
-                    "";
-            };
-        }
-
-        @Override
-        public boolean isCellEditable(
-                int row,
-                int column) {
-
-            return false;
-        }
-    }
-
-    // ================================================================
-    // STATUS TABLE RENDERER
-    // ================================================================
-
-    private static class StatusCellRenderer
-            extends DefaultTableCellRenderer {
-
-        @Override
-        public Component getTableCellRendererComponent(
-                JTable table,
-                Object value,
-                boolean selected,
-                boolean focus,
-                int row,
-                int column) {
-
-            String status = String.valueOf(value);
-
-            AppBadge.Status badgeStatus;
-
-            switch (status) {
-
-                case "Active" ->
-                    badgeStatus = AppBadge.Status.SUCCESS;
-
-                case "Inactive" ->
-                    badgeStatus = AppBadge.Status.DANGER;
-
-                default ->
-                    badgeStatus = AppBadge.Status.NEUTRAL;
-            }
-
-            AppBadge badge = new AppBadge(
-                    status,
-                    badgeStatus);
-
-            JPanel wrapper = new JPanel(
-                    new FlowLayout(
-                            FlowLayout.LEFT,
-                            0,
-                            7));
-
-            wrapper.setBackground(
-                    selected
-                            ? table.getSelectionBackground()
-                            : table.getBackground());
-
-            wrapper.add(badge);
-
-            return wrapper;
-        }
-    }
 }

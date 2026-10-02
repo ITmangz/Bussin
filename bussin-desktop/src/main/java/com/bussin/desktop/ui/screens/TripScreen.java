@@ -1,16 +1,5 @@
 package com.bussin.desktop.ui.screens;
 
-import com.bussin.desktop.ui.components.AppBadge;
-import com.bussin.desktop.ui.components.AppButton;
-import com.bussin.desktop.ui.components.AppCard;
-import com.bussin.desktop.ui.components.AppLabel;
-import com.bussin.desktop.ui.components.DataGrid;
-import com.bussin.desktop.ui.components.IconFactory;
-import com.bussin.desktop.ui.components.PageContent;
-import com.bussin.desktop.ui.components.ResponsiveLayouts;
-import com.bussin.desktop.ui.components.SectionHeader;
-import com.bussin.desktop.ui.components.StatCard;
-import com.bussin.desktop.ui.theme.BussinTheme;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dialog;
@@ -33,39 +22,49 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
-import javax.swing.Scrollable;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.Scrollable;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- * Trip Management (frontend only, in-memory mock data).
- *
- * Staff schedule trips, assign a bus and driver, and move each trip through
- * its lifecycle: Scheduled, Boarding, In Progress, Completed. A trip can be
- * cancelled while it is Scheduled or Boarding. Dates are generated relative to
- * today so the mock schedule always has trips for "today" and "tomorrow".
- */
-public class TripScreen extends JPanel {
+import com.bussin.desktop.services.BusApiService;
+import com.bussin.desktop.services.BusApiService.BusResponse;
+import com.bussin.desktop.services.RouteApiService;
+import com.bussin.desktop.services.RouteApiService.RouteResponse;
+import com.bussin.desktop.services.TripApiService;
+import com.bussin.desktop.services.TripApiService.TripResponse;
+import com.bussin.desktop.ui.components.AppBadge;
+import com.bussin.desktop.ui.components.AppButton;
+import com.bussin.desktop.ui.components.AppCard;
+import com.bussin.desktop.ui.components.AppLabel;
+import com.bussin.desktop.ui.components.DataGrid;
+import com.bussin.desktop.ui.components.IconFactory;
+import com.bussin.desktop.ui.components.PageContent;
+import com.bussin.desktop.ui.components.ResponsiveLayouts;
+import com.bussin.desktop.ui.components.SectionHeader;
+import com.bussin.desktop.ui.components.StatCard;
+import com.bussin.desktop.ui.theme.BussinTheme;
 
-    // ================================================================
-    // CONSTANTS
-    // ================================================================
+public class TripScreen extends JPanel {
 
     private static final String ALL_STATUS = "All statuses";
     private static final String ALL_DATES = "All dates";
@@ -79,178 +78,269 @@ public class TripScreen extends JPanel {
     static final String COMPLETED = "Completed";
     static final String CANCELLED = "Cancelled";
 
-    /** Below this width the trip table scrolls horizontally instead of clipping. */
-    private static final int TABLE_MIN_WIDTH = 1120;
+    private static final String API_SCHEDULED = "SCHEDULED";
+    private static final String API_BOARDING = "BOARDING";
+    private static final String API_DEPARTED = "DEPARTED";
+    private static final String API_COMPLETED = "COMPLETED";
+    private static final String API_CANCELLED = "CANCELLED";
 
-    /** Vertical space kept free under the table for the horizontal scrollbar. */
+    private static final int TABLE_MIN_WIDTH = 900;
     private static final int SCROLLBAR_ALLOWANCE = 14;
 
-    private static final DateTimeFormatter DATE_FORMAT =
-            DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.ENGLISH);
-    private static final DateTimeFormatter TIME_FORMAT =
-            DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern(
+            "MMM dd, yyyy",
+            Locale.ENGLISH);
 
-    /** Routes offered when scheduling (active routes from Route Management). */
-    private static final List<RouteOption> ROUTES = List.of(
-            new RouteOption("Manila → Batangas", 150),
-            new RouteOption("Manila → Lucena", 195),
-            new RouteOption("Manila → Bicol", 540),
-            new RouteOption("Manila → Naga", 450));
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern(
+            "hh:mm a",
+            Locale.ENGLISH);
 
-    /** Fleet from Bus Management. Only assignable buses appear in the trip form. */
-    private static final List<BusOption> BUSES = List.of(
-            new BusOption("BUS 102", 50, "Pedro Garcia", true),
-            new BusOption("BUS 108", 50, "Daniel Flores", true),
-            new BusOption("BUS 114", 50, "Mark Villanueva", true),
-            new BusOption("BUS 119", 50, "Sofia Ramos", true),
-            new BusOption("BUS 121", 60, "Carlo Reyes", true),
-            new BusOption("BUS 125", 60, "Unassigned", false));
+    private final List<TripResponse> trips = new ArrayList<>();
 
-    private static final List<String> DRIVERS = List.of(
-            "Pedro Garcia", "Daniel Flores", "Mark Villanueva", "Sofia Ramos", "Carlo Reyes");
+    private final List<RouteResponse> routes = new ArrayList<>();
 
-    // ================================================================
-    // STATE
-    // ================================================================
+    private final List<BusResponse> buses = new ArrayList<>();
 
-    private final List<Trip> trips = new ArrayList<>();
-    private final List<Trip> filteredTrips = new ArrayList<>();
+    private final List<TripResponse> filteredTrips = new ArrayList<>();
 
     private final JTextField searchField = new JTextField();
 
-    private final JComboBox<String> statusFilter = new JComboBox<>(new String[] {
-            ALL_STATUS, SCHEDULED, BOARDING, IN_PROGRESS, COMPLETED, CANCELLED });
+    private final JComboBox<String> statusFilter = new JComboBox<>(
+            new String[] {
+                    ALL_STATUS,
+                    SCHEDULED,
+                    BOARDING,
+                    IN_PROGRESS,
+                    COMPLETED,
+                    CANCELLED
+            });
 
-    private final JComboBox<String> dateFilter = new JComboBox<>(new String[] {
-            ALL_DATES, DATE_TODAY, DATE_TOMORROW, DATE_PAST });
+    private final JComboBox<String> dateFilter = new JComboBox<>(
+            new String[] {
+                    ALL_DATES,
+                    DATE_TODAY,
+                    DATE_TOMORROW,
+                    DATE_PAST
+            });
 
     private final JPanel statsHolder = transparent();
+
     private final JPanel listHolder = transparent();
 
     public TripScreen() {
 
-        initializeData();
+        setBackground(
+                BussinTheme.BACKGROUND);
 
-        setBackground(BussinTheme.BACKGROUND);
-        setLayout(new BorderLayout());
+        setLayout(
+                new BorderLayout());
 
         PageContent page = new PageContent();
 
-        page.addBlock(createHeader(), 0);
-        page.addBlock(statsHolder, 24);
-        page.addBlock(createFilterBar(), 18);
-        page.addBlock(listHolder, 18);
+        page.addBlock(
+                createHeader(),
+                0);
 
-        add(page.inScrollPane(), BorderLayout.CENTER);
+        page.addBlock(
+                statsHolder,
+                24);
 
-        refresh();
+        page.addBlock(
+                createFilterBar(),
+                18);
+
+        page.addBlock(
+                listHolder,
+                18);
+
+        add(
+                page.inScrollPane(),
+                BorderLayout.CENTER);
+
+        renderLoadingState();
+
+        loadData();
     }
-
-    // ================================================================
-    // MOCK DATA
-    // ================================================================
-
-    private void initializeData() {
-
-        // Buses, drivers and IDs match Bus Management so both screens tell one story.
-        addTrip("TR-005", 1, 0, "05:00", "BUS 119", "Sofia Ramos", 44, COMPLETED);
-        addTrip("TR-002", 1, 0, "07:00", "BUS 114", "Mark Villanueva", 42, IN_PROGRESS);
-        addTrip("TR-001", 0, 0, "09:30", "BUS 102", "Pedro Garcia", 36, BOARDING);
-        addTrip("TR-003", 2, 0, "11:30", "BUS 121", "Carlo Reyes", 18, SCHEDULED);
-        addTrip("TR-004", 0, 0, "13:00", "BUS 108", "Daniel Flores", 0, SCHEDULED);
-        addTrip("TR-006", 2, 0, "17:30", "BUS 125", "Unassigned", 0, CANCELLED);
-
-        addTrip("TR-007", 3, 1, "06:00", "BUS 121", "Carlo Reyes", 12, SCHEDULED);
-        addTrip("TR-008", 0, 1, "08:00", "BUS 108", "Daniel Flores", 5, SCHEDULED);
-        addTrip("TR-009", 1, 1, "09:30", "BUS 119", "Sofia Ramos", 0, SCHEDULED);
-
-        addTrip("TR-010", 0, -1, "16:00", "BUS 102", "Pedro Garcia", 47, COMPLETED);
-    }
-
-    private void addTrip(String id, int routeIndex, int dayOffset, String time,
-            String busNumber, String driver, int booked, String status) {
-
-        RouteOption route = ROUTES.get(routeIndex);
-        LocalDateTime departure = LocalDate.now().plusDays(dayOffset).atTime(LocalTime.parse(time));
-
-        trips.add(new Trip(id, route, departure, departure.plusMinutes(route.minutes()),
-                busByNumber(busNumber), driver, booked, status));
-    }
-
-    private static BusOption busByNumber(String number) {
-
-        for (BusOption bus : BUSES) {
-            if (bus.number().equals(number)) {
-                return bus;
-            }
-        }
-
-        return BUSES.get(0);
-    }
-
-    // ================================================================
-    // HEADER + FILTERS
-    // ================================================================
 
     private JPanel createHeader() {
 
-        JPanel header = new JPanel(new BorderLayout(24, 0));
+        JPanel header = new JPanel(
+                new BorderLayout(
+                        24,
+                        0));
+
         header.setOpaque(false);
 
         JPanel text = new JPanel();
+
         text.setOpaque(false);
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.add(AppLabel.title("Trip Management"));
-        text.add(Box.createVerticalStrut(4));
-        text.add(AppLabel.secondary(
-                "Manage scheduled trips, assigned buses, routes, and trip status."));
 
-        AppButton refreshButton = new AppButton("Refresh", AppButton.Variant.SECONDARY);
-        refreshButton.setIcon(IconFactory.create("arrow-right", 16, BussinTheme.TEXT_PRIMARY));
-        refreshButton.addActionListener(e -> refresh());
+        text.setLayout(
+                new BoxLayout(
+                        text,
+                        BoxLayout.Y_AXIS));
 
-        AppButton addButton = new AppButton("Add Trip");
-        addButton.setIcon(IconFactory.create("plus", 16, java.awt.Color.WHITE));
-        addButton.addActionListener(e -> showTripForm(null));
+        text.add(
+                AppLabel.title(
+                        "Trip Management"));
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        text.add(
+                Box.createVerticalStrut(4));
+
+        text.add(
+                AppLabel.secondary(
+                        "Manage scheduled trips, assigned buses, routes, and trip status."));
+
+        AppButton refreshButton = new AppButton(
+                "Refresh",
+                AppButton.Variant.SECONDARY);
+
+        refreshButton.setIcon(
+                IconFactory.create(
+                        "arrow-right",
+                        16,
+                        BussinTheme.TEXT_PRIMARY));
+
+        refreshButton.addActionListener(
+                e -> loadData());
+
+        AppButton addButton = new AppButton(
+                "Add Trip");
+
+        addButton.setIcon(
+                IconFactory.create(
+                        "plus",
+                        16,
+                        java.awt.Color.WHITE));
+
+        addButton.addActionListener(
+                e -> {
+
+                    if (!hasActiveRoute()
+                            || getAssignableBuses(null).isEmpty()) {
+
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "An active route and active bus are required before creating a trip.",
+                                "Unable to Add Trip",
+                                JOptionPane.WARNING_MESSAGE);
+
+                        return;
+                    }
+
+                    showTripForm(null);
+                });
+
+        JPanel actions = new JPanel(
+                new FlowLayout(
+                        FlowLayout.RIGHT,
+                        10,
+                        0));
+
         actions.setOpaque(false);
-        actions.add(refreshButton);
-        actions.add(addButton);
 
-        JPanel actionHolder = new JPanel(new BorderLayout());
+        actions.add(
+                refreshButton);
+
+        actions.add(
+                addButton);
+
+        JPanel actionHolder = new JPanel(
+                new BorderLayout());
+
         actionHolder.setOpaque(false);
-        actionHolder.add(actions, BorderLayout.SOUTH);
 
-        header.add(text, BorderLayout.CENTER);
-        header.add(actionHolder, BorderLayout.EAST);
+        actionHolder.add(
+                actions,
+                BorderLayout.SOUTH);
+
+        header.add(
+                text,
+                BorderLayout.CENTER);
+
+        header.add(
+                actionHolder,
+                BorderLayout.EAST);
 
         return header;
+    }
+
+    private boolean hasActiveRoute() {
+
+        for (RouteResponse route : routes) {
+
+            if (route.isActive()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private JPanel createFilterBar() {
 
         AppCard card = new AppCard();
-        card.setLayout(new ResponsiveLayouts.Grid(4, 180, 12));
 
-        searchField.setToolTipText("Search by trip ID, route, bus, or driver");
-        searchField.putClientProperty("JTextField.placeholderText", "Search trip, route, bus, driver");
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { refresh(); }
-            @Override public void removeUpdate(DocumentEvent e) { refresh(); }
-            @Override public void changedUpdate(DocumentEvent e) { refresh(); }
-        });
+        card.setLayout(
+                new ResponsiveLayouts.Grid(
+                        4,
+                        180,
+                        12));
 
-        statusFilter.addActionListener(e -> refresh());
-        dateFilter.addActionListener(e -> refresh());
+        searchField.setToolTipText(
+                "Search by trip ID, route, or bus");
 
-        AppButton clear = new AppButton("Clear Filters", AppButton.Variant.SECONDARY);
-        clear.addActionListener(e -> clearFilters());
+        searchField.putClientProperty(
+                "JTextField.placeholderText",
+                "Search trip, route, bus");
 
-        card.add(searchField);
-        card.add(statusFilter);
-        card.add(dateFilter);
-        card.add(clear);
+        searchField.getDocument()
+                .addDocumentListener(
+                        new DocumentListener() {
+
+                            @Override
+                            public void insertUpdate(
+                                    DocumentEvent e) {
+                                refresh();
+                            }
+
+                            @Override
+                            public void removeUpdate(
+                                    DocumentEvent e) {
+                                refresh();
+                            }
+
+                            @Override
+                            public void changedUpdate(
+                                    DocumentEvent e) {
+                                refresh();
+                            }
+                        });
+
+        statusFilter.addActionListener(
+                e -> refresh());
+
+        dateFilter.addActionListener(
+                e -> refresh());
+
+        AppButton clear = new AppButton(
+                "Clear Filters",
+                AppButton.Variant.SECONDARY);
+
+        clear.addActionListener(
+                e -> clearFilters());
+
+        card.add(
+                searchField);
+
+        card.add(
+                statusFilter);
+
+        card.add(
+                dateFilter);
+
+        card.add(
+                clear);
 
         return card;
     }
@@ -258,621 +348,1367 @@ public class TripScreen extends JPanel {
     private void clearFilters() {
 
         searchField.setText("");
+
         statusFilter.setSelectedIndex(0);
+
         dateFilter.setSelectedIndex(0);
     }
 
-    // ================================================================
-    // REFRESH / RENDER
-    // ================================================================
+    private void loadData() {
+
+        renderLoadingState();
+
+        new SwingWorker<DataSet, Void>() {
+
+            @Override
+            protected DataSet doInBackground()
+                    throws Exception {
+
+                List<RouteResponse> loadedRoutes = RouteApiService.getAllRoutes();
+
+                List<BusResponse> loadedBuses = BusApiService.getAllBuses();
+
+                List<TripResponse> loadedTrips = TripApiService.getAllTrips();
+
+                return new DataSet(
+                        loadedRoutes,
+                        loadedBuses,
+                        loadedTrips);
+            }
+
+            @Override
+            protected void done() {
+
+                try {
+
+                    DataSet data = get();
+
+                    routes.clear();
+
+                    routes.addAll(
+                            data.routes());
+
+                    buses.clear();
+
+                    buses.addAll(
+                            data.buses());
+
+                    trips.clear();
+
+                    trips.addAll(
+                            data.trips());
+
+                    refresh();
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread().interrupt();
+
+                    showLoadError(
+                            "Loading trips was interrupted.");
+
+                } catch (ExecutionException e) {
+
+                    showLoadError(
+                            getErrorMessage(e));
+                }
+            }
+        }.execute();
+    }
 
     private void refresh() {
 
         filteredTrips.clear();
 
-        for (Trip trip : trips) {
+        for (TripResponse trip : trips) {
+
             if (matches(trip)) {
                 filteredTrips.add(trip);
             }
         }
 
-        filteredTrips.sort(Comparator.comparing((Trip t) -> t.departure));
+        filteredTrips.sort(
+                Comparator.comparing(
+                        TripResponse::getScheduledDeparture));
 
         renderStats();
+
         renderList();
 
         revalidate();
+
         repaint();
     }
 
-    private boolean matches(Trip trip) {
+    private boolean matches(
+            TripResponse trip) {
 
-        String query = searchField.getText().trim().toLowerCase(Locale.ROOT);
+        String query = searchField
+                .getText()
+                .trim()
+                .toLowerCase(
+                        Locale.ROOT);
+
+        String tripId = tripId(trip)
+                .toLowerCase(
+                        Locale.ROOT);
+
+        String route = safe(
+                trip.getRouteIdentifier())
+                .toLowerCase(
+                        Locale.ROOT);
+
+        String bus = safe(
+                trip.getBusPlateNumber())
+                .toLowerCase(
+                        Locale.ROOT);
 
         boolean matchesSearch = query.isEmpty()
-                || trip.id.toLowerCase(Locale.ROOT).contains(query)
-                || trip.route.name().toLowerCase(Locale.ROOT).contains(query)
-                || trip.bus.number().toLowerCase(Locale.ROOT).contains(query)
-                || trip.driver.toLowerCase(Locale.ROOT).contains(query);
+                || tripId.contains(query)
+                || route.contains(query)
+                || bus.contains(query);
 
-        String status = String.valueOf(statusFilter.getSelectedItem());
-        boolean matchesStatus = status.equals(ALL_STATUS) || trip.status.equals(status);
+        String selectedStatus = String.valueOf(
+                statusFilter
+                        .getSelectedItem());
+
+        boolean matchesStatus = selectedStatus.equals(
+                ALL_STATUS)
+                || displayStatus(
+                        trip.getStatus())
+                        .equals(
+                                selectedStatus);
 
         LocalDate today = LocalDate.now();
-        LocalDate day = trip.departure.toLocalDate();
 
-        boolean matchesDate = switch (String.valueOf(dateFilter.getSelectedItem())) {
-            case DATE_TODAY -> day.equals(today);
-            case DATE_TOMORROW -> day.equals(today.plusDays(1));
-            case DATE_PAST -> day.isBefore(today);
-            default -> true;
+        LocalDate day = trip.getScheduledDeparture()
+                .toLocalDate();
+
+        boolean matchesDate = switch (String.valueOf(
+                dateFilter.getSelectedItem())) {
+
+            case DATE_TODAY ->
+                day.equals(today);
+
+            case DATE_TOMORROW ->
+                day.equals(
+                        today.plusDays(1));
+
+            case DATE_PAST ->
+                day.isBefore(today);
+
+            default ->
+                true;
         };
 
-        return matchesSearch && matchesStatus && matchesDate;
+        return matchesSearch
+                && matchesStatus
+                && matchesDate;
     }
 
-    /** Statistics are derived from the trips currently shown in the table. */
     private void renderStats() {
 
         LocalDate today = LocalDate.now();
 
-        int todayCount = 0, scheduled = 0, boarding = 0, inProgress = 0, completed = 0;
+        int todayCount = 0;
+        int scheduled = 0;
+        int boarding = 0;
+        int inProgress = 0;
+        int completed = 0;
 
-        for (Trip t : filteredTrips) {
+        for (TripResponse trip : filteredTrips) {
 
-            if (t.departure.toLocalDate().equals(today)) {
+            if (trip.getScheduledDeparture()
+                    .toLocalDate()
+                    .equals(today)) {
+
                 todayCount++;
             }
 
-            switch (t.status) {
-                case SCHEDULED -> scheduled++;
-                case BOARDING -> boarding++;
-                case IN_PROGRESS -> inProgress++;
-                case COMPLETED -> completed++;
-                default -> { }
+            String status = normalizeStatus(
+                    trip.getStatus());
+
+            if (status.equals(
+                    API_SCHEDULED)) {
+
+                scheduled++;
+
+            } else if (status.equals(
+                    API_BOARDING)) {
+
+                boarding++;
+
+            } else if (status.equals(
+                    API_DEPARTED)) {
+
+                inProgress++;
+
+            } else if (status.equals(
+                    API_COMPLETED)) {
+
+                completed++;
             }
         }
 
         statsHolder.removeAll();
-        statsHolder.setLayout(new ResponsiveLayouts.Grid(4, 200, 14));
-        statsHolder.add(new StatCard("TODAY'S TRIPS", String.valueOf(todayCount),
-                "departing today", "trip"));
-        statsHolder.add(new StatCard("SCHEDULED", String.valueOf(scheduled),
-                "awaiting boarding", "queue"));
-        statsHolder.add(new StatCard("IN PROGRESS", String.valueOf(inProgress),
-                boarding + " boarding now", "bus"));
-        statsHolder.add(new StatCard("COMPLETED", String.valueOf(completed),
-                "finished trips", "seat"));
+
+        statsHolder.setLayout(
+                new ResponsiveLayouts.Grid(
+                        4,
+                        200,
+                        14));
+
+        statsHolder.add(
+                new StatCard(
+                        "TODAY'S TRIPS",
+                        String.valueOf(
+                                todayCount),
+                        "departing today",
+                        "trip"));
+
+        statsHolder.add(
+                new StatCard(
+                        "SCHEDULED",
+                        String.valueOf(
+                                scheduled),
+                        "awaiting boarding",
+                        "queue"));
+
+        statsHolder.add(
+                new StatCard(
+                        "IN PROGRESS",
+                        String.valueOf(
+                                inProgress),
+                        boarding
+                                + " boarding now",
+                        "bus"));
+
+        statsHolder.add(
+                new StatCard(
+                        "COMPLETED",
+                        String.valueOf(
+                                completed),
+                        "finished trips",
+                        "seat"));
     }
 
     private void renderList() {
 
         listHolder.removeAll();
-        listHolder.setLayout(new BorderLayout());
+
+        listHolder.setLayout(
+                new BorderLayout());
 
         AppCard card = new AppCard();
-        card.setLayout(new BorderLayout(0, 10));
-        card.add(new SectionHeader("Trip Schedule",
-                filteredTrips.size() + " of " + trips.size() + " trips shown"),
+
+        card.setLayout(
+                new BorderLayout(
+                        0,
+                        10));
+
+        card.add(
+                new SectionHeader(
+                        "Trip Schedule",
+                        filteredTrips.size()
+                                + " of "
+                                + trips.size()
+                                + " trips shown"),
                 BorderLayout.NORTH);
 
         if (filteredTrips.isEmpty()) {
 
-            card.add(emptyState("No trips match the current filters."), BorderLayout.CENTER);
+            card.add(
+                    emptyState(
+                            trips.isEmpty()
+                                    ? "No trips have been scheduled yet."
+                                    : "No trips match the current filters."),
+                    BorderLayout.CENTER);
 
         } else {
 
             DataGrid grid = new DataGrid(
-                    new String[] { "Trip", "Route", "Departure", "Arrival", "Bus", "Driver",
-                            "Booked", "Seats Left", "Status", "Actions" },
-                    new double[] { 0.8, 1.7, 1.1, 1.1, 0.8, 1.3, 0.8, 0.9, 1.1, 2.6 });
+                    new String[] {
+                            "Trip",
+                            "Route",
+                            "Departure",
+                            "Arrival",
+                            "Bus",
+                            "Status",
+                            "Actions"
+                    },
+                    new double[] {
+                            0.8,
+                            1.7,
+                            1.2,
+                            1.2,
+                            1.0,
+                            1.1,
+                            2.8
+                    });
 
-            for (Trip t : filteredTrips) {
+            for (TripResponse trip : filteredTrips) {
 
                 grid.addRow(
-                        DataGrid.strong(t.id),
-                        DataGrid.text(t.route.name()),
-                        twoLine(t.departure.format(TIME_FORMAT), t.departure.format(DATE_FORMAT)),
-                        twoLine(t.arrival.format(TIME_FORMAT), arrivalNote(t)),
-                        DataGrid.text(t.bus.number()),
-                        DataGrid.text(t.driver),
-                        DataGrid.text(t.booked + " / " + t.capacity()),
-                        availableCell(t),
-                        new AppBadge(t.status, badgeFor(t.status)),
-                        createActionCell(t));
+                        DataGrid.strong(
+                                tripId(trip)),
+
+                        DataGrid.text(
+                                safe(
+                                        trip.getRouteIdentifier())),
+
+                        twoLine(
+                                trip.getScheduledDeparture()
+                                        .format(
+                                                TIME_FORMAT),
+                                trip.getScheduledDeparture()
+                                        .format(
+                                                DATE_FORMAT)),
+
+                        twoLine(
+                                trip.getScheduledArrival()
+                                        .format(
+                                                TIME_FORMAT),
+                                arrivalNote(trip)),
+
+                        DataGrid.text(
+                                safe(
+                                        trip.getBusPlateNumber())),
+
+                        new AppBadge(
+                                displayStatus(
+                                        trip.getStatus()),
+                                badgeFor(
+                                        trip.getStatus())),
+
+                        createActionCell(trip));
             }
 
-            card.add(new HorizontalScrollHolder(grid), BorderLayout.CENTER);
+            card.add(
+                    new HorizontalScrollHolder(
+                            grid),
+                    BorderLayout.CENTER);
         }
 
-        listHolder.add(card, BorderLayout.CENTER);
+        listHolder.add(
+                card,
+                BorderLayout.CENTER);
     }
 
-    private JComponent availableCell(Trip t) {
+    private JPanel createActionCell(
+            TripResponse trip) {
 
-        int free = t.capacity() - t.booked;
+        JPanel actions = new JPanel(
+                new FlowLayout(
+                        FlowLayout.LEFT,
+                        6,
+                        0));
 
-        if (free == 0 && t.isActive()) {
-            return DataGrid.colored("Full", BussinTheme.WARNING);
-        }
-
-        return DataGrid.text(String.valueOf(free));
-    }
-
-    private static String arrivalNote(Trip t) {
-
-        return t.arrival.toLocalDate().equals(t.departure.toLocalDate())
-                ? "same day"
-                : "+1 day";
-    }
-
-    private JPanel createActionCell(Trip t) {
-
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         actions.setOpaque(false);
 
-        AppButton view = small("View", AppButton.Variant.SECONDARY);
-        view.setToolTipText("View trip details");
-        view.addActionListener(e -> showDetails(t));
+        AppButton view = small(
+                "View",
+                AppButton.Variant.SECONDARY);
+
+        view.addActionListener(
+                e -> showDetails(trip));
+
         actions.add(view);
 
-        if (t.canEdit()) {
-            AppButton edit = small("Edit", AppButton.Variant.SECONDARY);
-            edit.setToolTipText("Edit trip");
-            edit.addActionListener(e -> showTripForm(t));
+        if (canEdit(trip)) {
+
+            AppButton edit = small(
+                    "Edit",
+                    AppButton.Variant.SECONDARY);
+
+            edit.addActionListener(
+                    e -> showTripForm(trip));
+
             actions.add(edit);
         }
 
-        String next = nextStepShort(t);
+        String next = nextStepShort(trip);
 
         if (next != null) {
-            AppButton step = small(next, AppButton.Variant.PRIMARY);
-            step.setToolTipText(nextStepLabel(t));
-            step.addActionListener(e -> advance(t));
+
+            AppButton step = small(
+                    next,
+                    AppButton.Variant.PRIMARY);
+
+            step.setToolTipText(
+                    nextStepLabel(trip));
+
+            step.addActionListener(
+                    e -> advance(trip));
+
             actions.add(step);
         }
 
-        if (t.canCancel()) {
-            AppButton cancel = small("Cancel", AppButton.Variant.GHOST);
-            cancel.setToolTipText("Cancel trip");
-            cancel.addActionListener(e -> cancelTrip(t, true));
+        if (canCancel(trip)) {
+
+            AppButton cancel = small(
+                    "Cancel",
+                    AppButton.Variant.GHOST);
+
+            cancel.addActionListener(
+                    e -> cancelTrip(
+                            trip,
+                            true));
+
             actions.add(cancel);
+        }
+
+        if (canDelete(trip)) {
+
+            AppButton delete = small(
+                    "Delete",
+                    AppButton.Variant.DANGER);
+
+            delete.addActionListener(
+                    e -> deleteTrip(trip));
+
+            actions.add(delete);
         }
 
         return actions;
     }
 
-    // ================================================================
-    // STATUS WORKFLOW
-    // ================================================================
+    private String nextStepLabel(
+            TripResponse trip) {
 
-    /** Scheduled -> Boarding (today or earlier only) -> In Progress -> Completed. */
-    private static String nextStepLabel(Trip t) {
+        String status = normalizeStatus(
+                trip.getStatus());
 
-        return switch (t.status) {
-            case SCHEDULED -> t.canStartBoarding() ? "Start Boarding" : null;
-            case BOARDING -> "Start Trip";
-            case IN_PROGRESS -> "Complete Trip";
-            default -> null;
-        };
+        if (status.equals(
+                API_SCHEDULED)) {
+
+            return canStartBoarding(trip)
+                    ? "Start Boarding"
+                    : null;
+        }
+
+        if (status.equals(
+                API_BOARDING)) {
+
+            return "Start Trip";
+        }
+
+        if (status.equals(
+                API_DEPARTED)) {
+
+            return "Complete Trip";
+        }
+
+        return null;
     }
 
-    private static String nextStepShort(Trip t) {
+    private String nextStepShort(
+            TripResponse trip) {
 
-        return switch (t.status) {
-            case SCHEDULED -> t.canStartBoarding() ? "Board" : null;
-            case BOARDING -> "Depart";
-            case IN_PROGRESS -> "Complete";
-            default -> null;
-        };
+        String status = normalizeStatus(
+                trip.getStatus());
+
+        if (status.equals(
+                API_SCHEDULED)) {
+
+            return canStartBoarding(trip)
+                    ? "Board"
+                    : null;
+        }
+
+        if (status.equals(
+                API_BOARDING)) {
+
+            return "Depart";
+        }
+
+        if (status.equals(
+                API_DEPARTED)) {
+
+            return "Complete";
+        }
+
+        return null;
     }
 
-    /** Moves the trip to its next status. Returns false when no step applies. */
-    boolean advance(Trip t) {
+    boolean advance(
+            TripResponse trip) {
 
-        if (nextStepLabel(t) == null) {
+        String current = normalizeStatus(
+                trip.getStatus());
+
+        String next;
+
+        if (current.equals(
+                API_SCHEDULED)) {
+
+            if (!canStartBoarding(trip)) {
+                return false;
+            }
+
+            next = API_BOARDING;
+
+        } else if (current.equals(
+                API_BOARDING)) {
+
+            next = API_DEPARTED;
+
+        } else if (current.equals(
+                API_DEPARTED)) {
+
+            next = API_COMPLETED;
+
+        } else {
+
             return false;
         }
 
-        switch (t.status) {
-            case SCHEDULED -> t.status = BOARDING;
-            case BOARDING -> t.status = IN_PROGRESS;
-            case IN_PROGRESS -> t.status = COMPLETED;
-            default -> {
-                return false;
-            }
-        }
-
-        refresh();
+        updateStatus(
+                trip,
+                next);
 
         return true;
     }
 
-    /** Cancels a Scheduled or Boarding trip; asks for confirmation when requested. */
-    boolean cancelTrip(Trip t, boolean confirm) {
+    boolean cancelTrip(
+            TripResponse trip,
+            boolean confirm) {
 
-        if (!t.canCancel()) {
+        if (!canCancel(trip)) {
             return false;
         }
 
         if (confirm) {
 
-            int result = JOptionPane.showConfirmDialog(this,
-                    "Cancel " + t.id + " (" + t.route.name() + ", "
-                            + t.departure.format(TIME_FORMAT) + ")?\nBooked seats will need to be re-accommodated.",
+            int result = JOptionPane.showConfirmDialog(
+                    this,
+                    "Cancel "
+                            + tripId(trip)
+                            + " ("
+                            + safe(
+                                    trip.getRouteIdentifier())
+                            + ", "
+                            + trip.getScheduledDeparture()
+                                    .format(
+                                            TIME_FORMAT)
+                            + ")?",
                     "Cancel Trip",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
 
             if (result != JOptionPane.YES_OPTION) {
+
                 return false;
             }
         }
 
-        t.status = CANCELLED;
-
-        refresh();
+        updateStatus(
+                trip,
+                API_CANCELLED);
 
         return true;
     }
 
-    private static AppBadge.Status badgeFor(String status) {
+    private void updateStatus(
+            TripResponse trip,
+            String status) {
 
-        return switch (status) {
-            case BOARDING -> AppBadge.Status.WARNING;
-            case IN_PROGRESS -> AppBadge.Status.INFO;
-            case COMPLETED -> AppBadge.Status.SUCCESS;
-            case CANCELLED -> AppBadge.Status.DANGER;
-            default -> AppBadge.Status.NEUTRAL;
-        };
+        new SwingWorker<TripResponse, Void>() {
+
+            @Override
+            protected TripResponse doInBackground()
+                    throws Exception {
+
+                return TripApiService.updateTrip(
+                        trip.getId(),
+                        trip.getBusId(),
+                        trip.getRouteId(),
+                        trip.getScheduledDeparture(),
+                        trip.getScheduledArrival(),
+                        status);
+            }
+
+            @Override
+            protected void done() {
+
+                try {
+
+                    TripResponse updated = get();
+
+                    replaceTrip(
+                            updated);
+
+                    refresh();
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread()
+                            .interrupt();
+
+                    showError(
+                            "Trip update was interrupted.");
+
+                } catch (ExecutionException e) {
+
+                    showError(
+                            getErrorMessage(e));
+                }
+            }
+        }.execute();
     }
 
-    // ================================================================
-    // TRIP DETAILS DIALOG
-    // ================================================================
+    private void deleteTrip(
+            TripResponse trip) {
 
-    private void showDetails(Trip t) {
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                "Delete "
+                        + tripId(trip)
+                        + " permanently?",
+                "Delete Trip",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
 
-        JDialog dialog = createDialog("Trip Details");
+        if (result != JOptionPane.YES_OPTION) {
 
-        JPanel root = new JPanel(new BorderLayout(0, 14));
-        root.setBackground(BussinTheme.BACKGROUND);
-        root.setBorder(BorderFactory.createEmptyBorder(22, 24, 18, 24));
+            return;
+        }
 
-        // Title row: trip ID, route, status.
+        new SwingWorker<Void, Void>() {
+
+            @Override
+            protected Void doInBackground()
+                    throws Exception {
+
+                TripApiService.deleteTrip(
+                        trip.getId());
+
+                return null;
+            }
+
+            @Override
+            protected void done() {
+
+                try {
+
+                    get();
+
+                    trips.removeIf(
+                            existing -> existing.getId()
+                                    .equals(
+                                            trip.getId()));
+
+                    refresh();
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread()
+                            .interrupt();
+
+                    showError(
+                            "Trip deletion was interrupted.");
+
+                } catch (ExecutionException e) {
+
+                    showError(
+                            getErrorMessage(e));
+                }
+            }
+        }.execute();
+    }
+
+    private void showDetails(
+            TripResponse trip) {
+
+        JDialog dialog = createDialog(
+                "Trip Details");
+
+        JPanel root = new JPanel(
+                new BorderLayout(
+                        0,
+                        14));
+
+        root.setBackground(
+                BussinTheme.BACKGROUND);
+
+        root.setBorder(
+                BorderFactory.createEmptyBorder(
+                        22,
+                        24,
+                        18,
+                        24));
+
         JPanel titleText = new JPanel();
-        titleText.setOpaque(false);
-        titleText.setLayout(new BoxLayout(titleText, BoxLayout.Y_AXIS));
 
-        JLabel id = new JLabel(t.id);
-        id.setFont(BussinTheme.SECTION_TITLE);
-        id.setForeground(BussinTheme.TEXT_PRIMARY);
+        titleText.setOpaque(false);
+
+        titleText.setLayout(
+                new BoxLayout(
+                        titleText,
+                        BoxLayout.Y_AXIS));
+
+        JLabel id = new JLabel(
+                tripId(trip));
+
+        id.setFont(
+                BussinTheme.SECTION_TITLE);
+
+        id.setForeground(
+                BussinTheme.TEXT_PRIMARY);
+
         titleText.add(id);
 
-        JLabel route = new JLabel(t.route.name());
-        route.setFont(BussinTheme.BODY);
-        route.setForeground(BussinTheme.TEXT_SECONDARY);
+        JLabel route = new JLabel(
+                safe(
+                        trip.getRouteIdentifier()));
+
+        route.setFont(
+                BussinTheme.BODY);
+
+        route.setForeground(
+                BussinTheme.TEXT_SECONDARY);
+
         titleText.add(route);
 
-        JPanel badgeHolder = new JPanel(new BorderLayout());
+        JPanel badgeHolder = new JPanel(
+                new BorderLayout());
+
         badgeHolder.setOpaque(false);
-        badgeHolder.add(new AppBadge(t.status, badgeFor(t.status)), BorderLayout.NORTH);
 
-        JPanel title = new JPanel(new BorderLayout(12, 0));
+        badgeHolder.add(
+                new AppBadge(
+                        displayStatus(
+                                trip.getStatus()),
+                        badgeFor(
+                                trip.getStatus())),
+                BorderLayout.NORTH);
+
+        JPanel title = new JPanel(
+                new BorderLayout(
+                        12,
+                        0));
+
         title.setOpaque(false);
-        title.add(titleText, BorderLayout.CENTER);
-        title.add(badgeHolder, BorderLayout.EAST);
 
-        // Fact grid.
-        int free = t.capacity() - t.booked;
-        int occupancy = t.capacity() == 0 ? 0 : Math.round(t.booked * 100f / t.capacity());
-        Duration travel = Duration.between(t.departure, t.arrival);
+        title.add(
+                titleText,
+                BorderLayout.CENTER);
+
+        title.add(
+                badgeHolder,
+                BorderLayout.EAST);
+
+        Duration travel = Duration.between(
+                trip.getScheduledDeparture(),
+                trip.getScheduledArrival());
 
         AppCard facts = new AppCard();
-        facts.setLayout(new GridBagLayout());
+
+        facts.setLayout(
+                new GridBagLayout());
 
         int row = 0;
-        row = addFact(facts, row, "DATE", t.departure.format(DATE_FORMAT), "DURATION", formatDuration(travel));
-        row = addFact(facts, row, "DEPARTURE", t.departure.format(TIME_FORMAT),
-                "EST. ARRIVAL", t.arrival.format(TIME_FORMAT) + (arrivalNote(t).contains("+1") ? "  (+1 day)" : ""));
-        row = addFact(facts, row, "BUS", t.bus.number() + "  ·  " + t.bus.capacity() + " seats",
-                "DRIVER", t.driver);
-        row = addFact(facts, row, "BOOKED", t.booked + " of " + t.capacity(),
-                "AVAILABLE", String.valueOf(free));
 
-        JProgressBar occupancyBar = new JProgressBar(0, 100);
-        occupancyBar.setValue(occupancy);
-        occupancyBar.setStringPainted(true);
-        occupancyBar.setString(occupancy + "% occupied");
-        occupancyBar.setFont(BussinTheme.SMALL_BOLD);
-        occupancyBar.setForeground(BussinTheme.RED);
+        row = addFact(
+                facts,
+                row,
+                "DATE",
+                trip.getScheduledDeparture()
+                        .format(
+                                DATE_FORMAT),
+                "DURATION",
+                formatDuration(
+                        travel));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        gbc.gridwidth = 2;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(4, 0, 0, 0);
-        facts.add(occupancyBar, gbc);
+        row = addFact(
+                facts,
+                row,
+                "DEPARTURE",
+                trip.getScheduledDeparture()
+                        .format(
+                                TIME_FORMAT),
+                "EST. ARRIVAL",
+                trip.getScheduledArrival()
+                        .format(
+                                TIME_FORMAT)
+                        + (arrivalNote(trip)
+                                .contains("+1")
+                                        ? "  (+1 day)"
+                                        : ""));
 
-        // Booking information (mock, no cross-screen sync).
-        JLabel bookingNote = new JLabel("<html>" + bookingSummary(t, free)
-                + " Passenger-level bookings are managed in Booking Management.</html>");
-        bookingNote.setFont(BussinTheme.SMALL);
-        bookingNote.setForeground(BussinTheme.TEXT_MUTED);
+        row = addFact(
+                facts,
+                row,
+                "BUS",
+                safe(
+                        trip.getBusPlateNumber()),
+                "ROUTE",
+                safe(
+                        trip.getRouteIdentifier()));
 
-        JPanel body = new JPanel(new BorderLayout(0, 10));
+        addFact(
+                facts,
+                row,
+                "TRIP ID",
+                tripId(trip),
+                "STATUS",
+                displayStatus(
+                        trip.getStatus()));
+
+        JPanel body = new JPanel(
+                new BorderLayout(
+                        0,
+                        10));
+
         body.setOpaque(false);
-        body.add(facts, BorderLayout.CENTER);
-        body.add(bookingNote, BorderLayout.SOUTH);
 
-        // Actions: only what makes sense for this status.
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        body.add(
+                facts,
+                BorderLayout.CENTER);
+
+        JLabel note = new JLabel(
+                "<html>Passenger bookings and queue information "
+                        + "are managed separately and are not part of Trip Management.</html>");
+
+        note.setFont(
+                BussinTheme.SMALL);
+
+        note.setForeground(
+                BussinTheme.TEXT_MUTED);
+
+        body.add(
+                note,
+                BorderLayout.SOUTH);
+
+        JPanel buttons = new JPanel(
+                new FlowLayout(
+                        FlowLayout.RIGHT,
+                        8,
+                        0));
+
         buttons.setOpaque(false);
 
-        AppButton close = new AppButton("Close", AppButton.Variant.SECONDARY);
-        close.addActionListener(e -> dialog.dispose());
+        AppButton close = new AppButton(
+                "Close",
+                AppButton.Variant.SECONDARY);
+
+        close.addActionListener(
+                e -> dialog.dispose());
+
         buttons.add(close);
 
-        if (t.canEdit()) {
-            AppButton edit = new AppButton("Edit", AppButton.Variant.SECONDARY);
-            edit.addActionListener(e -> {
-                dialog.dispose();
-                showTripForm(t);
-            });
+        if (canEdit(trip)) {
+
+            AppButton edit = new AppButton(
+                    "Edit",
+                    AppButton.Variant.SECONDARY);
+
+            edit.addActionListener(
+                    e -> {
+
+                        dialog.dispose();
+
+                        showTripForm(trip);
+                    });
+
             buttons.add(edit);
         }
 
-        if (t.canCancel()) {
-            AppButton cancel = new AppButton("Cancel Trip", AppButton.Variant.DANGER);
-            cancel.addActionListener(e -> {
-                if (cancelTrip(t, true)) {
-                    dialog.dispose();
-                }
-            });
+        if (canCancel(trip)) {
+
+            AppButton cancel = new AppButton(
+                    "Cancel Trip",
+                    AppButton.Variant.DANGER);
+
+            cancel.addActionListener(
+                    e -> {
+
+                        if (cancelTrip(
+                                trip,
+                                true)) {
+
+                            dialog.dispose();
+                        }
+                    });
+
             buttons.add(cancel);
         }
 
-        String next = nextStepLabel(t);
+        String next = nextStepLabel(trip);
 
         if (next != null) {
+
             AppButton step = new AppButton(next);
-            step.addActionListener(e -> {
-                if (advance(t)) {
-                    dialog.dispose();
-                }
-            });
+
+            step.addActionListener(
+                    e -> {
+
+                        advance(trip);
+
+                        dialog.dispose();
+                    });
+
             buttons.add(step);
         }
 
-        root.add(title, BorderLayout.NORTH);
-        root.add(body, BorderLayout.CENTER);
-        root.add(buttons, BorderLayout.SOUTH);
+        root.add(
+                title,
+                BorderLayout.NORTH);
 
-        showDialog(dialog, root, 520);
+        root.add(
+                body,
+                BorderLayout.CENTER);
+
+        root.add(
+                buttons,
+                BorderLayout.SOUTH);
+
+        showDialog(
+                dialog,
+                root,
+                520);
     }
 
-    private static String bookingSummary(Trip t, int free) {
-
-        if (t.status.equals(CANCELLED)) {
-            return t.booked == 0
-                    ? "No seats were booked when this trip was cancelled."
-                    : t.booked + " booked seat(s) need to be re-accommodated.";
-        }
-
-        if (free == 0) {
-            return "This trip is fully booked.";
-        }
-
-        return t.booked + " seat(s) booked, " + free + " still available.";
-    }
-
-    private static String formatDuration(Duration d) {
-
-        long hours = d.toHours();
-        long minutes = d.toMinutesPart();
-
-        return minutes == 0 ? hours + "h" : hours + "h " + minutes + "m";
-    }
-
-    private int addFact(JPanel panel, int row, String leftLabel, String leftValue,
-            String rightLabel, String rightValue) {
-
-        addFactCell(panel, 0, row, leftLabel, leftValue);
-        addFactCell(panel, 1, row, rightLabel, rightValue);
-
-        return row + 1;
-    }
-
-    private void addFactCell(JPanel panel, int column, int row, String label, String value) {
-
-        JLabel title = new JLabel(label);
-        title.setFont(BussinTheme.SMALL_BOLD);
-        title.setForeground(BussinTheme.TEXT_MUTED);
-
-        JLabel text = new JLabel(value);
-        text.setFont(BussinTheme.BODY);
-        text.setForeground(BussinTheme.TEXT_PRIMARY);
-
-        JPanel cell = new JPanel();
-        cell.setOpaque(false);
-        cell.setLayout(new BoxLayout(cell, BoxLayout.Y_AXIS));
-        cell.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 12));
-        cell.add(title);
-        cell.add(Box.createVerticalStrut(3));
-        cell.add(text);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = column;
-        gbc.gridy = row;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.WEST;
-
-        panel.add(cell, gbc);
-    }
-
-    // ================================================================
-    // ADD / EDIT TRIP DIALOG
-    // ================================================================
-
-    /** Opens the trip form. Pass null to add a new trip. */
-    private void showTripForm(Trip editing) {
+    private void showTripForm(
+            TripResponse editing) {
 
         boolean isNew = editing == null;
 
-        JDialog dialog = createDialog(isNew ? "Add Trip" : "Edit Trip");
+        JDialog dialog = createDialog(
+                isNew
+                        ? "Add Trip"
+                        : "Edit Trip");
 
-        JComboBox<RouteOption> routeBox = new JComboBox<>(ROUTES.toArray(new RouteOption[0]));
+        List<RouteResponse> availableRoutes = new ArrayList<>();
 
-        List<BusOption> assignable = new ArrayList<>();
-        for (BusOption bus : BUSES) {
-            if (bus.assignable()) {
-                assignable.add(bus);
+        for (RouteResponse route : routes) {
+
+            if (route.isActive()
+                    || (!isNew
+                            && route.getId()
+                                    .equals(
+                                            editing.getRouteId()))) {
+
+                availableRoutes.add(route);
             }
         }
-        JComboBox<BusOption> busBox = new JComboBox<>(assignable.toArray(new BusOption[0]));
-        JComboBox<String> driverBox = new JComboBox<>(DRIVERS.toArray(new String[0]));
 
-        LocalDate startDate = isNew ? LocalDate.now() : editing.departure.toLocalDate();
-        LocalTime startTime = isNew ? LocalTime.of(8, 0) : editing.departure.toLocalTime();
+        List<BusResponse> availableBuses = getAssignableBuses(
+                isNew
+                        ? null
+                        : editing.getBusId());
 
-        JSpinner dateSpinner = dateSpinner(startDate);
-        JSpinner departSpinner = timeSpinner(startTime);
-        JSpinner arriveSpinner = timeSpinner(startTime.plusMinutes(ROUTES.get(0).minutes()));
+        JComboBox<RouteResponse> routeBox = new JComboBox<>(
+                availableRoutes.toArray(
+                        new RouteResponse[0]));
+
+        JComboBox<BusResponse> busBox = new JComboBox<>(
+                availableBuses.toArray(
+                        new BusResponse[0]));
+
+        configureRouteRenderer(
+                routeBox);
+
+        configureBusRenderer(
+                busBox);
+
+        JComboBox<String> statusBox = new JComboBox<>(
+                new String[] {
+                        SCHEDULED,
+                        BOARDING,
+                        IN_PROGRESS,
+                        COMPLETED,
+                        CANCELLED
+                });
+
+        LocalDate startDate = isNew
+                ? LocalDate.now()
+                : editing
+                        .getScheduledDeparture()
+                        .toLocalDate();
+
+        LocalTime startTime = isNew
+                ? LocalTime.of(
+                        8,
+                        0)
+                : editing
+                        .getScheduledDeparture()
+                        .toLocalTime();
+
+        JSpinner dateSpinner = dateSpinner(
+                startDate);
+
+        JSpinner departSpinner = timeSpinner(
+                startTime);
+
+        LocalTime initialArrival = isNew
+                ? startTime.plusMinutes(
+                        selectedRouteDuration(
+                                availableRoutes))
+                : editing
+                        .getScheduledArrival()
+                        .toLocalTime();
+
+        JSpinner arriveSpinner = timeSpinner(
+                initialArrival);
 
         JLabel arrivalHint = new JLabel(" ");
-        arrivalHint.setFont(BussinTheme.SMALL);
-        arrivalHint.setForeground(BussinTheme.TEXT_MUTED);
+
+        arrivalHint.setFont(
+                BussinTheme.SMALL);
+
+        arrivalHint.setForeground(
+                BussinTheme.TEXT_MUTED);
 
         JLabel errorLabel = new JLabel(" ");
-        errorLabel.setFont(BussinTheme.SMALL_BOLD);
-        errorLabel.setForeground(BussinTheme.DANGER);
 
-        if (isNew) {
-            routeBox.setSelectedIndex(0);
-            busBox.setSelectedIndex(0);
-            driverBox.setSelectedItem(assignable.get(0).driver());
-        } else {
-            routeBox.setSelectedItem(editing.route);
-            busBox.setSelectedItem(editing.bus);
-            driverBox.setSelectedItem(editing.driver);
-            arriveSpinner.setValue(toDate(editing.arrival.toLocalTime()));
+        errorLabel.setFont(
+                BussinTheme.SMALL_BOLD);
+
+        errorLabel.setForeground(
+                BussinTheme.DANGER);
+
+        if (!isNew) {
+
+            selectRoute(
+                    routeBox,
+                    editing.getRouteId());
+
+            selectBus(
+                    busBox,
+                    editing.getBusId());
+
+            statusBox.setSelectedItem(
+                    displayStatus(
+                            editing.getStatus()));
         }
 
         Runnable estimateArrival = () -> {
-            RouteOption route = (RouteOption) routeBox.getSelectedItem();
-            LocalTime departs = timeOf(departSpinner);
-            arriveSpinner.setValue(toDate(departs.plusMinutes(route.minutes())));
-            arrivalHint.setText("Estimated from route travel time (" + formatDuration(
-                    Duration.ofMinutes(route.minutes())) + "). Adjust if needed.");
+
+            RouteResponse route = (RouteResponse) routeBox
+                    .getSelectedItem();
+
+            if (route == null) {
+                return;
+            }
+
+            LocalTime departure = timeOf(
+                    departSpinner);
+
+            int duration = route.getDurationMinutes() == null
+                    ? 0
+                    : route
+                            .getDurationMinutes();
+
+            arriveSpinner.setValue(
+                    toDate(
+                            departure.plusMinutes(
+                                    duration)));
+
+            arrivalHint.setText(
+                    "Estimated from route travel time ("
+                            + formatDuration(
+                                    Duration.ofMinutes(
+                                            duration))
+                            + "). Adjust if needed.");
         };
 
         if (isNew) {
             estimateArrival.run();
         } else {
-            arrivalHint.setText("Adjust the arrival time if the schedule changes.");
+            arrivalHint.setText(
+                    "Adjust the arrival time if the schedule changes.");
         }
 
-        routeBox.addActionListener(e -> estimateArrival.run());
-        departSpinner.addChangeListener(e -> estimateArrival.run());
-        busBox.addActionListener(e -> {
-            BusOption bus = (BusOption) busBox.getSelectedItem();
-            if (bus != null) {
-                driverBox.setSelectedItem(bus.driver());
-            }
-        });
+        routeBox.addActionListener(
+                e -> estimateArrival.run());
 
-        // ---- form layout: labels above fields, two columns ----
-        JPanel form = new JPanel(new GridBagLayout());
+        departSpinner.addChangeListener(
+                e -> estimateArrival.run());
+
+        JPanel form = new JPanel(
+                new GridBagLayout());
+
         form.setOpaque(false);
 
         int row = 0;
-        addFormRow(form, row++, "Route *", routeBox, null, null);
-        addFormRow(form, row++, "Date *", dateSpinner, "Departure time *", departSpinner);
-        addFormRow(form, row++, "Est. arrival *", arriveSpinner, "Status", statusLabel(isNew ? SCHEDULED : editing.status));
-        addFormRow(form, row++, "Bus *", busBox, "Driver *", driverBox);
+
+        addFormRow(
+                form,
+                row++,
+                "Route *",
+                routeBox,
+                null,
+                null);
+
+        addFormRow(
+                form,
+                row++,
+                "Date *",
+                dateSpinner,
+                "Departure time *",
+                departSpinner);
+
+        addFormRow(
+                form,
+                row++,
+                "Est. arrival *",
+                arriveSpinner,
+                "Status",
+                statusBox);
+
+        addFormRow(
+                form,
+                row++,
+                "Bus *",
+                busBox,
+                null,
+                null);
 
         GridBagConstraints hintConstraints = new GridBagConstraints();
+
         hintConstraints.gridx = 0;
         hintConstraints.gridy = row;
         hintConstraints.gridwidth = 2;
         hintConstraints.weightx = 1;
         hintConstraints.anchor = GridBagConstraints.WEST;
         hintConstraints.fill = GridBagConstraints.HORIZONTAL;
-        hintConstraints.insets = new Insets(0, 0, 6, 0);
-        form.add(arrivalHint, hintConstraints);
+        hintConstraints.insets = new Insets(
+                0,
+                0,
+                6,
+                0);
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        form.add(
+                arrivalHint,
+                hintConstraints);
+
+        JPanel buttons = new JPanel(
+                new FlowLayout(
+                        FlowLayout.RIGHT,
+                        8,
+                        0));
+
         buttons.setOpaque(false);
 
-        AppButton cancelButton = new AppButton("Cancel", AppButton.Variant.SECONDARY);
-        cancelButton.addActionListener(e -> dialog.dispose());
+        AppButton cancelButton = new AppButton(
+                "Cancel",
+                AppButton.Variant.SECONDARY);
 
-        AppButton saveButton = new AppButton(isNew ? "Add Trip" : "Save Changes");
-        saveButton.addActionListener(e -> {
+        cancelButton.addActionListener(
+                e -> dialog.dispose());
 
-            RouteOption route = (RouteOption) routeBox.getSelectedItem();
-            BusOption bus = (BusOption) busBox.getSelectedItem();
-            String driver = (String) driverBox.getSelectedItem();
+        AppButton saveButton = new AppButton(
+                isNew
+                        ? "Add Trip"
+                        : "Save Changes");
 
-            String error = validateTrip(editing, route, dateOf(dateSpinner), timeOf(departSpinner),
-                    timeOf(arriveSpinner), bus, driver);
+        saveButton.addActionListener(
+                e -> {
 
-            if (error != null) {
-                errorLabel.setText(error);
-                dialog.pack();
-                return;
-            }
+                    RouteResponse route = (RouteResponse) routeBox
+                            .getSelectedItem();
 
-            LocalDateTime departure = dateOf(dateSpinner).atTime(timeOf(departSpinner));
-            LocalDateTime arrival = arrivalFor(departure, timeOf(arriveSpinner));
+                    BusResponse bus = (BusResponse) busBox
+                            .getSelectedItem();
 
-            if (isNew) {
-                trips.add(new Trip(generateTripId(), route, departure, arrival, bus, driver, 0, SCHEDULED));
-            } else {
-                editing.route = route;
-                editing.departure = departure;
-                editing.arrival = arrival;
-                editing.bus = bus;
-                editing.driver = driver;
-            }
+                    LocalDate date = dateOf(
+                            dateSpinner);
 
-            refresh();
-            dialog.dispose();
-        });
+                    LocalTime departureTime = timeOf(
+                            departSpinner);
 
-        buttons.add(cancelButton);
-        buttons.add(saveButton);
+                    LocalTime arrivalTime = timeOf(
+                            arriveSpinner);
 
-        JPanel south = new JPanel(new BorderLayout(0, 8));
+                    String status = apiStatus(
+                            String.valueOf(
+                                    statusBox
+                                            .getSelectedItem()));
+
+                    String error = validateTrip(
+                            editing,
+                            route,
+                            date,
+                            departureTime,
+                            arrivalTime,
+                            bus);
+
+                    if (error != null) {
+
+                        errorLabel.setText(
+                                error);
+
+                        dialog.pack();
+
+                        return;
+                    }
+
+                    LocalDateTime departure = date.atTime(
+                            departureTime);
+
+                    LocalDateTime arrival = arrivalFor(
+                            departure,
+                            arrivalTime);
+
+                    saveTrip(
+                            dialog,
+                            editing,
+                            route,
+                            bus,
+                            departure,
+                            arrival,
+                            status,
+                            errorLabel);
+                });
+
+        buttons.add(
+                cancelButton);
+
+        buttons.add(
+                saveButton);
+
+        JPanel south = new JPanel(
+                new BorderLayout(
+                        0,
+                        8));
+
         south.setOpaque(false);
-        south.add(errorLabel, BorderLayout.NORTH);
-        south.add(buttons, BorderLayout.SOUTH);
 
-        JLabel heading = new JLabel(isNew ? "Add New Trip" : "Edit " + editing.id);
-        heading.setFont(BussinTheme.SECTION_TITLE);
-        heading.setForeground(BussinTheme.TEXT_PRIMARY);
+        south.add(
+                errorLabel,
+                BorderLayout.NORTH);
 
-        JPanel root = new JPanel(new BorderLayout(0, 14));
-        root.setBackground(BussinTheme.BACKGROUND);
-        root.setBorder(BorderFactory.createEmptyBorder(22, 24, 18, 24));
-        root.add(heading, BorderLayout.NORTH);
-        root.add(form, BorderLayout.CENTER);
-        root.add(south, BorderLayout.SOUTH);
+        south.add(
+                buttons,
+                BorderLayout.SOUTH);
 
-        dialog.getRootPane().setDefaultButton(saveButton);
+        JLabel heading = new JLabel(
+                isNew
+                        ? "Add New Trip"
+                        : "Edit "
+                                + tripId(
+                                        editing));
 
-        showDialog(dialog, root, 560);
+        heading.setFont(
+                BussinTheme.SECTION_TITLE);
+
+        heading.setForeground(
+                BussinTheme.TEXT_PRIMARY);
+
+        JPanel root = new JPanel(
+                new BorderLayout(
+                        0,
+                        14));
+
+        root.setBackground(
+                BussinTheme.BACKGROUND);
+
+        root.setBorder(
+                BorderFactory.createEmptyBorder(
+                        22,
+                        24,
+                        18,
+                        24));
+
+        root.add(
+                heading,
+                BorderLayout.NORTH);
+
+        root.add(
+                form,
+                BorderLayout.CENTER);
+
+        root.add(
+                south,
+                BorderLayout.SOUTH);
+
+        dialog.getRootPane()
+                .setDefaultButton(
+                        saveButton);
+
+        showDialog(
+                dialog,
+                root,
+                560);
     }
 
-    /**
-     * Returns the first problem with the entered trip, or null when it is valid.
-     * Bus and driver may not be double-booked on an overlapping active trip.
-     */
-    String validateTrip(Trip editing, RouteOption route, LocalDate date, LocalTime depart,
-            LocalTime arrive, BusOption bus, String driver) {
+    private void saveTrip(
+            JDialog dialog,
+            TripResponse editing,
+            RouteResponse route,
+            BusResponse bus,
+            LocalDateTime departure,
+            LocalDateTime arrival,
+            String status,
+            JLabel errorLabel) {
+
+        new SwingWorker<TripResponse, Void>() {
+
+            @Override
+            protected TripResponse doInBackground()
+                    throws Exception {
+
+                if (editing == null) {
+
+                    return TripApiService.createTrip(
+                            bus.getId(),
+                            route.getId(),
+                            departure,
+                            arrival,
+                            status);
+                }
+
+                return TripApiService.updateTrip(
+                        editing.getId(),
+                        bus.getId(),
+                        route.getId(),
+                        departure,
+                        arrival,
+                        status);
+            }
+
+            @Override
+            protected void done() {
+
+                try {
+
+                    TripResponse saved = get();
+
+                    replaceTrip(
+                            saved);
+
+                    refresh();
+
+                    dialog.dispose();
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread()
+                            .interrupt();
+
+                    errorLabel.setText(
+                            "Trip operation was interrupted.");
+
+                    dialog.pack();
+
+                } catch (ExecutionException e) {
+
+                    errorLabel.setText(
+                            getErrorMessage(e));
+
+                    dialog.pack();
+                }
+            }
+        }.execute();
+    }
+
+    String validateTrip(
+            TripResponse editing,
+            RouteResponse route,
+            LocalDate date,
+            LocalTime departure,
+            LocalTime arrival,
+            BusResponse bus) {
 
         if (route == null) {
             return "Select a route.";
@@ -882,112 +1718,641 @@ public class TripScreen extends JPanel {
             return "Select a bus.";
         }
 
-        if (driver == null || driver.isBlank()) {
-            return "Select a driver.";
-        }
+        if (date == null
+                || departure == null
+                || arrival == null) {
 
-        if (date == null || depart == null || arrive == null) {
             return "Enter the date, departure time, and arrival time.";
         }
 
-        if (editing == null && date.isBefore(LocalDate.now())) {
-            return "The departure date cannot be in the past.";
+        LocalDateTime departureDateTime = date.atTime(
+                departure);
+
+        LocalDateTime arrivalDateTime = arrivalFor(
+                departureDateTime,
+                arrival);
+
+        if (departureDateTime.isBefore(
+                LocalDateTime.now())) {
+
+            return "The departure date and time cannot be in the past.";
         }
 
-        if (depart.equals(arrive)) {
-            return "Arrival time must be different from the departure time.";
+        if (!arrivalDateTime.isAfter(
+                departureDateTime)) {
+
+            return "Arrival must be after departure.";
         }
 
-        LocalDateTime departure = date.atTime(depart);
-        LocalDateTime arrival = arrivalFor(departure, arrive);
+        if (Duration.between(
+                departureDateTime,
+                arrivalDateTime)
+                .toHours() > 16) {
 
-        if (Duration.between(departure, arrival).toHours() > 16) {
             return "Trip duration is over 16 hours. Check the arrival time.";
         }
 
-        int booked = editing == null ? 0 : editing.booked;
+        for (TripResponse other : trips) {
 
-        if (booked > bus.capacity()) {
-            return bus.number() + " seats only " + bus.capacity()
-                    + ", but " + booked + " seats are already booked.";
-        }
+            if (editing != null
+                    && other.getId()
+                            .equals(
+                                    editing.getId())) {
 
-        for (Trip other : trips) {
-
-            if (other == editing || !other.isActive()) {
                 continue;
             }
 
-            boolean overlaps = departure.isBefore(other.arrival) && other.departure.isBefore(arrival);
+            if (normalizeStatus(
+                    other.getStatus())
+                    .equals(
+                            API_CANCELLED)) {
+
+                continue;
+            }
+
+            LocalDateTime otherDeparture = other.getScheduledDeparture();
+
+            LocalDateTime otherArrival = other.getScheduledArrival();
+
+            boolean overlaps = departureDateTime.isBefore(
+                    otherArrival)
+                    && otherDeparture.isBefore(
+                            arrivalDateTime);
 
             if (!overlaps) {
                 continue;
             }
 
-            if (other.bus.number().equals(bus.number())) {
-                return bus.number() + " is already assigned to " + other.id + " ("
-                        + other.departure.format(TIME_FORMAT) + " - " + other.arrival.format(TIME_FORMAT) + ").";
-            }
+            if (other.getBusId()
+                    .equals(
+                            bus.getId())) {
 
-            if (other.driver.equals(driver)) {
-                return driver + " is already driving " + other.id + " ("
-                        + other.departure.format(TIME_FORMAT) + " - " + other.arrival.format(TIME_FORMAT) + ").";
+                return safe(
+                        bus.getPlateNumber())
+                        + " is already assigned to "
+                        + tripId(other)
+                        + " during this time.";
             }
         }
 
         return null;
     }
 
-    private static LocalDateTime arrivalFor(LocalDateTime departure, LocalTime arrive) {
+    private List<BusResponse> getAssignableBuses(
+            Long currentBusId) {
 
-        LocalDateTime arrival = departure.toLocalDate().atTime(arrive);
+        List<BusResponse> result = new ArrayList<>();
 
-        // An arrival at or before the departure time means the bus arrives the next day.
-        return arrival.isAfter(departure) ? arrival : arrival.plusDays(1);
-    }
+        for (BusResponse bus : buses) {
 
-    private String generateTripId() {
+            boolean active = "ACTIVE".equalsIgnoreCase(
+                    safe(
+                            bus.getStatus()));
 
-        int highest = 0;
+            boolean current = currentBusId != null
+                    && bus.getId()
+                            .equals(
+                                    currentBusId);
 
-        for (Trip t : trips) {
-            try {
-                highest = Math.max(highest, Integer.parseInt(t.id.substring(3)));
-            } catch (NumberFormatException ignored) {
-                // Ignore unexpected mock IDs.
+            if (active || current) {
+                result.add(bus);
             }
         }
 
-        return String.format("TR-%03d", highest + 1);
+        return result;
     }
 
-    private void addFormRow(JPanel form, int row, String leftLabel, JComponent leftField,
-            String rightLabel, JComponent rightField) {
+    private static int selectedRouteDuration(
+            List<RouteResponse> routes) {
 
-        addFormCell(form, 0, row, leftLabel, leftField, rightField == null ? 2 : 1);
+        if (routes.isEmpty()) {
+            return 0;
+        }
 
-        if (rightField != null) {
-            addFormCell(form, 1, row, rightLabel, rightField, 1);
+        RouteResponse route = routes.get(0);
+
+        return route.getDurationMinutes() == null
+                ? 0
+                : route.getDurationMinutes();
+    }
+
+    private static void selectRoute(
+            JComboBox<RouteResponse> box,
+            Long routeId) {
+
+        for (int i = 0; i < box.getItemCount(); i++) {
+
+            RouteResponse route = box.getItemAt(i);
+
+            if (route.getId()
+                    .equals(
+                            routeId)) {
+
+                box.setSelectedIndex(i);
+
+                return;
+            }
         }
     }
 
-    private void addFormCell(JPanel form, int column, int row, String label, JComponent field, int span) {
+    private static void selectBus(
+            JComboBox<BusResponse> box,
+            Long busId) {
+
+        for (int i = 0; i < box.getItemCount(); i++) {
+
+            BusResponse bus = box.getItemAt(i);
+
+            if (bus.getId()
+                    .equals(
+                            busId)) {
+
+                box.setSelectedIndex(i);
+
+                return;
+            }
+        }
+    }
+
+    private static void configureRouteRenderer(
+            JComboBox<RouteResponse> box) {
+
+        box.setRenderer(
+                new DefaultListCellRenderer() {
+
+                    @Override
+                    public Component getListCellRendererComponent(
+                            JList<?> list,
+                            Object value,
+                            int index,
+                            boolean selected,
+                            boolean focused) {
+
+                        super.getListCellRendererComponent(
+                                list,
+                                value,
+                                index,
+                                selected,
+                                focused);
+
+                        if (value instanceof RouteResponse route) {
+
+                            setText(
+                                    safe(
+                                            route.getRouteIdentifier())
+                                            + "  ·  "
+                                            + safe(
+                                                    route.getOrigin())
+                                            + " → "
+                                            + safe(
+                                                    route.getDestination()));
+                        }
+
+                        return this;
+                    }
+                });
+    }
+
+    private static void configureBusRenderer(
+            JComboBox<BusResponse> box) {
+
+        box.setRenderer(
+                new DefaultListCellRenderer() {
+
+                    @Override
+                    public Component getListCellRendererComponent(
+                            JList<?> list,
+                            Object value,
+                            int index,
+                            boolean selected,
+                            boolean focused) {
+
+                        super.getListCellRendererComponent(
+                                list,
+                                value,
+                                index,
+                                selected,
+                                focused);
+
+                        if (value instanceof BusResponse bus) {
+
+                            setText(
+                                    safe(
+                                            bus.getPlateNumber())
+                                            + "  ·  "
+                                            + safe(
+                                                    bus.getModel())
+                                            + "  ·  "
+                                            + bus.getCapacity()
+                                            + " seats");
+                        }
+
+                        return this;
+                    }
+                });
+    }
+
+    private static LocalDateTime arrivalFor(
+            LocalDateTime departure,
+            LocalTime arrivalTime) {
+
+        LocalDateTime arrival = departure
+                .toLocalDate()
+                .atTime(
+                        arrivalTime);
+
+        return arrival.isAfter(
+                departure)
+                        ? arrival
+                        : arrival.plusDays(1);
+    }
+
+    private void replaceTrip(
+            TripResponse updated) {
+
+        for (int i = 0; i < trips.size(); i++) {
+
+            if (trips.get(i)
+                    .getId()
+                    .equals(
+                            updated.getId())) {
+
+                trips.set(
+                        i,
+                        updated);
+
+                return;
+            }
+        }
+
+        trips.add(
+                updated);
+    }
+
+    private static String tripId(
+            TripResponse trip) {
+
+        return "TR-" + trip.getId();
+    }
+
+    private static String displayStatus(
+            String status) {
+
+        String normalized = normalizeStatus(
+                status);
+
+        if (normalized.equals(
+                API_SCHEDULED)) {
+
+            return SCHEDULED;
+        }
+
+        if (normalized.equals(
+                API_BOARDING)) {
+
+            return BOARDING;
+        }
+
+        if (normalized.equals(
+                API_DEPARTED)) {
+
+            return IN_PROGRESS;
+        }
+
+        if (normalized.equals(
+                API_COMPLETED)) {
+
+            return COMPLETED;
+        }
+
+        if (normalized.equals(
+                API_CANCELLED)) {
+
+            return CANCELLED;
+        }
+
+        return status == null
+                ? ""
+                : status;
+    }
+
+    private static String apiStatus(
+            String displayStatus) {
+
+        if (displayStatus.equals(
+                SCHEDULED)) {
+
+            return API_SCHEDULED;
+        }
+
+        if (displayStatus.equals(
+                BOARDING)) {
+
+            return API_BOARDING;
+        }
+
+        if (displayStatus.equals(
+                IN_PROGRESS)) {
+
+            return API_DEPARTED;
+        }
+
+        if (displayStatus.equals(
+                COMPLETED)) {
+
+            return API_COMPLETED;
+        }
+
+        if (displayStatus.equals(
+                CANCELLED)) {
+
+            return API_CANCELLED;
+        }
+
+        return API_SCHEDULED;
+    }
+
+    private static String normalizeStatus(
+            String status) {
+
+        return status == null
+                ? ""
+                : status.trim()
+                        .toUpperCase(
+                                Locale.ROOT);
+    }
+
+    private static AppBadge.Status badgeFor(
+            String status) {
+
+        String normalized = normalizeStatus(
+                status);
+
+        if (normalized.equals(
+                API_BOARDING)) {
+
+            return AppBadge.Status.WARNING;
+        }
+
+        if (normalized.equals(
+                API_DEPARTED)) {
+
+            return AppBadge.Status.INFO;
+        }
+
+        if (normalized.equals(
+                API_COMPLETED)) {
+
+            return AppBadge.Status.SUCCESS;
+        }
+
+        if (normalized.equals(
+                API_CANCELLED)) {
+
+            return AppBadge.Status.DANGER;
+        }
+
+        return AppBadge.Status.NEUTRAL;
+    }
+
+    private static boolean canEdit(
+            TripResponse trip) {
+
+        return normalizeStatus(
+                trip.getStatus())
+                .equals(
+                        API_SCHEDULED);
+    }
+
+    private static boolean canCancel(
+            TripResponse trip) {
+
+        String status = normalizeStatus(
+                trip.getStatus());
+
+        return status.equals(
+                API_SCHEDULED)
+                || status.equals(
+                        API_BOARDING);
+    }
+
+    private static boolean canDelete(
+            TripResponse trip) {
+
+        String status = normalizeStatus(
+                trip.getStatus());
+
+        return status.equals(
+                API_SCHEDULED)
+                || status.equals(
+                        API_CANCELLED);
+    }
+
+    private static boolean canStartBoarding(
+            TripResponse trip) {
+
+        return !trip
+                .getScheduledDeparture()
+                .toLocalDate()
+                .isAfter(
+                        LocalDate.now());
+    }
+
+    private static String arrivalNote(
+            TripResponse trip) {
+
+        return trip
+                .getScheduledArrival()
+                .toLocalDate()
+                .equals(
+                        trip
+                                .getScheduledDeparture()
+                                .toLocalDate())
+                                        ? "same day"
+                                        : "+1 day";
+    }
+
+    private static String formatDuration(
+            Duration duration) {
+
+        long hours = duration.toHours();
+
+        long minutes = duration.toMinutesPart();
+
+        if (minutes == 0) {
+            return hours + "h";
+        }
+
+        return hours
+                + "h "
+                + minutes
+                + "m";
+    }
+
+    private int addFact(
+            JPanel panel,
+            int row,
+            String leftLabel,
+            String leftValue,
+            String rightLabel,
+            String rightValue) {
+
+        addFactCell(
+                panel,
+                0,
+                row,
+                leftLabel,
+                leftValue);
+
+        addFactCell(
+                panel,
+                1,
+                row,
+                rightLabel,
+                rightValue);
+
+        return row + 1;
+    }
+
+    private void addFactCell(
+            JPanel panel,
+            int column,
+            int row,
+            String label,
+            String value) {
 
         JLabel title = new JLabel(label);
-        title.setFont(BussinTheme.SMALL_BOLD);
-        title.setForeground(BussinTheme.TEXT_SECONDARY);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        field.setAlignmentX(Component.LEFT_ALIGNMENT);
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        title.setFont(
+                BussinTheme.SMALL_BOLD);
 
-        JPanel cell = new JPanel(new BorderLayout(0, 4));
+        title.setForeground(
+                BussinTheme.TEXT_MUTED);
+
+        JLabel text = new JLabel(value);
+
+        text.setFont(
+                BussinTheme.BODY);
+
+        text.setForeground(
+                BussinTheme.TEXT_PRIMARY);
+
+        JPanel cell = new JPanel();
+
         cell.setOpaque(false);
-        cell.setBorder(BorderFactory.createEmptyBorder(0, column == 0 ? 0 : 6, 12, column == 0 && span == 1 ? 6 : 0));
-        cell.add(title, BorderLayout.NORTH);
-        cell.add(field, BorderLayout.CENTER);
+
+        cell.setLayout(
+                new BoxLayout(
+                        cell,
+                        BoxLayout.Y_AXIS));
+
+        cell.setBorder(
+                BorderFactory.createEmptyBorder(
+                        0,
+                        0,
+                        12,
+                        12));
+
+        cell.add(title);
+
+        cell.add(
+                Box.createVerticalStrut(3));
+
+        cell.add(text);
 
         GridBagConstraints gbc = new GridBagConstraints();
+
+        gbc.gridx = column;
+        gbc.gridy = row;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        panel.add(
+                cell,
+                gbc);
+    }
+
+    private void addFormRow(
+            JPanel form,
+            int row,
+            String leftLabel,
+            JComponent leftField,
+            String rightLabel,
+            JComponent rightField) {
+
+        addFormCell(
+                form,
+                0,
+                row,
+                leftLabel,
+                leftField,
+                rightField == null
+                        ? 2
+                        : 1);
+
+        if (rightField != null) {
+
+            addFormCell(
+                    form,
+                    1,
+                    row,
+                    rightLabel,
+                    rightField,
+                    1);
+        }
+    }
+
+    private void addFormCell(
+            JPanel form,
+            int column,
+            int row,
+            String label,
+            JComponent field,
+            int span) {
+
+        JLabel title = new JLabel(label);
+
+        title.setFont(
+                BussinTheme.SMALL_BOLD);
+
+        title.setForeground(
+                BussinTheme.TEXT_SECONDARY);
+
+        field.setMaximumSize(
+                new Dimension(
+                        Integer.MAX_VALUE,
+                        36));
+
+        JPanel cell = new JPanel(
+                new BorderLayout(
+                        0,
+                        4));
+
+        cell.setOpaque(false);
+
+        cell.setBorder(
+                BorderFactory.createEmptyBorder(
+                        0,
+                        column == 0
+                                ? 0
+                                : 6,
+                        12,
+                        column == 0
+                                && span == 1
+                                        ? 6
+                                        : 0));
+
+        cell.add(
+                title,
+                BorderLayout.NORTH);
+
+        cell.add(
+                field,
+                BorderLayout.CENTER);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+
         gbc.gridx = column;
         gbc.gridy = row;
         gbc.gridwidth = span;
@@ -995,189 +2360,408 @@ public class TripScreen extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.NORTHWEST;
 
-        form.add(cell, gbc);
+        form.add(
+                cell,
+                gbc);
     }
 
-    private JComponent statusLabel(String status) {
+    private JDialog createDialog(
+            String title) {
 
-        JPanel holder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
-        holder.setOpaque(false);
-        holder.add(new AppBadge(status, badgeFor(status)));
+        Window owner = SwingUtilities
+                .getWindowAncestor(
+                        this);
 
-        return holder;
-    }
+        JDialog dialog = new JDialog(
+                owner,
+                title,
+                Dialog.ModalityType.APPLICATION_MODAL);
 
-    // ================================================================
-    // DIALOG + SPINNER HELPERS
-    // ================================================================
-
-    private JDialog createDialog(String title) {
-
-        Window owner = SwingUtilities.getWindowAncestor(this);
-
-        JDialog dialog = new JDialog(owner, title, Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setDefaultCloseOperation(
+                JDialog.DISPOSE_ON_CLOSE);
 
         return dialog;
     }
 
-    /** Packs the dialog to its content, caps it to the screen, and shows it. */
-    private void showDialog(JDialog dialog, JPanel root, int minWidth) {
+    private void showDialog(
+            JDialog dialog,
+            JPanel root,
+            int minWidth) {
 
-        JScrollPane scroll = new JScrollPane(root,
+        JScrollPane scroll = new JScrollPane(
+                root,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setBorder(null);
-        scroll.getViewport().setBackground(BussinTheme.BACKGROUND);
 
-        dialog.setContentPane(scroll);
+        scroll.setBorder(null);
+
+        scroll.getViewport()
+                .setBackground(
+                        BussinTheme.BACKGROUND);
+
+        dialog.setContentPane(
+                scroll);
+
         dialog.pack();
 
         Rectangle screen = dialog.getGraphicsConfiguration() == null
-                ? new Rectangle(0, 0, 1280, 720)
-                : dialog.getGraphicsConfiguration().getBounds();
+                ? new Rectangle(
+                        0,
+                        0,
+                        1280,
+                        720)
+                : dialog
+                        .getGraphicsConfiguration()
+                        .getBounds();
 
         Dimension size = dialog.getSize();
-        size.width = Math.min(Math.max(size.width, minWidth), screen.width - 80);
-        size.height = Math.min(size.height + 4, screen.height - 120);
 
-        dialog.setSize(size);
-        dialog.setMinimumSize(new Dimension(Math.min(minWidth, size.width), Math.min(320, size.height)));
-        dialog.setLocationRelativeTo(this);
+        size.width = Math.min(
+                Math.max(
+                        size.width,
+                        minWidth),
+                screen.width - 80);
+
+        size.height = Math.min(
+                size.height + 4,
+                screen.height - 120);
+
+        dialog.setSize(
+                size);
+
+        dialog.setMinimumSize(
+                new Dimension(
+                        Math.min(
+                                minWidth,
+                                size.width),
+                        Math.min(
+                                320,
+                                size.height)));
+
+        dialog.setLocationRelativeTo(
+                this);
+
         dialog.setVisible(true);
     }
 
-    private static JSpinner dateSpinner(LocalDate date) {
+    private static JSpinner dateSpinner(
+            LocalDate date) {
 
         SpinnerDateModel model = new SpinnerDateModel(
-                Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()),
-                null, null, Calendar.DAY_OF_MONTH);
+                Date.from(
+                        date.atStartOfDay(
+                                ZoneId.systemDefault())
+                                .toInstant()),
+                null,
+                null,
+                Calendar.DAY_OF_MONTH);
 
         JSpinner spinner = new JSpinner(model);
-        spinner.setEditor(new JSpinner.DateEditor(spinner, "MMM dd, yyyy"));
+
+        spinner.setEditor(
+                new JSpinner.DateEditor(
+                        spinner,
+                        "MMM dd, yyyy"));
 
         return spinner;
     }
 
-    private static JSpinner timeSpinner(LocalTime time) {
+    private static JSpinner timeSpinner(
+            LocalTime time) {
 
-        SpinnerDateModel model = new SpinnerDateModel(toDate(time), null, null, Calendar.MINUTE);
+        SpinnerDateModel model = new SpinnerDateModel(
+                toDate(time),
+                null,
+                null,
+                Calendar.MINUTE);
 
         JSpinner spinner = new JSpinner(model);
-        spinner.setEditor(new JSpinner.DateEditor(spinner, "hh:mm a"));
+
+        spinner.setEditor(
+                new JSpinner.DateEditor(
+                        spinner,
+                        "hh:mm a"));
 
         return spinner;
     }
 
-    private static Date toDate(LocalTime time) {
+    private static Date toDate(
+            LocalTime time) {
 
-        return Date.from(LocalDate.now().atTime(time).atZone(ZoneId.systemDefault()).toInstant());
+        return Date.from(
+                LocalDate.now()
+                        .atTime(time)
+                        .atZone(
+                                ZoneId.systemDefault())
+                        .toInstant());
     }
 
-    private static LocalTime timeOf(JSpinner spinner) {
+    private static LocalTime timeOf(
+            JSpinner spinner) {
 
-        return ((Date) spinner.getValue()).toInstant().atZone(ZoneId.systemDefault())
-                .toLocalTime().withSecond(0).withNano(0);
+        return ((Date) spinner.getValue())
+                .toInstant()
+                .atZone(
+                        ZoneId.systemDefault())
+                .toLocalTime()
+                .withSecond(0)
+                .withNano(0);
     }
 
-    private static LocalDate dateOf(JSpinner spinner) {
+    private static LocalDate dateOf(
+            JSpinner spinner) {
 
-        return ((Date) spinner.getValue()).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return ((Date) spinner.getValue())
+                .toInstant()
+                .atZone(
+                        ZoneId.systemDefault())
+                .toLocalDate();
     }
-
-    // ================================================================
-    // SMALL UI HELPERS
-    // ================================================================
 
     private static JPanel transparent() {
 
         JPanel panel = new JPanel();
+
         panel.setOpaque(false);
 
         return panel;
     }
 
-    private static AppButton small(String text, AppButton.Variant variant) {
+    private static AppButton small(
+            String text,
+            AppButton.Variant variant) {
 
-        AppButton button = new AppButton(text, variant);
-        button.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        AppButton button = new AppButton(
+                text,
+                variant);
+
+        button.setBorder(
+                BorderFactory.createEmptyBorder(
+                        6,
+                        12,
+                        6,
+                        12));
 
         return button;
     }
 
-    private static JPanel emptyState(String message) {
+    private static JPanel emptyState(
+            String message) {
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(
+                new GridBagLayout());
+
         panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(24, 0, 24, 0));
+
+        panel.setBorder(
+                BorderFactory.createEmptyBorder(
+                        24,
+                        0,
+                        24,
+                        0));
 
         JLabel label = new JLabel(message);
-        label.setFont(BussinTheme.BODY);
-        label.setForeground(BussinTheme.TEXT_MUTED);
+
+        label.setFont(
+                BussinTheme.BODY);
+
+        label.setForeground(
+                BussinTheme.TEXT_MUTED);
+
         panel.add(label);
 
         return panel;
     }
 
-    /** Two-line table cell: primary value with a muted note underneath. */
-    private static JPanel twoLine(String top, String bottom) {
+    private void renderLoadingState() {
+
+        statsHolder.removeAll();
+
+        statsHolder.setLayout(
+                new ResponsiveLayouts.Grid(
+                        4,
+                        200,
+                        14));
+
+        statsHolder.add(
+                new StatCard(
+                        "TODAY'S TRIPS",
+                        "...",
+                        "loading",
+                        "trip"));
+
+        statsHolder.add(
+                new StatCard(
+                        "SCHEDULED",
+                        "...",
+                        "loading",
+                        "queue"));
+
+        statsHolder.add(
+                new StatCard(
+                        "IN PROGRESS",
+                        "...",
+                        "loading",
+                        "bus"));
+
+        statsHolder.add(
+                new StatCard(
+                        "COMPLETED",
+                        "...",
+                        "loading",
+                        "seat"));
+
+        listHolder.removeAll();
+
+        listHolder.setLayout(
+                new BorderLayout());
+
+        listHolder.add(
+                emptyState(
+                        "Loading trips..."),
+                BorderLayout.CENTER);
+
+        revalidate();
+
+        repaint();
+    }
+
+    private void showLoadError(
+            String message) {
+
+        statsHolder.removeAll();
+
+        listHolder.removeAll();
+
+        listHolder.setLayout(
+                new BorderLayout());
+
+        listHolder.add(
+                emptyState(
+                        "Failed to load trips: "
+                                + safe(
+                                        message)),
+                BorderLayout.CENTER);
+
+        revalidate();
+
+        repaint();
+    }
+
+    private void showError(
+            String message) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                safe(message),
+                "Trip Management",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    private static String getErrorMessage(
+            ExecutionException exception) {
+
+        Throwable cause = exception.getCause();
+
+        if (cause == null) {
+            return "The trip operation failed.";
+        }
+
+        if (cause.getMessage() == null) {
+            return cause.toString();
+        }
+
+        return cause.getMessage();
+    }
+
+    private static String safe(
+            String value) {
+
+        return value == null
+                ? ""
+                : value;
+    }
+
+    private static JPanel twoLine(
+            String top,
+            String bottom) {
 
         JLabel primary = DataGrid.strong(top);
-        primary.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel secondary = new JLabel(bottom);
-        secondary.setFont(BussinTheme.SMALL);
-        secondary.setForeground(BussinTheme.TEXT_MUTED);
-        secondary.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        secondary.setFont(
+                BussinTheme.SMALL);
+
+        secondary.setForeground(
+                BussinTheme.TEXT_MUTED);
 
         JPanel panel = new JPanel();
+
         panel.setOpaque(false);
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+        panel.setLayout(
+                new BoxLayout(
+                        panel,
+                        BoxLayout.Y_AXIS));
+
         panel.add(primary);
+
         panel.add(secondary);
 
         return panel;
     }
 
-    /**
-     * Wraps the trip table so it fills the card when there is room and scrolls
-     * horizontally (instead of clipping columns) when the window is narrow.
-     *
-     * DataGrid is a GridBagLayout: once it is given even slightly less than its
-     * natural width, GridBag falls back to minimum sizes on both axes and the
-     * rows collapse. The strip therefore never squeezes the grid below its
-     * natural width; it scrolls instead.
-     */
-    private static final class HorizontalScrollHolder extends JScrollPane {
+    private static final class HorizontalScrollHolder
+            extends JScrollPane {
 
-        HorizontalScrollHolder(JComponent table) {
+        HorizontalScrollHolder(
+                JComponent table) {
 
-            super(new Body(table),
+            super(
+                    new Body(table),
                     ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
                     ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
             setBorder(null);
-            setOpaque(false);
-            getViewport().setOpaque(false);
 
-            // Let the mouse wheel scroll the page, not this strip.
+            setOpaque(false);
+
+            getViewport()
+                    .setOpaque(false);
+
             setWheelScrollingEnabled(false);
-            getHorizontalScrollBar().setUnitIncrement(24);
+
+            getHorizontalScrollBar()
+                    .setUnitIncrement(24);
         }
 
-        private static final class Body extends JPanel implements Scrollable {
+        private static final class Body
+                extends JPanel
+                implements Scrollable {
 
             private final JComponent table;
 
-            Body(JComponent table) {
-                super(new BorderLayout());
+            Body(
+                    JComponent table) {
+
+                super(
+                        new BorderLayout());
+
                 this.table = table;
+
                 setOpaque(false);
 
-                // Room for the horizontal scrollbar, so it never overlaps the last row.
-                setBorder(BorderFactory.createEmptyBorder(0, 0, SCROLLBAR_ALLOWANCE, 0));
+                setBorder(
+                        BorderFactory.createEmptyBorder(
+                                0,
+                                0,
+                                SCROLLBAR_ALLOWANCE,
+                                0));
 
-                add(table, BorderLayout.NORTH);
+                add(
+                        table,
+                        BorderLayout.NORTH);
             }
 
             @Override
@@ -1186,8 +2770,11 @@ public class TripScreen extends JPanel {
                 Dimension natural = table.getPreferredSize();
 
                 return new Dimension(
-                        Math.max(TABLE_MIN_WIDTH, natural.width),
-                        natural.height + SCROLLBAR_ALLOWANCE);
+                        Math.max(
+                                TABLE_MIN_WIDTH,
+                                natural.width),
+                        natural.height
+                                + SCROLLBAR_ALLOWANCE);
             }
 
             @Override
@@ -1196,18 +2783,30 @@ public class TripScreen extends JPanel {
             }
 
             @Override
-            public int getScrollableUnitIncrement(Rectangle visible, int orientation, int direction) {
+            public int getScrollableUnitIncrement(
+                    Rectangle visible,
+                    int orientation,
+                    int direction) {
+
                 return 24;
             }
 
             @Override
-            public int getScrollableBlockIncrement(Rectangle visible, int orientation, int direction) {
-                return Math.max(24, visible.width - 48);
+            public int getScrollableBlockIncrement(
+                    Rectangle visible,
+                    int orientation,
+                    int direction) {
+
+                return Math.max(
+                        24,
+                        visible.width - 48);
             }
 
             @Override
             public boolean getScrollableTracksViewportWidth() {
-                return getParent() != null && getParent().getWidth() >= getPreferredSize().width;
+
+                return getParent() != null
+                        && getParent().getWidth() >= getPreferredSize().width;
             }
 
             @Override
@@ -1217,70 +2816,9 @@ public class TripScreen extends JPanel {
         }
     }
 
-    // ================================================================
-    // MODEL
-    // ================================================================
-
-    record RouteOption(String name, int minutes) {
-
-        @Override
-        public String toString() {
-            return name + "  ·  " + formatDuration(Duration.ofMinutes(minutes));
-        }
-    }
-
-    record BusOption(String number, int capacity, String driver, boolean assignable) {
-
-        @Override
-        public String toString() {
-            return number + "  ·  " + capacity + " seats";
-        }
-    }
-
-    static final class Trip {
-
-        final String id;
-        RouteOption route;
-        LocalDateTime departure;
-        LocalDateTime arrival;
-        BusOption bus;
-        String driver;
-        final int booked;
-        String status;
-
-        Trip(String id, RouteOption route, LocalDateTime departure, LocalDateTime arrival,
-                BusOption bus, String driver, int booked, String status) {
-
-            this.id = id;
-            this.route = route;
-            this.departure = departure;
-            this.arrival = arrival;
-            this.bus = bus;
-            this.driver = driver;
-            this.booked = booked;
-            this.status = status;
-        }
-
-        int capacity() {
-            return bus.capacity();
-        }
-
-        /** Scheduled or underway: still occupies its bus and driver. */
-        boolean isActive() {
-            return status.equals(SCHEDULED) || status.equals(BOARDING) || status.equals(IN_PROGRESS);
-        }
-
-        boolean canEdit() {
-            return status.equals(SCHEDULED);
-        }
-
-        boolean canCancel() {
-            return status.equals(SCHEDULED) || status.equals(BOARDING);
-        }
-
-        /** Boarding opens on the departure day, not for future dates. */
-        boolean canStartBoarding() {
-            return !departure.toLocalDate().isAfter(LocalDate.now());
-        }
+    private record DataSet(
+            List<RouteResponse> routes,
+            List<BusResponse> buses,
+            List<TripResponse> trips) {
     }
 }

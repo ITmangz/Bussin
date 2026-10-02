@@ -7,6 +7,7 @@ import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +32,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import com.bussin.desktop.services.RouteApiService;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
@@ -57,22 +59,16 @@ public class RouteScreen extends JPanel {
                         });
 
         private final JLabel totalValue = new JLabel("0");
-
         private final JLabel activeValue = new JLabel("0");
-
         private final JLabel inactiveValue = new JLabel("0");
 
         private final JLabel detailRouteId = new JLabel("-");
-
         private final JLabel detailOrigin = new JLabel("-");
-
         private final JLabel detailDestination = new JLabel("-");
-
         private final JLabel detailDistance = new JLabel("-");
-
         private final JLabel detailDuration = new JLabel("-");
-
-        private final JLabel detailFare = new JLabel("-");
+        private final JLabel detailBaseFare = new JLabel("-");
+        private final JLabel detailDescription = new JLabel("-");
 
         private final AppBadge detailStatus = new AppBadge(
                         "NO STATUS",
@@ -92,81 +88,15 @@ public class RouteScreen extends JPanel {
 
         public RouteScreen() {
 
-                initializeData();
                 initializeUI();
                 refreshRoutes();
         }
 
-        // ================================================================
-        // MOCK DATA
-        // ================================================================
-
-        private void initializeData() {
-
-                routes.add(
-                                new Route(
-                                                "RT-001",
-                                                "Manila",
-                                                "Batangas",
-                                                "110",
-                                                "2h 30m",
-                                                "250",
-                                                "Active"));
-
-                routes.add(
-                                new Route(
-                                                "RT-002",
-                                                "Manila",
-                                                "Lucena",
-                                                "135",
-                                                "3h 15m",
-                                                "320",
-                                                "Active"));
-
-                routes.add(
-                                new Route(
-                                                "RT-003",
-                                                "Manila",
-                                                "Bicol",
-                                                "450",
-                                                "9h 00m",
-                                                "850",
-                                                "Active"));
-
-                routes.add(
-                                new Route(
-                                                "RT-004",
-                                                "Manila",
-                                                "Calapan",
-                                                "160",
-                                                "4h 00m",
-                                                "400",
-                                                "Inactive"));
-
-                routes.add(
-                                new Route(
-                                                "RT-005",
-                                                "Manila",
-                                                "Naga",
-                                                "380",
-                                                "7h 30m",
-                                                "720",
-                                                "Active"));
-        }
-
-        // ================================================================
-        // UI INITIALIZATION
-        // ================================================================
-
         private void initializeUI() {
 
                 setOpaque(true);
-
-                setBackground(
-                                BussinTheme.BACKGROUND);
-
-                setLayout(
-                                new BorderLayout());
+                setBackground(BussinTheme.BACKGROUND);
+                setLayout(new BorderLayout());
 
                 add(
                                 createContent(),
@@ -191,27 +121,23 @@ public class RouteScreen extends JPanel {
                                                 content,
                                                 BoxLayout.Y_AXIS));
 
-                content.add(
-                                createHeader());
+                content.add(createHeader());
 
                 content.add(
                                 Box.createVerticalStrut(
                                                 BussinTheme.SPACE_XL));
 
-                content.add(
-                                createStatistics());
+                content.add(createStatistics());
 
                 content.add(
                                 Box.createVerticalStrut(
                                                 BussinTheme.SPACE_XL));
 
-                content.add(
-                                createMainSection());
+                content.add(createMainSection());
 
                 JScrollPane scrollPane = new JScrollPane(content);
 
                 scrollPane.setBorder(null);
-
                 scrollPane.setOpaque(false);
 
                 scrollPane.getViewport()
@@ -225,10 +151,6 @@ public class RouteScreen extends JPanel {
 
                 return scrollPane;
         }
-
-        // ================================================================
-        // HEADER
-        // ================================================================
 
         private JPanel createHeader() {
 
@@ -255,7 +177,7 @@ public class RouteScreen extends JPanel {
 
                 titlePanel.add(
                                 AppLabel.secondary(
-                                                "Manage bus routes, destinations, travel times, and fares."));
+                                                "Manage bus routes, origins, destinations, and route status."));
 
                 AppButton createButton = new AppButton(
                                 "Create Route");
@@ -289,10 +211,6 @@ public class RouteScreen extends JPanel {
 
                 return header;
         }
-
-        // ================================================================
-        // STATISTICS
-        // ================================================================
 
         private JPanel createStatistics() {
 
@@ -340,8 +258,7 @@ public class RouteScreen extends JPanel {
 
                 JPanel indicator = new JPanel();
 
-                indicator.setBackground(
-                                accent);
+                indicator.setBackground(accent);
 
                 indicator.setPreferredSize(
                                 new Dimension(
@@ -389,10 +306,6 @@ public class RouteScreen extends JPanel {
                 return card;
         }
 
-        // ================================================================
-        // MAIN SECTION
-        // ================================================================
-
         private JPanel createMainSection() {
 
                 JPanel main = new JPanel(
@@ -404,18 +317,11 @@ public class RouteScreen extends JPanel {
 
                 main.setOpaque(false);
 
-                main.add(
-                                createRouteListCard());
-
-                main.add(
-                                createRouteDetailsCard());
+                main.add(createRouteListCard());
+                main.add(createRouteDetailsCard());
 
                 return main;
         }
-
-        // ================================================================
-        // ROUTE LIST
-        // ================================================================
 
         private AppCard createRouteListCard() {
 
@@ -466,7 +372,8 @@ public class RouteScreen extends JPanel {
 
                 configureTable();
 
-                JScrollPane tableScroll = new JScrollPane(routeTable);
+                JScrollPane tableScroll = new JScrollPane(
+                                routeTable);
 
                 tableScroll.setBorder(
                                 BorderFactory.createLineBorder(
@@ -501,7 +408,7 @@ public class RouteScreen extends JPanel {
                                                 40));
 
                 searchField.setToolTipText(
-                                "Search route ID, origin, destination, distance, or fare");
+                                "Search route ID, origin, destination, or description");
 
                 statusFilter.setPreferredSize(
                                 new Dimension(
@@ -516,32 +423,31 @@ public class RouteScreen extends JPanel {
                                 statusFilter,
                                 BorderLayout.EAST);
 
-                searchField
-                                .getDocument()
+                searchField.getDocument()
                                 .addDocumentListener(
                                                 new DocumentListener() {
 
                                                         @Override
                                                         public void insertUpdate(
-                                                                        DocumentEvent e) {
-                                                                refreshRoutes();
+                                                                        DocumentEvent event) {
+                                                                applyFilters();
                                                         }
 
                                                         @Override
                                                         public void removeUpdate(
-                                                                        DocumentEvent e) {
-                                                                refreshRoutes();
+                                                                        DocumentEvent event) {
+                                                                applyFilters();
                                                         }
 
                                                         @Override
                                                         public void changedUpdate(
-                                                                        DocumentEvent e) {
-                                                                refreshRoutes();
+                                                                        DocumentEvent event) {
+                                                                applyFilters();
                                                         }
                                                 });
 
                 statusFilter.addActionListener(
-                                event -> refreshRoutes());
+                                event -> applyFilters());
 
                 return filters;
         }
@@ -585,29 +491,28 @@ public class RouteScreen extends JPanel {
                                 .setForeground(
                                                 BussinTheme.TEXT_SECONDARY);
 
-                for (int i = 0; i < 7; i++) {
+                for (int i = 0; i < 9; i++) {
 
                         routeTable.getColumnModel()
                                         .getColumn(i)
                                         .setPreferredWidth(
                                                         switch (i) {
 
-                                                                case 0 -> 75;
+                                                                case 0 -> 90;
+                                                                case 1, 2 -> 120;
+                                                                case 3 -> 95;
+                                                                case 4 -> 110;
+                                                                case 5 -> 90;
+                                                                case 6 -> 220;
+                                                                case 7 -> 80;
+                                                                case 8 -> 90;
 
-                                                                case 1, 2 -> 105;
-
-                                                                case 3, 4 -> 85;
-
-                                                                case 5 -> 75;
-
-                                                                case 6 -> 90;
-
-                                                                default -> 80;
+                                                                default -> 100;
                                                         });
                 }
 
                 routeTable.getColumnModel()
-                                .getColumn(6)
+                                .getColumn(8)
                                 .setCellRenderer(
                                                 new StatusCellRenderer());
 
@@ -620,10 +525,6 @@ public class RouteScreen extends JPanel {
                                                         }
                                                 });
         }
-
-        // ================================================================
-        // ROUTE DETAILS
-        // ================================================================
 
         private AppCard createRouteDetailsCard() {
 
@@ -686,8 +587,7 @@ public class RouteScreen extends JPanel {
                 details.add(
                                 Box.createVerticalStrut(14));
 
-                details.add(
-                                createSeparator());
+                details.add(createSeparator());
 
                 details.add(
                                 Box.createVerticalStrut(14));
@@ -709,13 +609,18 @@ public class RouteScreen extends JPanel {
 
                 addDetail(
                                 details,
-                                "TRAVEL TIME",
+                                "DURATION",
                                 detailDuration);
 
                 addDetail(
                                 details,
                                 "BASE FARE",
-                                detailFare);
+                                detailBaseFare);
+
+                addDetail(
+                                details,
+                                "DESCRIPTION",
+                                detailDescription);
 
                 details.add(
                                 Box.createVerticalStrut(8));
@@ -729,9 +634,7 @@ public class RouteScreen extends JPanel {
                 actions.setOpaque(false);
 
                 editButton.setEnabled(false);
-
                 toggleStatusButton.setEnabled(false);
-
                 deleteButton.setEnabled(false);
 
                 editButton.addActionListener(
@@ -744,17 +647,15 @@ public class RouteScreen extends JPanel {
                                 event -> deleteSelectedRoute());
 
                 actions.add(editButton);
-
                 actions.add(toggleStatusButton);
-
                 actions.add(deleteButton);
 
                 details.add(actions);
 
-                JScrollPane scroll = new JScrollPane(details);
+                JScrollPane scroll = new JScrollPane(
+                                details);
 
                 scroll.setBorder(null);
-
                 scroll.setOpaque(false);
 
                 scroll.getViewport()
@@ -810,11 +711,51 @@ public class RouteScreen extends JPanel {
                 return separator;
         }
 
-        // ================================================================
-        // REFRESH / FILTER
-        // ================================================================
-
         private void refreshRoutes() {
+
+                Route previouslySelected = getSelectedRoute();
+
+                try {
+
+                        List<RouteApiService.RouteResponse> responses = RouteApiService.getAllRoutes();
+
+                        routes.clear();
+
+                        for (RouteApiService.RouteResponse response : responses) {
+
+                                routes.add(
+                                                new Route(
+                                                                response.getId(),
+                                                                response.getRouteIdentifier(),
+                                                                response.getOrigin(),
+                                                                response.getDestination(),
+                                                                response.getDistanceKm(),
+                                                                response.getDurationMinutes(),
+                                                                response.getBaseFare(),
+                                                                response.getDescription(),
+                                                                response.isActive()));
+                        }
+
+                        applyFilters(previouslySelected);
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to load routes.\n\n"
+                                                        + exception.getMessage(),
+                                        "Route Management",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
+        }
+
+        private void applyFilters() {
+
+                applyFilters(getSelectedRoute());
+        }
+
+        private void applyFilters(
+                        Route previouslySelected) {
 
                 String query = searchField.getText()
                                 .trim()
@@ -823,14 +764,12 @@ public class RouteScreen extends JPanel {
                 String selectedStatus = String.valueOf(
                                 statusFilter.getSelectedItem());
 
-                Route previouslySelected = getSelectedRoute();
-
                 filteredRoutes.clear();
 
                 for (Route route : routes) {
 
                         boolean matchesSearch = query.isEmpty()
-                                        || route.routeId
+                                        || route.routeIdentifier
                                                         .toLowerCase()
                                                         .contains(query)
                                         || route.origin
@@ -839,24 +778,19 @@ public class RouteScreen extends JPanel {
                                         || route.destination
                                                         .toLowerCase()
                                                         .contains(query)
-                                        || route.distance
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || route.duration
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || route.fare
-                                                        .toLowerCase()
-                                                        .contains(query);
+                                        || (route.description != null
+                                                        && route.description
+                                                                        .toLowerCase()
+                                                                        .contains(query));
 
-                        boolean matchesStatus = selectedStatus.equals(
-                                        "All Status")
-                                        || route.status.equals(
-                                                        selectedStatus);
+                        String status = route.active
+                                        ? "Active"
+                                        : "Inactive";
 
-                        if (matchesSearch
-                                        && matchesStatus) {
+                        boolean matchesStatus = "All Status".equals(selectedStatus)
+                                        || status.equals(selectedStatus);
 
+                        if (matchesSearch && matchesStatus) {
                                 filteredRoutes.add(route);
                         }
                 }
@@ -866,8 +800,7 @@ public class RouteScreen extends JPanel {
                 updateStatistics();
 
                 if (previouslySelected != null
-                                && filteredRoutes.contains(
-                                                previouslySelected)) {
+                                && filteredRoutes.contains(previouslySelected)) {
 
                         int modelIndex = filteredRoutes.indexOf(
                                         previouslySelected);
@@ -900,25 +833,20 @@ public class RouteScreen extends JPanel {
 
         private void updateStatistics() {
 
-                int total = routes.size();
-
                 int active = 0;
-
                 int inactive = 0;
 
                 for (Route route : routes) {
 
-                        if (route.status.equals("Active")) {
+                        if (route.active) {
                                 active++;
-                        }
-
-                        if (route.status.equals("Inactive")) {
+                        } else {
                                 inactive++;
                         }
                 }
 
                 totalValue.setText(
-                                String.valueOf(total));
+                                String.valueOf(routes.size()));
 
                 activeValue.setText(
                                 String.valueOf(active));
@@ -926,10 +854,6 @@ public class RouteScreen extends JPanel {
                 inactiveValue.setText(
                                 String.valueOf(inactive));
         }
-
-        // ================================================================
-        // SELECTED ROUTE
-        // ================================================================
 
         private void updateSelectedRoute() {
 
@@ -943,7 +867,7 @@ public class RouteScreen extends JPanel {
                 }
 
                 detailRouteId.setText(
-                                route.routeId);
+                                route.routeIdentifier);
 
                 detailOrigin.setText(
                                 route.origin);
@@ -952,23 +876,42 @@ public class RouteScreen extends JPanel {
                                 route.destination);
 
                 detailDistance.setText(
-                                route.distance + " km");
+                                route.distanceKm == null
+                                                ? "-"
+                                                : route.distanceKm.stripTrailingZeros()
+                                                                .toPlainString()
+                                                                + " km");
 
                 detailDuration.setText(
-                                route.duration);
+                                route.durationMinutes == null
+                                                ? "-"
+                                                : route.durationMinutes
+                                                                + " minutes");
 
-                detailFare.setText(
-                                "₱" + route.fare);
+                detailBaseFare.setText(
+                                route.baseFare == null
+                                                ? "-"
+                                                : "₱"
+                                                                + route.baseFare
+                                                                                .setScale(
+                                                                                                2)
+                                                                                .toPlainString());
+
+                detailDescription.setText(
+                                route.description == null
+                                                || route.description.isBlank()
+                                                                ? "-"
+                                                                : route.description);
 
                 updateStatusBadge(
-                                route.status);
+                                route.active
+                                                ? "Active"
+                                                : "Inactive");
 
                 editButton.setEnabled(true);
 
-                boolean active = route.status.equals("Active");
-
                 toggleStatusButton.setText(
-                                active
+                                route.active
                                                 ? "Deactivate"
                                                 : "Activate");
 
@@ -980,24 +923,18 @@ public class RouteScreen extends JPanel {
         private void clearDetails() {
 
                 detailRouteId.setText("-");
-
                 detailOrigin.setText("-");
-
                 detailDestination.setText("-");
-
                 detailDistance.setText("-");
-
                 detailDuration.setText("-");
+                detailBaseFare.setText("-");
+                detailDescription.setText("-");
 
-                detailFare.setText("-");
-
-                updateStatusBadge(
-                                "No Status");
+                updateStatusBadge("No Status");
 
                 editButton.setEnabled(false);
 
-                toggleStatusButton.setText(
-                                "Activate");
+                toggleStatusButton.setText("Activate");
 
                 toggleStatusButton.setEnabled(false);
 
@@ -1021,13 +958,8 @@ public class RouteScreen extends JPanel {
                         return null;
                 }
 
-                return filteredRoutes.get(
-                                modelRow);
+                return filteredRoutes.get(modelRow);
         }
-
-        // ================================================================
-        // STATUS BADGE
-        // ================================================================
 
         private void updateStatusBadge(
                         String status) {
@@ -1080,10 +1012,6 @@ public class RouteScreen extends JPanel {
                 }
         }
 
-        // ================================================================
-        // STATUS ACTION
-        // ================================================================
-
         private void toggleRouteStatus() {
 
                 Route route = getSelectedRoute();
@@ -1092,14 +1020,14 @@ public class RouteScreen extends JPanel {
                         return;
                 }
 
-                boolean deactivate = route.status.equals("Active");
+                boolean newStatus = !route.active;
 
-                if (deactivate) {
+                if (route.active) {
 
                         int result = JOptionPane.showConfirmDialog(
                                         this,
                                         "Deactivate "
-                                                        + route.routeId
+                                                        + route.routeIdentifier
                                                         + "?\n\n"
                                                         + "This route will no longer "
                                                         + "be available for normal operations.",
@@ -1110,20 +1038,33 @@ public class RouteScreen extends JPanel {
                         if (result != JOptionPane.YES_OPTION) {
                                 return;
                         }
-
-                        route.status = "Inactive";
-
-                } else {
-
-                        route.status = "Active";
                 }
 
-                refreshRoutes();
-        }
+                try {
 
-        // ================================================================
-        // DELETE
-        // ================================================================
+                        RouteApiService.updateRoute(
+                                        route.id,
+                                        route.routeIdentifier,
+                                        route.origin,
+                                        route.destination,
+                                        route.distanceKm,
+                                        route.durationMinutes,
+                                        route.baseFare,
+                                        route.description,
+                                        newStatus);
+
+                        refreshRoutes();
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to update route status.\n\n"
+                                                        + exception.getMessage(),
+                                        "Route Management",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
+        }
 
         private void deleteSelectedRoute() {
 
@@ -1136,7 +1077,7 @@ public class RouteScreen extends JPanel {
                 int result = JOptionPane.showConfirmDialog(
                                 this,
                                 "Delete "
-                                                + route.routeId
+                                                + route.routeIdentifier
                                                 + " ("
                                                 + route.origin
                                                 + " → "
@@ -1147,23 +1088,31 @@ public class RouteScreen extends JPanel {
                                 JOptionPane.YES_NO_OPTION,
                                 JOptionPane.WARNING_MESSAGE);
 
-                if (result == JOptionPane.YES_OPTION) {
+                if (result != JOptionPane.YES_OPTION) {
+                        return;
+                }
 
-                        routes.remove(route);
+                try {
+
+                        RouteApiService.deleteRoute(route.id);
 
                         refreshRoutes();
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to delete route.\n\n"
+                                                        + exception.getMessage(),
+                                        "Delete Route",
+                                        JOptionPane.ERROR_MESSAGE);
                 }
         }
-
-        // ================================================================
-        // CREATE ROUTE
-        // ================================================================
 
         private void showCreateRouteDialog() {
 
                 JDialog dialog = new JDialog(
-                                SwingUtilities
-                                                .getWindowAncestor(this),
+                                SwingUtilities.getWindowAncestor(this),
                                 "Create Route",
                                 Dialog.ModalityType.APPLICATION_MODAL);
 
@@ -1172,12 +1121,12 @@ public class RouteScreen extends JPanel {
 
                 dialog.setSize(
                                 520,
-                                440);
+                                520);
 
                 dialog.setMinimumSize(
                                 new Dimension(
                                                 520,
-                                                440));
+                                                520));
 
                 dialog.setLocationRelativeTo(this);
 
@@ -1214,7 +1163,7 @@ public class RouteScreen extends JPanel {
 
                 JPanel form = new JPanel(
                                 new GridLayout(
-                                                5,
+                                                7,
                                                 2,
                                                 12,
                                                 10));
@@ -1228,15 +1177,18 @@ public class RouteScreen extends JPanel {
                                                 12,
                                                 24));
 
+                JTextField routeIdField = new JTextField();
                 JTextField originField = new JTextField();
-
                 JTextField destinationField = new JTextField();
-
                 JTextField distanceField = new JTextField();
-
                 JTextField durationField = new JTextField();
+                JTextField baseFareField = new JTextField();
+                JTextField descriptionField = new JTextField();
 
-                JTextField fareField = new JTextField();
+                addFormField(
+                                form,
+                                "Route ID",
+                                routeIdField);
 
                 addFormField(
                                 form,
@@ -1255,13 +1207,18 @@ public class RouteScreen extends JPanel {
 
                 addFormField(
                                 form,
-                                "Travel Time",
+                                "Duration (minutes)",
                                 durationField);
 
                 addFormField(
                                 form,
                                 "Base Fare",
-                                fareField);
+                                baseFareField);
+
+                addFormField(
+                                form,
+                                "Description",
+                                descriptionField);
 
                 JPanel buttons = new JPanel(
                                 new FlowLayout(
@@ -1284,49 +1241,73 @@ public class RouteScreen extends JPanel {
                 saveButton.addActionListener(
                                 event -> {
 
-                                        String origin = originField.getText()
-                                                        .trim();
+                                        String routeId = routeIdField.getText().trim();
 
-                                        String destination = destinationField.getText()
-                                                        .trim();
+                                        String origin = originField.getText().trim();
 
-                                        String distance = distanceField.getText()
-                                                        .trim();
+                                        String destination = destinationField.getText().trim();
 
-                                        String duration = durationField.getText()
-                                                        .trim();
+                                        String distanceText = distanceField.getText().trim();
 
-                                        String fare = fareField.getText()
-                                                        .trim();
+                                        String durationText = durationField.getText().trim();
+
+                                        String baseFareText = baseFareField.getText().trim();
+
+                                        String description = descriptionField.getText().trim();
 
                                         if (!validateRouteFields(
                                                         dialog,
+                                                        routeId,
                                                         origin,
                                                         destination,
-                                                        distance,
-                                                        duration,
-                                                        fare)) {
+                                                        distanceText,
+                                                        durationText,
+                                                        baseFareText)) {
 
                                                 return;
                                         }
 
-                                        routes.add(
-                                                        new Route(
-                                                                        generateRouteId(),
-                                                                        origin,
-                                                                        destination,
-                                                                        distance,
-                                                                        duration,
-                                                                        fare,
-                                                                        "Active"));
+                                        try {
 
-                                        refreshRoutes();
+                                                BigDecimal distanceKm = new BigDecimal(distanceText);
 
-                                        dialog.dispose();
+                                                Integer durationMinutes = Integer.valueOf(durationText);
+
+                                                BigDecimal baseFare = new BigDecimal(baseFareText);
+
+                                                RouteApiService.createRoute(
+                                                                routeId,
+                                                                origin,
+                                                                destination,
+                                                                distanceKm,
+                                                                durationMinutes,
+                                                                baseFare,
+                                                                description.isEmpty()
+                                                                                ? null
+                                                                                : description);
+
+                                                refreshRoutes();
+
+                                                dialog.dispose();
+
+                                        } catch (NumberFormatException exception) {
+
+                                                showWarning(
+                                                                dialog,
+                                                                "Distance, duration, and base fare must contain valid numeric values.",
+                                                                "Invalid Route Data");
+
+                                        } catch (Exception exception) {
+
+                                                showWarning(
+                                                                dialog,
+                                                                "Unable to create route.\n\n"
+                                                                                + exception.getMessage(),
+                                                                "Create Route Failed");
+                                        }
                                 });
 
                 buttons.add(cancelButton);
-
                 buttons.add(saveButton);
 
                 root.add(
@@ -1342,13 +1323,8 @@ public class RouteScreen extends JPanel {
                                 BorderLayout.SOUTH);
 
                 dialog.setContentPane(root);
-
                 dialog.setVisible(true);
         }
-
-        // ================================================================
-        // EDIT ROUTE
-        // ================================================================
 
         private void showEditRouteDialog() {
 
@@ -1359,8 +1335,7 @@ public class RouteScreen extends JPanel {
                 }
 
                 JDialog dialog = new JDialog(
-                                SwingUtilities
-                                                .getWindowAncestor(this),
+                                SwingUtilities.getWindowAncestor(this),
                                 "Edit Route",
                                 Dialog.ModalityType.APPLICATION_MODAL);
 
@@ -1369,12 +1344,12 @@ public class RouteScreen extends JPanel {
 
                 dialog.setSize(
                                 520,
-                                440);
+                                520);
 
                 dialog.setMinimumSize(
                                 new Dimension(
                                                 520,
-                                                440));
+                                                520));
 
                 dialog.setLocationRelativeTo(this);
 
@@ -1411,7 +1386,7 @@ public class RouteScreen extends JPanel {
 
                 JPanel form = new JPanel(
                                 new GridLayout(
-                                                6,
+                                                7,
                                                 2,
                                                 12,
                                                 10));
@@ -1426,7 +1401,7 @@ public class RouteScreen extends JPanel {
                                                 24));
 
                 JTextField routeIdField = new JTextField(
-                                route.routeId);
+                                route.routeIdentifier);
 
                 JTextField originField = new JTextField(
                                 route.origin);
@@ -1435,13 +1410,27 @@ public class RouteScreen extends JPanel {
                                 route.destination);
 
                 JTextField distanceField = new JTextField(
-                                route.distance);
+                                route.distanceKm == null
+                                                ? ""
+                                                : route.distanceKm.stripTrailingZeros()
+                                                                .toPlainString());
 
                 JTextField durationField = new JTextField(
-                                route.duration);
+                                route.durationMinutes == null
+                                                ? ""
+                                                : String.valueOf(
+                                                                route.durationMinutes));
 
-                JTextField fareField = new JTextField(
-                                route.fare);
+                JTextField baseFareField = new JTextField(
+                                route.baseFare == null
+                                                ? ""
+                                                : route.baseFare.stripTrailingZeros()
+                                                                .toPlainString());
+
+                JTextField descriptionField = new JTextField(
+                                route.description == null
+                                                ? ""
+                                                : route.description);
 
                 addFormField(
                                 form,
@@ -1465,13 +1454,18 @@ public class RouteScreen extends JPanel {
 
                 addFormField(
                                 form,
-                                "Travel Time",
+                                "Duration (minutes)",
                                 durationField);
 
                 addFormField(
                                 form,
                                 "Base Fare",
-                                fareField);
+                                baseFareField);
+
+                addFormField(
+                                form,
+                                "Description",
+                                descriptionField);
 
                 JPanel buttons = new JPanel(
                                 new FlowLayout(
@@ -1494,76 +1488,75 @@ public class RouteScreen extends JPanel {
                 saveButton.addActionListener(
                                 event -> {
 
-                                        String routeId = routeIdField.getText()
-                                                        .trim();
+                                        String routeId = routeIdField.getText().trim();
 
-                                        String origin = originField.getText()
-                                                        .trim();
+                                        String origin = originField.getText().trim();
 
-                                        String destination = destinationField.getText()
-                                                        .trim();
+                                        String destination = destinationField.getText().trim();
 
-                                        String distance = distanceField.getText()
-                                                        .trim();
+                                        String distanceText = distanceField.getText().trim();
 
-                                        String duration = durationField.getText()
-                                                        .trim();
+                                        String durationText = durationField.getText().trim();
 
-                                        String fare = fareField.getText()
-                                                        .trim();
+                                        String baseFareText = baseFareField.getText().trim();
 
-                                        if (routeId.isEmpty()) {
-
-                                                showWarning(
-                                                                dialog,
-                                                                "Route ID cannot be empty.",
-                                                                "Invalid Route");
-
-                                                return;
-                                        }
-
-                                        if (isDuplicateRouteId(
-                                                        routeId,
-                                                        route)) {
-
-                                                showWarning(
-                                                                dialog,
-                                                                "Another route already uses this Route ID.",
-                                                                "Duplicate Route ID");
-
-                                                return;
-                                        }
+                                        String description = descriptionField.getText().trim();
 
                                         if (!validateRouteFields(
                                                         dialog,
+                                                        routeId,
                                                         origin,
                                                         destination,
-                                                        distance,
-                                                        duration,
-                                                        fare)) {
+                                                        distanceText,
+                                                        durationText,
+                                                        baseFareText)) {
 
                                                 return;
                                         }
 
-                                        route.routeId = routeId;
+                                        try {
 
-                                        route.origin = origin;
+                                                BigDecimal distanceKm = new BigDecimal(distanceText);
 
-                                        route.destination = destination;
+                                                Integer durationMinutes = Integer.valueOf(durationText);
 
-                                        route.distance = distance;
+                                                BigDecimal baseFare = new BigDecimal(baseFareText);
 
-                                        route.duration = duration;
+                                                RouteApiService.updateRoute(
+                                                                route.id,
+                                                                routeId,
+                                                                origin,
+                                                                destination,
+                                                                distanceKm,
+                                                                durationMinutes,
+                                                                baseFare,
+                                                                description.isEmpty()
+                                                                                ? null
+                                                                                : description,
+                                                                route.active);
 
-                                        route.fare = fare;
+                                                refreshRoutes();
 
-                                        refreshRoutes();
+                                                dialog.dispose();
 
-                                        dialog.dispose();
+                                        } catch (NumberFormatException exception) {
+
+                                                showWarning(
+                                                                dialog,
+                                                                "Distance, duration, and base fare must contain valid numeric values.",
+                                                                "Invalid Route Data");
+
+                                        } catch (Exception exception) {
+
+                                                showWarning(
+                                                                dialog,
+                                                                "Unable to update route.\n\n"
+                                                                                + exception.getMessage(),
+                                                                "Update Route Failed");
+                                        }
                                 });
 
                 buttons.add(cancelButton);
-
                 buttons.add(saveButton);
 
                 root.add(
@@ -1579,38 +1572,34 @@ public class RouteScreen extends JPanel {
                                 BorderLayout.SOUTH);
 
                 dialog.setContentPane(root);
-
                 dialog.setVisible(true);
         }
 
-        // ================================================================
-        // VALIDATION
-        // ================================================================
-
         private boolean validateRouteFields(
                         Component parent,
+                        String routeId,
                         String origin,
                         String destination,
-                        String distance,
-                        String duration,
-                        String fare) {
+                        String distanceText,
+                        String durationText,
+                        String baseFareText) {
 
-                if (origin.isEmpty()
+                if (routeId.isEmpty()
+                                || origin.isEmpty()
                                 || destination.isEmpty()
-                                || distance.isEmpty()
-                                || duration.isEmpty()
-                                || fare.isEmpty()) {
+                                || distanceText.isEmpty()
+                                || durationText.isEmpty()
+                                || baseFareText.isEmpty()) {
 
                         showWarning(
                                         parent,
-                                        "Please complete all required fields.",
+                                        "Route ID, origin, destination, distance, duration, and base fare are required.",
                                         "Invalid Route");
 
                         return false;
                 }
 
-                if (origin.equalsIgnoreCase(
-                                destination)) {
+                if (origin.equalsIgnoreCase(destination)) {
 
                         showWarning(
                                         parent,
@@ -1622,15 +1611,58 @@ public class RouteScreen extends JPanel {
 
                 try {
 
-                        double distanceValue = Double.parseDouble(
-                                        distance);
+                        BigDecimal distanceKm = new BigDecimal(distanceText);
 
-                        if (distanceValue <= 0) {
+                        int durationMinutes = Integer.parseInt(durationText);
+
+                        BigDecimal baseFare = new BigDecimal(baseFareText);
+
+                        if (distanceKm.compareTo(BigDecimal.ZERO) <= 0) {
 
                                 showWarning(
                                                 parent,
-                                                "Distance must be greater than zero.",
-                                                "Invalid Distance");
+                                                "Distance must be greater than 0.",
+                                                "Invalid Route");
+
+                                return false;
+                        }
+
+                        if (durationMinutes <= 0) {
+
+                                showWarning(
+                                                parent,
+                                                "Duration must be at least 1 minute.",
+                                                "Invalid Route");
+
+                                return false;
+                        }
+
+                        if (baseFare.compareTo(BigDecimal.ZERO) <= 0) {
+
+                                showWarning(
+                                                parent,
+                                                "Base fare must be greater than 0.",
+                                                "Invalid Route");
+
+                                return false;
+                        }
+
+                        if (distanceKm.scale() > 2) {
+
+                                showWarning(
+                                                parent,
+                                                "Distance can have at most 2 decimal places.",
+                                                "Invalid Route");
+
+                                return false;
+                        }
+
+                        if (baseFare.scale() > 2) {
+
+                                showWarning(
+                                                parent,
+                                                "Base fare can have at most 2 decimal places.",
+                                                "Invalid Route");
 
                                 return false;
                         }
@@ -1639,58 +1671,13 @@ public class RouteScreen extends JPanel {
 
                         showWarning(
                                         parent,
-                                        "Distance must be a valid number.",
-                                        "Invalid Distance");
-
-                        return false;
-                }
-
-                try {
-
-                        double fareValue = Double.parseDouble(
-                                        fare);
-
-                        if (fareValue <= 0) {
-
-                                showWarning(
-                                                parent,
-                                                "Fare must be greater than zero.",
-                                                "Invalid Fare");
-
-                                return false;
-                        }
-
-                } catch (NumberFormatException exception) {
-
-                        showWarning(
-                                        parent,
-                                        "Fare must be a valid number.",
-                                        "Invalid Fare");
+                                        "Distance, duration, and base fare must contain valid numeric values.",
+                                        "Invalid Route");
 
                         return false;
                 }
 
                 return true;
-        }
-
-        private boolean isDuplicateRouteId(
-                        String routeId,
-                        Route ignoredRoute) {
-
-                for (Route route : routes) {
-
-                        if (route == ignoredRoute) {
-                                continue;
-                        }
-
-                        if (route.routeId.equalsIgnoreCase(
-                                        routeId)) {
-
-                                return true;
-                        }
-                }
-
-                return false;
         }
 
         private void showWarning(
@@ -1705,47 +1692,12 @@ public class RouteScreen extends JPanel {
                                 JOptionPane.WARNING_MESSAGE);
         }
 
-        // ================================================================
-        // ROUTE ID GENERATION
-        // ================================================================
-
-        private String generateRouteId() {
-
-                int highest = 0;
-
-                for (Route route : routes) {
-
-                        try {
-
-                                int number = Integer.parseInt(
-                                                route.routeId
-                                                                .substring(3));
-
-                                highest = Math.max(
-                                                highest,
-                                                number);
-
-                        } catch (NumberFormatException ignored) {
-                                // Ignore unexpected route IDs.
-                        }
-                }
-
-                return String.format(
-                                "RT-%03d",
-                                highest + 1);
-        }
-
-        // ================================================================
-        // FORM FIELD
-        // ================================================================
-
         private void addFormField(
                         JPanel panel,
                         String labelText,
                         JComponent field) {
 
-                JLabel label = new JLabel(
-                                labelText);
+                JLabel label = new JLabel(labelText);
 
                 label.setFont(
                                 BussinTheme.SMALL_BOLD);
@@ -1763,54 +1715,41 @@ public class RouteScreen extends JPanel {
                 panel.add(field);
         }
 
-        // ================================================================
-        // ROUTE MODEL
-        // ================================================================
-
         private static class Route {
 
-                private String routeId;
+                private final long id;
 
+                private String routeIdentifier;
                 private String origin;
-
                 private String destination;
-
-                private String distance;
-
-                private String duration;
-
-                private String fare;
-
-                private String status;
+                private BigDecimal distanceKm;
+                private Integer durationMinutes;
+                private BigDecimal baseFare;
+                private String description;
+                private boolean active;
 
                 private Route(
-                                String routeId,
+                                long id,
+                                String routeIdentifier,
                                 String origin,
                                 String destination,
-                                String distance,
-                                String duration,
-                                String fare,
-                                String status) {
+                                BigDecimal distanceKm,
+                                Integer durationMinutes,
+                                BigDecimal baseFare,
+                                String description,
+                                boolean active) {
 
-                        this.routeId = routeId;
-
+                        this.id = id;
+                        this.routeIdentifier = routeIdentifier;
                         this.origin = origin;
-
                         this.destination = destination;
-
-                        this.distance = distance;
-
-                        this.duration = duration;
-
-                        this.fare = fare;
-
-                        this.status = status;
+                        this.distanceKm = distanceKm;
+                        this.durationMinutes = durationMinutes;
+                        this.baseFare = baseFare;
+                        this.description = description;
+                        this.active = active;
                 }
         }
-
-        // ================================================================
-        // TABLE MODEL
-        // ================================================================
 
         private class RouteTableModel
                         extends AbstractTableModel {
@@ -1821,26 +1760,25 @@ public class RouteScreen extends JPanel {
                                 "Destination",
                                 "Distance",
                                 "Duration",
-                                "Fare",
+                                "Base Fare",
+                                "Description",
+                                "Database ID",
                                 "Status"
                 };
 
                 @Override
                 public int getRowCount() {
-
                         return filteredRoutes.size();
                 }
 
                 @Override
                 public int getColumnCount() {
-
                         return columns.length;
                 }
 
                 @Override
                 public String getColumnName(
                                 int column) {
-
                         return columns[column];
                 }
 
@@ -1849,13 +1787,12 @@ public class RouteScreen extends JPanel {
                                 int row,
                                 int column) {
 
-                        Route route = filteredRoutes.get(
-                                        row);
+                        Route route = filteredRoutes.get(row);
 
                         return switch (column) {
 
                                 case 0 ->
-                                        route.routeId;
+                                        route.routeIdentifier;
 
                                 case 1 ->
                                         route.origin;
@@ -1864,16 +1801,40 @@ public class RouteScreen extends JPanel {
                                         route.destination;
 
                                 case 3 ->
-                                        route.distance + " km";
+                                        route.distanceKm == null
+                                                        ? "-"
+                                                        : route.distanceKm.stripTrailingZeros()
+                                                                        .toPlainString()
+                                                                        + " km";
 
                                 case 4 ->
-                                        route.duration;
+                                        route.durationMinutes == null
+                                                        ? "-"
+                                                        : route.durationMinutes
+                                                                        + " min";
 
                                 case 5 ->
-                                        "₱" + route.fare;
+                                        route.baseFare == null
+                                                        ? "-"
+                                                        : "₱"
+                                                                        + route.baseFare
+                                                                                        .setScale(
+                                                                                                        2)
+                                                                                        .toPlainString();
 
                                 case 6 ->
-                                        route.status;
+                                        route.description == null
+                                                        || route.description.isBlank()
+                                                                        ? "-"
+                                                                        : route.description;
+
+                                case 7 ->
+                                        route.id;
+
+                                case 8 ->
+                                        route.active
+                                                        ? "Active"
+                                                        : "Inactive";
 
                                 default ->
                                         "";
@@ -1888,10 +1849,6 @@ public class RouteScreen extends JPanel {
                         return false;
                 }
         }
-
-        // ================================================================
-        // STATUS TABLE RENDERER
-        // ================================================================
 
         private static class StatusCellRenderer
                         extends DefaultTableCellRenderer {

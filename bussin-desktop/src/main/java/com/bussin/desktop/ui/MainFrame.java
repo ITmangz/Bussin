@@ -41,6 +41,7 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 public class MainFrame extends JFrame {
 
         private final String userRole;
+
         private final String currentUserEmail;
 
         private final JPanel contentPanel = new JPanel(new BorderLayout());
@@ -50,6 +51,7 @@ public class MainFrame extends JFrame {
         private final BookingFlowState bookingFlowState = new BookingFlowState();
 
         private Sidebar sidebar;
+
         private TopBar topBar;
 
         private String currentRoute;
@@ -99,8 +101,7 @@ public class MainFrame extends JFrame {
                 contentPanel.setBorder(
                                 BorderFactory.createEmptyBorder());
 
-                JPanel mainPanel = new JPanel(
-                                new BorderLayout());
+                JPanel mainPanel = new JPanel(new BorderLayout());
 
                 mainPanel.setBackground(
                                 BussinTheme.BACKGROUND);
@@ -109,8 +110,7 @@ public class MainFrame extends JFrame {
                                 sidebar,
                                 BorderLayout.WEST);
 
-                JPanel rightPanel = new JPanel(
-                                new BorderLayout());
+                JPanel rightPanel = new JPanel(new BorderLayout());
 
                 rightPanel.setBackground(
                                 BussinTheme.BACKGROUND);
@@ -146,6 +146,8 @@ public class MainFrame extends JFrame {
                         return;
                 }
 
+                route = route.trim().toLowerCase();
+
                 if (!hasAccess(route)) {
 
                         JOptionPane.showMessageDialog(
@@ -157,9 +159,25 @@ public class MainFrame extends JFrame {
                         return;
                 }
 
-                currentRoute = route;
+                JPanel screen;
 
-                JPanel screen = getOrCreateScreen(route);
+                try {
+
+                        screen = getOrCreateScreen(route);
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to open this section.\n\n"
+                                                        + exception.getMessage(),
+                                        "BUSSIN",
+                                        JOptionPane.ERROR_MESSAGE);
+
+                        return;
+                }
+
+                currentRoute = route;
 
                 contentPanel.removeAll();
 
@@ -168,18 +186,14 @@ public class MainFrame extends JFrame {
                                 BorderLayout.CENTER);
 
                 contentPanel.revalidate();
+
                 contentPanel.repaint();
 
                 sidebar.setActiveRoute(route);
 
                 updateTitle(route);
 
-                /*
-                 * Refresh USER screens whenever they are opened.
-                 */
-                if (screen instanceof UserBookingsScreen bookings) {
-                        bookings.refresh();
-                }
+                refreshScreen(screen);
         }
 
         private void handleLogout() {
@@ -204,22 +218,16 @@ public class MainFrame extends JFrame {
         private JPanel getOrCreateScreen(
                         String route) {
 
-                /*
-                 * The commuter screens use shared state and should
-                 * be recreated when appropriate.
-                 */
-                if ("trip-search".equals(route)
-                                || "seat-selection".equals(route)
-                                || "passenger-information".equals(route)
-                                || "booking-review".equals(route)
-                                || "booking-confirmation".equals(route)) {
+                if (isBookingFlowRoute(route)) {
 
                         return createScreen(route);
                 }
 
-                if (screenCache.containsKey(route)) {
+                JPanel cachedScreen = screenCache.get(route);
 
-                        return screenCache.get(route);
+                if (cachedScreen != null) {
+
+                        return cachedScreen;
                 }
 
                 JPanel screen = createScreen(route);
@@ -229,6 +237,23 @@ public class MainFrame extends JFrame {
                                 screen);
 
                 return screen;
+        }
+
+        private boolean isBookingFlowRoute(
+                        String route) {
+
+                return switch (route) {
+
+                        case "trip-search",
+                                        "seat-selection",
+                                        "passenger-information",
+                                        "booking-review",
+                                        "booking-confirmation" ->
+                                true;
+
+                        default ->
+                                false;
+                };
         }
 
         private JPanel createScreen(
@@ -337,47 +362,99 @@ public class MainFrame extends JFrame {
         private boolean hasAccess(
                         String route) {
 
-                switch (userRole) {
+                if (route == null
+                                || route.isBlank()) {
 
-                        case "ADMIN":
-                                return true;
+                        return false;
+                }
 
-                        case "EMPLOYEE":
+                return switch (userRole) {
 
-                                return switch (route) {
+                        case "ADMIN" ->
+                                hasAdminAccess(route);
 
-                                        case "dashboard",
-                                                        "queue",
-                                                        "bookings",
-                                                        "trips",
-                                                        "buses",
-                                                        "profile" ->
-                                                true;
+                        case "EMPLOYEE" ->
+                                hasEmployeeAccess(route);
 
-                                        default ->
-                                                false;
-                                };
+                        case "USER" ->
+                                hasUserAccess(route);
 
-                        case "USER":
+                        default ->
+                                false;
+                };
+        }
 
-                        default:
+        private boolean hasAdminAccess(
+                        String route) {
 
-                                return switch (route) {
+                return switch (route) {
 
-                                        case "dashboard",
-                                                        "queue",
-                                                        "bookings",
-                                                        "profile",
-                                                        "trip-search",
-                                                        "seat-selection",
-                                                        "passenger-information",
-                                                        "booking-review",
-                                                        "booking-confirmation" ->
-                                                true;
+                        case "dashboard",
+                                        "queue",
+                                        "bookings",
+                                        "trips",
+                                        "buses",
+                                        "routes",
+                                        "employees",
+                                        "reports",
+                                        "profile",
+                                        "trip-search",
+                                        "seat-selection",
+                                        "passenger-information",
+                                        "booking-review",
+                                        "booking-confirmation" ->
+                                true;
 
-                                        default ->
-                                                false;
-                                };
+                        default ->
+                                false;
+                };
+        }
+
+        private boolean hasEmployeeAccess(
+                        String route) {
+
+                return switch (route) {
+
+                        case "dashboard",
+                                        "queue",
+                                        "bookings",
+                                        "trips",
+                                        "buses",
+                                        "profile" ->
+                                true;
+
+                        default ->
+                                false;
+                };
+        }
+
+        private boolean hasUserAccess(
+                        String route) {
+
+                return switch (route) {
+
+                        case "dashboard",
+                                        "queue",
+                                        "bookings",
+                                        "profile",
+                                        "trip-search",
+                                        "seat-selection",
+                                        "passenger-information",
+                                        "booking-review",
+                                        "booking-confirmation" ->
+                                true;
+
+                        default ->
+                                false;
+                };
+        }
+
+        private void refreshScreen(
+                        JPanel screen) {
+
+                if (screen instanceof UserBookingsScreen bookings) {
+
+                        bookings.refresh();
                 }
         }
 
@@ -444,8 +521,7 @@ public class MainFrame extends JFrame {
                         String title,
                         String message) {
 
-                JPanel panel = new JPanel(
-                                new GridBagLayout());
+                JPanel panel = new JPanel(new GridBagLayout());
 
                 panel.setBackground(
                                 BussinTheme.BACKGROUND);
@@ -513,20 +589,38 @@ public class MainFrame extends JFrame {
                         return "USER";
                 }
 
-                return role
-                                .trim()
+                String normalized = role.trim()
                                 .toUpperCase();
+
+                return switch (normalized) {
+
+                        case "COMMUTER",
+                                        "USER" ->
+                                "USER";
+
+                        case "ADMIN" ->
+                                "ADMIN";
+
+                        case "EMPLOYEE" ->
+                                "EMPLOYEE";
+
+                        default ->
+                                "USER";
+                };
         }
 
         public String getUserRole() {
+
                 return userRole;
         }
 
         public String getCurrentUserEmail() {
+
                 return currentUserEmail;
         }
 
         public String getCurrentRoute() {
+
                 return currentRoute;
         }
 }

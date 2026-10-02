@@ -3,7 +3,6 @@ package com.bussin.desktop.ui.screens;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -15,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -24,63 +23,44 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.JViewport;
 import javax.swing.ListSelectionModel;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import com.bussin.desktop.services.BookingApiService;
+import com.bussin.desktop.services.BookingApiService.BookingResponse;
+import com.bussin.desktop.services.TripApiService;
+import com.bussin.desktop.services.TripApiService.TripResponse;
+import com.bussin.desktop.services.UserApiService;
+import com.bussin.desktop.services.UserApiService.UserResponse;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
 import com.bussin.desktop.ui.components.AppLabel;
-import com.bussin.desktop.ui.components.IconFactory;
 import com.bussin.desktop.ui.components.PageContent;
-import com.bussin.desktop.ui.components.ResponsiveLayouts;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class BookingScreen extends JPanel {
 
-        // ================================================================
-        // CURRENT USER
-        // ================================================================
+        private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("MMM dd, yyyy • hh:mm a");
+
+        private static final DateTimeFormatter SHORT_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("MMM d, h:mm a");
 
         private final String userRole;
         private final String currentUserEmail;
 
-        // ================================================================
-        // DATA
-        // ================================================================
-
-        private final List<Booking> bookings = new ArrayList<>();
-
-        private final List<Booking> filteredBookings = new ArrayList<>();
+        private final List<BookingResponse> bookings = new ArrayList<>();
+        private final List<BookingResponse> filteredBookings = new ArrayList<>();
+        private final List<TripResponse> trips = new ArrayList<>();
 
         private final BookingTableModel tableModel = new BookingTableModel();
 
-        // ================================================================
-        // TABLE
-        // ================================================================
-
-        private final JTable bookingTable = new JTable(tableModel) {
-
-                @Override
-                public boolean getScrollableTracksViewportWidth() {
-
-                        return getParent() instanceof JViewport viewport
-                                        && viewport.getWidth() >= 780;
-                }
-        };
-
-        // ================================================================
-        // FILTERS
-        // ================================================================
+        private final JTable bookingTable = new JTable(tableModel);
 
         private final JTextField searchField = new JTextField();
 
@@ -101,23 +81,15 @@ public class BookingScreen extends JPanel {
                                         "Refunded"
                         });
 
-        // ================================================================
-        // STATISTICS
-        // ================================================================
-
         private final JLabel totalValue = new JLabel("0");
-
-        private final JLabel completedValue = new JLabel("0");
-
-        private final JLabel confirmedValue = new JLabel("0");
 
         private final JLabel pendingValue = new JLabel("0");
 
-        private final JLabel cancelledValue = new JLabel("0");
+        private final JLabel confirmedValue = new JLabel("0");
 
-        // ================================================================
-        // DETAILS
-        // ================================================================
+        private final JLabel completedValue = new JLabel("0");
+
+        private final JLabel cancelledValue = new JLabel("0");
 
         private final JLabel detailBookingId = new JLabel("-");
 
@@ -139,38 +111,9 @@ public class BookingScreen extends JPanel {
                         "NO STATUS",
                         AppBadge.Status.NEUTRAL);
 
-        // ================================================================
-        // ACTION BUTTONS
-        // ================================================================
-
         private final AppButton cancelButton = new AppButton(
                         "Cancel",
                         AppButton.Variant.DANGER);
-
-        private final AppButton confirmButton = new AppButton(
-                        "Confirm");
-
-        private final AppButton payButton = new AppButton(
-                        "Mark Paid",
-                        AppButton.Variant.SECONDARY);
-
-        private final AppButton completeButton = new AppButton(
-                        "Complete",
-                        AppButton.Variant.SECONDARY);
-
-        // ================================================================
-        // FORMATS
-        // ================================================================
-
-        private static final DateTimeFormatter TABLE_TIME_FORMAT = DateTimeFormatter.ofPattern(
-                        "MMM d, h:mm a");
-
-        private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern(
-                        "MMM dd, yyyy • hh:mm a");
-
-        // ================================================================
-        // CONSTRUCTOR
-        // ================================================================
 
         public BookingScreen(
                         String userRole,
@@ -182,208 +125,10 @@ public class BookingScreen extends JPanel {
                                 ? ""
                                 : currentUserEmail.trim();
 
-                initializeData();
-
                 initializeUI();
 
-                refreshBookings();
+                loadBookings();
         }
-
-        // ================================================================
-        // ROLE HELPERS
-        // ================================================================
-
-        private boolean isUser() {
-
-                return "USER".equals(userRole);
-        }
-
-        private boolean isStaff() {
-
-                return "ADMIN".equals(userRole)
-                                || "EMPLOYEE".equals(userRole);
-        }
-
-        // ================================================================
-        // INITIAL DATA
-        // ================================================================
-
-        private void initializeData() {
-
-                LocalDateTime now = LocalDateTime.now()
-                                .withSecond(0)
-                                .withNano(0);
-
-                /*
-                 * Existing bookings are assigned to different owners.
-                 *
-                 * ADMIN and EMPLOYEE can see all bookings.
-                 *
-                 * USER can only see bookings whose ownerEmail
-                 * matches the currently logged-in account.
-                 */
-
-                add(
-                                "BK-1001",
-                                "admin@bussin.com",
-                                "Juan Dela Cruz",
-                                "Trip 102 • 10:00 AM",
-                                "Manila → Batangas",
-                                "12A",
-                                450,
-                                "Paid",
-                                "Completed",
-                                now.minusDays(1)
-                                                .withHour(16)
-                                                .withMinute(20));
-
-                add(
-                                "BK-1002",
-                                "employee@bussin.com",
-                                "Maria Santos",
-                                "Trip 102 • 10:00 AM",
-                                "Manila → Batangas",
-                                "12B",
-                                360,
-                                "Paid",
-                                "Confirmed",
-                                now.minusHours(20));
-
-                add(
-                                "BK-1003",
-                                "user@bussin.com",
-                                "User",
-                                "Trip 114 • 10:30 AM",
-                                "Manila → Lucena",
-                                "08A",
-                                520,
-                                "Unpaid",
-                                "Pending",
-                                now.minusHours(3)
-                                                .minusMinutes(12));
-
-                add(
-                                "BK-1004",
-                                "user@bussin.com",
-                                "User",
-                                "Trip 114 • 10:30 AM",
-                                "Manila → Lucena",
-                                "08B",
-                                520,
-                                "Paid",
-                                "Confirmed",
-                                now.minusHours(5));
-
-                add(
-                                "BK-1005",
-                                "admin@bussin.com",
-                                "Pedro Garcia",
-                                "Trip 121 • 11:00 AM",
-                                "Manila → Nasugbu",
-                                "22A",
-                                380,
-                                "Refunded",
-                                "Cancelled",
-                                now.minusDays(1)
-                                                .withHour(9)
-                                                .withMinute(45));
-
-                add(
-                                "BK-1006",
-                                "employee@bussin.com",
-                                "Sofia Ramos",
-                                "Trip 121 • 11:00 AM",
-                                "Manila → Nasugbu",
-                                "22B",
-                                380,
-                                "Paid",
-                                "Confirmed",
-                                now.minusHours(2)
-                                                .minusMinutes(30));
-
-                add(
-                                "BK-1007",
-                                "admin@bussin.com",
-                                "Mark Villanueva",
-                                "Trip 102 • 10:00 AM",
-                                "Manila → Batangas",
-                                "05C",
-                                450,
-                                "Unpaid",
-                                "Pending",
-                                now.minusMinutes(50));
-
-                add(
-                                "BK-1008",
-                                "employee@bussin.com",
-                                "Liza Mendoza",
-                                "Trip 114 • 10:30 AM",
-                                "Manila → Lucena",
-                                "10A",
-                                416,
-                                "Paid",
-                                "Completed",
-                                now.minusDays(2)
-                                                .withHour(14)
-                                                .withMinute(5));
-
-                add(
-                                "BK-1009",
-                                "admin@bussin.com",
-                                "Rico Bautista",
-                                "Trip 121 • 11:00 AM",
-                                "Manila → Nasugbu",
-                                "14D",
-                                380,
-                                "Unpaid",
-                                "Cancelled",
-                                now.minusDays(2)
-                                                .withHour(11)
-                                                .withMinute(30));
-
-                add(
-                                "BK-1010",
-                                "employee@bussin.com",
-                                "Nina Aquino",
-                                "Trip 102 • 10:00 AM",
-                                "Manila → Batangas",
-                                "03A",
-                                360,
-                                "Paid",
-                                "Confirmed",
-                                now.minusHours(1)
-                                                .minusMinutes(5));
-        }
-
-        private void add(
-                        String id,
-                        String ownerEmail,
-                        String passenger,
-                        String trip,
-                        String route,
-                        String seat,
-                        double fare,
-                        String payment,
-                        String status,
-                        LocalDateTime createdAt) {
-
-                bookings.add(
-                                new Booking(
-                                                id,
-                                                ownerEmail,
-                                                passenger,
-                                                trip,
-                                                route,
-                                                seat,
-                                                fare,
-                                                payment,
-                                                status,
-                                                createdAt));
-        }
-
-        // ================================================================
-        // INITIALIZE UI
-        // ================================================================
 
         private void initializeUI() {
 
@@ -400,10 +145,6 @@ public class BookingScreen extends JPanel {
                                 BorderLayout.CENTER);
         }
 
-        // ================================================================
-        // CONTENT
-        // ================================================================
-
         private JComponent createContent() {
 
                 PageContent page = new PageContent();
@@ -414,7 +155,7 @@ public class BookingScreen extends JPanel {
 
                 page.addBlock(
                                 createStatistics(),
-                                24);
+                                20);
 
                 page.addBlock(
                                 createMainSection(),
@@ -423,49 +164,35 @@ public class BookingScreen extends JPanel {
                 return page.inScrollPane();
         }
 
-        // ================================================================
-        // HEADER
-        // ================================================================
-
         private JPanel createHeader() {
 
-                JPanel header = new JPanel(
+                JPanel panel = new JPanel(
                                 new BorderLayout());
 
-                header.setOpaque(false);
+                panel.setOpaque(false);
 
                 JPanel titlePanel = new JPanel();
 
                 titlePanel.setOpaque(false);
 
                 titlePanel.setLayout(
-                                new BoxLayout(
+                                new javax.swing.BoxLayout(
                                                 titlePanel,
-                                                BoxLayout.Y_AXIS));
+                                                javax.swing.BoxLayout.Y_AXIS));
 
                 titlePanel.add(
                                 AppLabel.title(
-                                                isUser()
-                                                                ? "My Bookings"
-                                                                : "Booking Management"));
+                                                "My Bookings"));
 
                 titlePanel.add(
-                                Box.createVerticalStrut(5));
+                                javax.swing.Box.createVerticalStrut(5));
 
                 titlePanel.add(
                                 AppLabel.secondary(
-                                                isUser()
-                                                                ? "View and create your own passenger bookings."
-                                                                : "Manage passenger bookings, trip assignments, seats, and payment status."));
+                                                "View and manage your bookings."));
 
                 AppButton createButton = new AppButton(
                                 "Create Booking");
-
-                createButton.setIcon(
-                                IconFactory.create(
-                                                "plus",
-                                                16,
-                                                Color.WHITE));
 
                 createButton.addActionListener(
                                 event -> showCreateBookingDialog());
@@ -481,56 +208,53 @@ public class BookingScreen extends JPanel {
                 actionPanel.add(
                                 createButton);
 
-                header.add(
+                panel.add(
                                 titlePanel,
                                 BorderLayout.WEST);
 
-                header.add(
+                panel.add(
                                 actionPanel,
                                 BorderLayout.EAST);
 
-                return header;
+                return panel;
         }
-
-        // ================================================================
-        // STATISTICS
-        // ================================================================
 
         private JPanel createStatistics() {
 
-                JPanel statistics = new JPanel(
-                                new ResponsiveLayouts.Grid(
+                JPanel panel = new JPanel(
+                                new java.awt.GridLayout(
+                                                1,
                                                 4,
-                                                200,
-                                                14));
+                                                12,
+                                                0));
 
-                statistics.setOpaque(false);
+                panel.setOpaque(false);
 
-                statistics.add(
+                panel.add(
                                 createStatCard(
                                                 "PENDING",
                                                 pendingValue,
                                                 BussinTheme.WARNING));
 
-                statistics.add(
+                panel.add(
                                 createStatCard(
                                                 "CONFIRMED",
                                                 confirmedValue,
                                                 BussinTheme.SUCCESS));
 
-                statistics.add(
+                panel.add(
                                 createStatCard(
                                                 "COMPLETED",
                                                 completedValue,
                                                 BussinTheme.CHARCOAL));
 
-                statistics.add(
+                panel.add(
                                 createStatCard(
                                                 "CANCELLED",
                                                 cancelledValue,
                                                 BussinTheme.RED));
 
-                return statistics;
+                return panel;
         }
 
         private AppCard createStatCard(
@@ -542,7 +266,7 @@ public class BookingScreen extends JPanel {
 
                 card.setLayout(
                                 new BorderLayout(
-                                                14,
+                                                12,
                                                 0));
 
                 JPanel indicator = new JPanel();
@@ -553,16 +277,16 @@ public class BookingScreen extends JPanel {
                 indicator.setPreferredSize(
                                 new Dimension(
                                                 4,
-                                                54));
+                                                50));
 
                 JPanel content = new JPanel();
 
                 content.setOpaque(false);
 
                 content.setLayout(
-                                new BoxLayout(
+                                new javax.swing.BoxLayout(
                                                 content,
-                                                BoxLayout.Y_AXIS));
+                                                javax.swing.BoxLayout.Y_AXIS));
 
                 JLabel titleLabel = new JLabel(title);
 
@@ -578,14 +302,12 @@ public class BookingScreen extends JPanel {
                 value.setForeground(
                                 BussinTheme.TEXT_PRIMARY);
 
-                content.add(
-                                titleLabel);
+                content.add(titleLabel);
 
                 content.add(
-                                Box.createVerticalStrut(5));
+                                javax.swing.Box.createVerticalStrut(5));
 
-                content.add(
-                                value);
+                content.add(value);
 
                 card.add(
                                 indicator,
@@ -598,33 +320,25 @@ public class BookingScreen extends JPanel {
                 return card;
         }
 
-        // ================================================================
-        // MAIN SECTION
-        // ================================================================
-
         private JPanel createMainSection() {
 
-                JPanel main = new JPanel(
-                                new ResponsiveLayouts.Split(
+                JPanel panel = new JPanel(
+                                new BorderLayout(
                                                 18,
-                                                1000,
-                                                3,
-                                                1));
+                                                0));
 
-                main.setOpaque(false);
+                panel.setOpaque(false);
 
-                main.add(
-                                createBookingListCard());
+                panel.add(
+                                createBookingListCard(),
+                                BorderLayout.CENTER);
 
-                main.add(
-                                createBookingDetailsCard());
+                panel.add(
+                                createDetailsCard(),
+                                BorderLayout.EAST);
 
-                return main;
+                return panel;
         }
-
-        // ================================================================
-        // BOOKING LIST
-        // ================================================================
 
         private AppCard createBookingListCard() {
 
@@ -642,15 +356,11 @@ public class BookingScreen extends JPanel {
 
                 heading.add(
                                 AppLabel.section(
-                                                isUser()
-                                                                ? "My Bookings"
-                                                                : "Bookings"),
+                                                "Bookings"),
                                 BorderLayout.WEST);
 
                 JLabel hint = new JLabel(
-                                isUser()
-                                                ? "Select a booking to view details"
-                                                : "Select a booking to view details");
+                                "Select a booking to view details");
 
                 hint.setFont(
                                 BussinTheme.SMALL);
@@ -666,8 +376,6 @@ public class BookingScreen extends JPanel {
                                 heading,
                                 BorderLayout.NORTH);
 
-                JPanel filters = createFilterBar();
-
                 JPanel center = new JPanel(
                                 new BorderLayout(
                                                 0,
@@ -676,23 +384,20 @@ public class BookingScreen extends JPanel {
                 center.setOpaque(false);
 
                 center.add(
-                                filters,
+                                createFilters(),
                                 BorderLayout.NORTH);
 
                 configureTable();
 
-                JScrollPane tableScroll = new JScrollPane(
+                JScrollPane scroll = new JScrollPane(
                                 bookingTable);
 
-                tableScroll.setBorder(
+                scroll.setBorder(
                                 BorderFactory.createLineBorder(
                                                 BussinTheme.BORDER));
 
-                tableScroll.getVerticalScrollBar()
-                                .setUnitIncrement(12);
-
                 center.add(
-                                tableScroll,
+                                scroll,
                                 BorderLayout.CENTER);
 
                 card.add(
@@ -702,35 +407,24 @@ public class BookingScreen extends JPanel {
                 return card;
         }
 
-        // ================================================================
-        // FILTER BAR
-        // ================================================================
+        private JPanel createFilters() {
 
-        private JPanel createFilterBar() {
-
-                JPanel filters = new JPanel(
-                                new ResponsiveLayouts.Grid(
+                JPanel panel = new JPanel(
+                                new java.awt.GridLayout(
+                                                1,
                                                 3,
-                                                150,
-                                                10));
+                                                10,
+                                                0));
 
-                filters.setOpaque(false);
-
-                searchField.setToolTipText(
-                                "Search booking ID, passenger, route, trip, or seat");
+                panel.setOpaque(false);
 
                 searchField.putClientProperty(
                                 "JTextField.placeholderText",
-                                "Search ID, passenger, route, seat");
+                                "Search booking, passenger, route, seat");
 
-                filters.add(
-                                createSearchField());
-
-                filters.add(
-                                statusFilter);
-
-                filters.add(
-                                paymentFilter);
+                panel.add(searchField);
+                panel.add(statusFilter);
+                panel.add(paymentFilter);
 
                 searchField
                                 .getDocument()
@@ -740,21 +434,18 @@ public class BookingScreen extends JPanel {
                                                         @Override
                                                         public void insertUpdate(
                                                                         DocumentEvent event) {
-
                                                                 refreshBookings();
                                                         }
 
                                                         @Override
                                                         public void removeUpdate(
                                                                         DocumentEvent event) {
-
                                                                 refreshBookings();
                                                         }
 
                                                         @Override
                                                         public void changedUpdate(
                                                                         DocumentEvent event) {
-
                                                                 refreshBookings();
                                                         }
                                                 });
@@ -765,53 +456,8 @@ public class BookingScreen extends JPanel {
                 paymentFilter.addActionListener(
                                 event -> refreshBookings());
 
-                return filters;
-        }
-
-        private JPanel createSearchField() {
-
-                JPanel panel = new JPanel(
-                                new BorderLayout());
-
-                panel.setOpaque(false);
-
-                JLabel icon = new JLabel(
-                                IconFactory.create(
-                                                "dashboard",
-                                                16,
-                                                BussinTheme.MUTED_SILVER));
-
-                icon.setBorder(
-                                BorderFactory.createEmptyBorder(
-                                                0,
-                                                12,
-                                                0,
-                                                6));
-
-                searchField.setBorder(
-                                BorderFactory.createCompoundBorder(
-                                                BorderFactory.createLineBorder(
-                                                                BussinTheme.BORDER),
-                                                BorderFactory.createEmptyBorder(
-                                                                0,
-                                                                6,
-                                                                0,
-                                                                10)));
-
-                panel.add(
-                                icon,
-                                BorderLayout.WEST);
-
-                panel.add(
-                                searchField,
-                                BorderLayout.CENTER);
-
                 return panel;
         }
-
-        // ================================================================
-        // TABLE
-        // ================================================================
 
         private void configureTable() {
 
@@ -827,50 +473,20 @@ public class BookingScreen extends JPanel {
 
                 bookingTable.setShowVerticalLines(false);
 
-                bookingTable.setShowHorizontalLines(true);
-
                 bookingTable.setGridColor(
                                 BussinTheme.BORDER);
 
-                bookingTable.setSelectionBackground(
-                                BussinTheme.PRIMARY_LIGHT);
-
-                bookingTable.setSelectionForeground(
-                                BussinTheme.TEXT_PRIMARY);
-
                 bookingTable.setFillsViewportHeight(true);
 
-                bookingTable.getTableHeader()
-                                .setFont(
-                                                BussinTheme.SMALL_BOLD);
+                bookingTable
+                                .getSelectionModel()
+                                .addListSelectionListener(
+                                                event -> {
 
-                bookingTable.getTableHeader()
-                                .setForeground(
-                                                BussinTheme.TEXT_SECONDARY);
-
-                bookingTable.getTableHeader()
-                                .setBackground(
-                                                BussinTheme.SURFACE_ALT);
-
-                for (int i = 0; i < 9; i++) {
-
-                        bookingTable
-                                        .getColumnModel()
-                                        .getColumn(i)
-                                        .setPreferredWidth(
-                                                        switch (i) {
-                                                                case 0 -> 70;
-                                                                case 1 -> 110;
-                                                                case 2 -> 108;
-                                                                case 3 -> 125;
-                                                                case 4 -> 42;
-                                                                case 5 -> 68;
-                                                                case 6 -> 92;
-                                                                case 7 -> 92;
-                                                                case 8 -> 118;
-                                                                default -> 90;
-                                                        });
-                }
+                                                        if (!event.getValueIsAdjusting()) {
+                                                                updateSelectedBooking();
+                                                        }
+                                                });
 
                 bookingTable
                                 .getColumnModel()
@@ -883,29 +499,16 @@ public class BookingScreen extends JPanel {
                                 .getColumn(7)
                                 .setCellRenderer(
                                                 new StatusCellRenderer());
-
-                bookingTable.setAutoResizeMode(
-                                JTable.AUTO_RESIZE_ALL_COLUMNS);
-
-                bookingTable
-                                .getSelectionModel()
-                                .addListSelectionListener(
-                                                event -> {
-
-                                                        if (!event.getValueIsAdjusting()) {
-
-                                                                updateSelectedBooking();
-                                                        }
-                                                });
         }
 
-        // ================================================================
-        // DETAILS
-        // ================================================================
-
-        private AppCard createBookingDetailsCard() {
+        private AppCard createDetailsCard() {
 
                 AppCard card = new AppCard();
+
+                card.setPreferredSize(
+                                new Dimension(
+                                                310,
+                                                0));
 
                 card.setLayout(
                                 new BorderLayout(
@@ -935,158 +538,75 @@ public class BookingScreen extends JPanel {
                 details.setOpaque(false);
 
                 details.setLayout(
-                                new BoxLayout(
+                                new javax.swing.BoxLayout(
                                                 details,
-                                                BoxLayout.Y_AXIS));
+                                                javax.swing.BoxLayout.Y_AXIS));
 
-                JLabel bookingIdTitle = createDetailTitle(
-                                "BOOKING ID");
-
-                styleDetailValue(
+                addDetail(
+                                details,
+                                "BOOKING REFERENCE",
                                 detailBookingId,
                                 true);
-
-                details.add(
-                                bookingIdTitle);
-
-                details.add(
-                                Box.createVerticalStrut(3));
-
-                details.add(
-                                detailBookingId);
-
-                details.add(
-                                Box.createVerticalStrut(16));
-
-                details.add(
-                                createSeparator());
-
-                details.add(
-                                Box.createVerticalStrut(14));
 
                 addDetail(
                                 details,
                                 "PASSENGER",
-                                detailPassenger);
+                                detailPassenger,
+                                false);
 
                 addDetail(
                                 details,
                                 "TRIP",
-                                detailTrip);
+                                detailTrip,
+                                false);
 
                 addDetail(
                                 details,
                                 "ROUTE",
-                                detailRoute);
+                                detailRoute,
+                                false);
 
                 addDetail(
                                 details,
                                 "SEAT",
-                                detailSeat);
+                                detailSeat,
+                                false);
 
                 addDetail(
                                 details,
                                 "FARE",
-                                detailFare);
+                                detailFare,
+                                false);
 
                 addDetail(
                                 details,
                                 "PAYMENT",
-                                detailPayment);
+                                detailPayment,
+                                false);
 
                 addDetail(
                                 details,
                                 "CREATED",
-                                detailCreated);
-
-                JScrollPane scroll = new JScrollPane(
-                                details);
-
-                scroll.setBorder(null);
-
-                scroll.setOpaque(false);
-
-                scroll.getViewport()
-                                .setOpaque(false);
-
-                scroll.setHorizontalScrollBarPolicy(
-                                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+                                detailCreated,
+                                false);
 
                 card.add(
-                                scroll,
+                                new JScrollPane(details),
                                 BorderLayout.CENTER);
 
-                JPanel actions = new JPanel(
-                                new ResponsiveLayouts.Grid(
-                                                2,
-                                                120,
-                                                8));
-
-                actions.setOpaque(false);
-
-                /*
-                 * USER cannot perform operational booking actions.
-                 *
-                 * Staff buttons remain available and are additionally
-                 * protected by updateSelected().
-                 */
-
-                for (AppButton button : new AppButton[] {
-                                confirmButton,
-                                payButton,
-                                completeButton,
-                                cancelButton }) {
-
-                        button.setEnabled(false);
-                }
-
-                confirmButton.addActionListener(
-                                event -> updateSelected(
-                                                "Confirmed",
-                                                null,
-                                                "Confirm this booking?"));
-
-                payButton.addActionListener(
-                                event -> updateSelected(
-                                                null,
-                                                "Paid",
-                                                null));
-
-                completeButton.addActionListener(
-                                event -> updateSelected(
-                                                "Completed",
-                                                null,
-                                                null));
+                cancelButton.setEnabled(false);
 
                 cancelButton.addActionListener(
                                 event -> cancelSelectedBooking());
 
-                /*
-                 * USER sees no management buttons.
-                 *
-                 * Keep Cancel only if the business rule allows commuters
-                 * to cancel their own active bookings.
-                 */
+                JPanel actions = new JPanel(
+                                new BorderLayout());
 
-                if (isUser()) {
+                actions.setOpaque(false);
 
-                        actions.add(
-                                        cancelButton);
-
-                } else {
-
-                        actions.add(
-                                        confirmButton);
-
-                        actions.add(
-                                        payButton);
-
-                        actions.add(
-                                        completeButton);
-
-                        actions.add(
-                                        cancelButton);
-                }
+                actions.add(
+                                cancelButton,
+                                BorderLayout.CENTER);
 
                 card.add(
                                 actions,
@@ -1095,70 +615,71 @@ public class BookingScreen extends JPanel {
                 return card;
         }
 
-        private JLabel createDetailTitle(
-                        String text) {
-
-                JLabel label = new JLabel(text);
-
-                label.setFont(
-                                BussinTheme.SMALL_BOLD);
-
-                label.setForeground(
-                                BussinTheme.TEXT_SECONDARY);
-
-                return label;
-        }
-
         private void addDetail(
                         JPanel panel,
                         String title,
-                        JLabel value) {
-
-                JLabel titleLabel = createDetailTitle(title);
-
-                styleDetailValue(
-                                value,
-                                false);
-
-                panel.add(
-                                titleLabel);
-
-                panel.add(
-                                Box.createVerticalStrut(3));
-
-                panel.add(
-                                value);
-
-                panel.add(
-                                Box.createVerticalStrut(13));
-        }
-
-        private void styleDetailValue(
-                        JLabel label,
+                        JLabel value,
                         boolean emphasized) {
 
-                label.setFont(
+                JLabel titleLabel = new JLabel(title);
+
+                titleLabel.setFont(
+                                BussinTheme.SMALL_BOLD);
+
+                titleLabel.setForeground(
+                                BussinTheme.TEXT_SECONDARY);
+
+                value.setFont(
                                 emphasized
                                                 ? BussinTheme.SECTION_TITLE
                                                 : BussinTheme.BODY);
 
-                label.setForeground(
+                value.setForeground(
                                 BussinTheme.TEXT_PRIMARY);
+
+                panel.add(titleLabel);
+
+                panel.add(
+                                javax.swing.Box.createVerticalStrut(3));
+
+                panel.add(value);
+
+                panel.add(
+                                javax.swing.Box.createVerticalStrut(13));
         }
 
-        private JSeparator createSeparator() {
+        private void loadBookings() {
 
-                JSeparator separator = new JSeparator();
+                SwingUtilities.invokeLater(
+                                () -> {
 
-                separator.setForeground(
-                                BussinTheme.BORDER);
+                                        try {
 
-                return separator;
+                                                bookings.clear();
+
+                                                bookings.addAll(
+                                                                BookingApiService
+                                                                                .getMyBookings());
+
+                                                trips.clear();
+
+                                                trips.addAll(
+                                                                TripApiService
+                                                                                .getAllTrips());
+
+                                                refreshBookings();
+
+                                        } catch (Exception exception) {
+
+                                                JOptionPane.showMessageDialog(
+                                                                this,
+                                                                getErrorMessage(
+                                                                                exception),
+                                                                "Unable to Load Bookings",
+                                                                JOptionPane.ERROR_MESSAGE);
+                                        }
+                                });
         }
-
-        // ================================================================
-        // REFRESH
-        // ================================================================
 
         private void refreshBookings() {
 
@@ -1168,61 +689,53 @@ public class BookingScreen extends JPanel {
                                 .toLowerCase();
 
                 String selectedStatus = String.valueOf(
-                                statusFilter.getSelectedItem());
+                                statusFilter
+                                                .getSelectedItem());
 
                 String selectedPayment = String.valueOf(
-                                paymentFilter.getSelectedItem());
+                                paymentFilter
+                                                .getSelectedItem());
 
-                String previousId = selectedBookingId();
+                String selectedReference = getSelectedReference();
 
                 filteredBookings.clear();
 
-                for (Booking booking : bookings) {
+                for (BookingResponse booking : bookings) {
 
-                        /*
-                         * --------------------------------------------------------
-                         * OWNERSHIP FILTER
-                         * --------------------------------------------------------
-                         *
-                         * USER can ONLY see their own bookings.
-                         *
-                         * ADMIN and EMPLOYEE can see everything.
-                         */
+                        boolean matchesSearch = query.isBlank()
+                                        || contains(
+                                                        booking.getBookingReference(),
+                                                        query)
+                                        || contains(
+                                                        booking.getPassengerName(),
+                                                        query)
+                                        || contains(
+                                                        booking.getPassengerEmail(),
+                                                        query)
+                                        || contains(
+                                                        booking.getRouteIdentifier(),
+                                                        query)
+                                        || contains(
+                                                        booking.getOrigin(),
+                                                        query)
+                                        || contains(
+                                                        booking.getDestination(),
+                                                        query)
+                                        || contains(
+                                                        booking.getSeatNumber(),
+                                                        query);
 
-                        if (isUser()
-                                        && !booking.ownerEmail
-                                                        .equalsIgnoreCase(
-                                                                        currentUserEmail)) {
+                        boolean matchesStatus = "All Status".equals(
+                                        selectedStatus)
+                                        || selectedStatus.equalsIgnoreCase(
+                                                        displayStatus(
+                                                                        booking.getStatus()));
 
-                                continue;
-                        }
-
-                        boolean matchesSearch = query.isEmpty()
-                                        || booking.bookingId
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || booking.passenger
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || booking.route
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || booking.trip
-                                                        .toLowerCase()
-                                                        .contains(query)
-                                        || booking.seat
-                                                        .toLowerCase()
-                                                        .contains(query);
-
-                        boolean matchesStatus = selectedStatus.equals(
-                                        "All Status")
-                                        || booking.status.equals(
-                                                        selectedStatus);
-
-                        boolean matchesPayment = selectedPayment.equals(
-                                        "All Payments")
-                                        || booking.paymentStatus.equals(
-                                                        selectedPayment);
+                        boolean matchesPayment = "All Payments".equals(
+                                        selectedPayment)
+                                        || selectedPayment.equalsIgnoreCase(
+                                                        displayPayment(
+                                                                        booking.getPaymentStatus()));
 
                         if (matchesSearch
                                         && matchesStatus
@@ -1241,485 +754,208 @@ public class BookingScreen extends JPanel {
 
                         clearDetails();
 
-                } else {
+                        return;
+                }
 
-                        int row = 0;
+                int row = 0;
+
+                if (selectedReference != null) {
 
                         for (int i = 0; i < filteredBookings.size(); i++) {
 
-                                if (filteredBookings
-                                                .get(i).bookingId
-                                                .equals(previousId)) {
+                                if (selectedReference.equals(
+                                                filteredBookings
+                                                                .get(i)
+                                                                .getBookingReference())) {
 
                                         row = i;
 
                                         break;
                                 }
                         }
-
-                        int viewRow = bookingTable
-                                        .convertRowIndexToView(row);
-
-                        if (viewRow >= 0
-                                        && viewRow < bookingTable.getRowCount()) {
-
-                                bookingTable.setRowSelectionInterval(
-                                                viewRow,
-                                                viewRow);
-
-                                updateSelectedBooking();
-                        }
                 }
+
+                bookingTable.setRowSelectionInterval(
+                                row,
+                                row);
+
+                updateSelectedBooking();
         }
-
-        // ================================================================
-        // SELECTED BOOKING
-        // ================================================================
-
-        private String selectedBookingId() {
-
-                Booking booking = selectedBooking();
-
-                return booking == null
-                                ? null
-                                : booking.bookingId;
-        }
-
-        private Booking selectedBooking() {
-
-                int row = bookingTable.getSelectedRow();
-
-                if (row < 0) {
-
-                        return null;
-                }
-
-                int modelRow = bookingTable
-                                .convertRowIndexToModel(row);
-
-                return modelRow >= 0
-                                && modelRow < filteredBookings.size()
-                                                ? filteredBookings.get(modelRow)
-                                                : null;
-        }
-
-        // ================================================================
-        // UPDATE SELECTED BOOKING
-        // ================================================================
-
-        private void updateSelected(
-                        String status,
-                        String payment,
-                        String confirmMessage) {
-
-                Booking booking = selectedBooking();
-
-                if (booking == null) {
-
-                        return;
-                }
-
-                /*
-                 * USER PROTECTION
-                 *
-                 * A USER must never be able to execute management
-                 * operations, even if a button becomes enabled accidentally.
-                 */
-
-                if (isUser()) {
-
-                        showAccessDenied();
-
-                        return;
-                }
-
-                /*
-                 * Ownership protection.
-                 *
-                 * This is mainly defensive because ADMIN/EMPLOYEE see all
-                 * bookings. USER is already filtered from other bookings.
-                 */
-
-                if (!canManageBooking(booking)) {
-
-                        showAccessDenied();
-
-                        return;
-                }
-
-                /*
-                 * COMPLETED/CANCELLED BOOKINGS ARE IMMUTABLE.
-                 */
-
-                if (isLocked(booking)) {
-
-                        showLockedMessage();
-
-                        return;
-                }
-
-                if (confirmMessage != null
-                                && JOptionPane.showConfirmDialog(
-                                                this,
-                                                confirmMessage
-                                                                + "\n"
-                                                                + booking.bookingId
-                                                                + " · "
-                                                                + booking.passenger,
-                                                "Confirm Booking",
-                                                JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
-
-                        return;
-                }
-
-                if (status != null) {
-
-                        booking.status = status;
-                }
-
-                if (payment != null) {
-
-                        booking.paymentStatus = payment;
-
-                        if (booking.status.equals("Pending")
-                                        && payment.equals("Paid")) {
-
-                                booking.status = "Confirmed";
-                        }
-                }
-
-                refreshBookings();
-        }
-
-        // ================================================================
-        // STATISTICS
-        // ================================================================
 
         private void updateStatistics() {
 
-                int total = filteredBookings.size();
-
-                int completed = 0;
-
-                int confirmed = 0;
-
                 int pending = 0;
-
+                int confirmed = 0;
+                int completed = 0;
                 int cancelled = 0;
 
-                for (Booking booking : filteredBookings) {
+                for (BookingResponse booking : filteredBookings) {
 
-                        switch (booking.status) {
+                        switch (safe(
+                                        booking.getStatus())
+                                        .toUpperCase()) {
 
-                                case "Confirmed" ->
-                                        confirmed++;
-
-                                case "Completed" ->
-                                        completed++;
-
-                                case "Pending" ->
+                                case "PENDING" ->
                                         pending++;
 
-                                case "Cancelled" ->
+                                case "CONFIRMED" ->
+                                        confirmed++;
+
+                                case "COMPLETED" ->
+                                        completed++;
+
+                                case "CANCELLED" ->
                                         cancelled++;
+
+                                default -> {
+                                }
                         }
                 }
 
                 totalValue.setText(
-                                String.valueOf(total));
+                                String.valueOf(
+                                                filteredBookings.size()));
 
-                completedValue.setText(
-                                String.valueOf(completed));
+                pendingValue.setText(
+                                String.valueOf(pending));
 
                 confirmedValue.setText(
                                 String.valueOf(confirmed));
 
-                pendingValue.setText(
-                                String.valueOf(pending));
+                completedValue.setText(
+                                String.valueOf(completed));
 
                 cancelledValue.setText(
                                 String.valueOf(cancelled));
         }
 
-        // ================================================================
-        // UPDATE DETAILS
-        // ================================================================
-
         private void updateSelectedBooking() {
 
-                int selectedRow = bookingTable.getSelectedRow();
+                BookingResponse booking = getSelectedBooking();
 
-                if (selectedRow < 0) {
-
-                        clearDetails();
-
-                        return;
-                }
-
-                int modelRow = bookingTable
-                                .convertRowIndexToModel(
-                                                selectedRow);
-
-                if (modelRow < 0
-                                || modelRow >= filteredBookings.size()) {
+                if (booking == null) {
 
                         clearDetails();
 
                         return;
                 }
-
-                Booking booking = filteredBookings.get(
-                                modelRow);
 
                 detailBookingId.setText(
-                                booking.bookingId);
+                                safe(
+                                                booking.getBookingReference()));
 
                 detailPassenger.setText(
-                                booking.passenger);
+                                safe(
+                                                booking.getPassengerName()));
 
                 detailTrip.setText(
-                                booking.trip);
+                                "Trip "
+                                                + booking.getTripId()
+                                                + " • "
+                                                + formatDateTime(
+                                                                booking.getScheduledDeparture()));
 
                 detailRoute.setText(
-                                booking.route);
+                                safe(
+                                                booking.getOrigin())
+                                                + " → "
+                                                + safe(
+                                                                booking.getDestination()));
 
                 detailSeat.setText(
-                                booking.seat);
+                                safe(
+                                                booking.getSeatNumber()));
 
                 detailFare.setText(
                                 String.format(
                                                 "₱%,.2f",
-                                                booking.fare));
+                                                booking.getFare()));
 
                 detailPayment.setText(
-                                booking.paymentStatus);
+                                displayPayment(
+                                                booking.getPaymentStatus()));
 
                 detailCreated.setText(
-                                booking.createdAt.format(
-                                                DATE_TIME_FORMAT));
+                                booking.getCreatedAt() == null
+                                                ? "-"
+                                                : booking.getCreatedAt()
+                                                                .format(
+                                                                                DATE_TIME_FORMAT));
 
                 updateStatusBadge(
-                                booking.status);
+                                displayStatus(
+                                                booking.getStatus()));
 
-                updateActionStates(
+                updateCancelButton(
                                 booking);
         }
 
-        // ================================================================
-        // ACTION STATES
-        // ================================================================
+        private void updateCancelButton(
+                        BookingResponse booking) {
 
-        private void updateActionStates(
-                        Booking booking) {
-
-                boolean open = !isLocked(booking);
-
-                /*
-                 * USER:
-                 *
-                 * - Cannot confirm
-                 * - Cannot mark paid
-                 * - Cannot complete
-                 * - Can only cancel their own open booking
-                 */
-
-                if (isUser()) {
-
-                        confirmButton.setEnabled(false);
-
-                        payButton.setEnabled(false);
-
-                        completeButton.setEnabled(false);
-
-                        cancelButton.setEnabled(
-                                        isOwnedByCurrentUser(booking)
-                                                        && open);
-
-                        return;
-                }
-
-                /*
-                 * ADMIN / EMPLOYEE
-                 */
-
-                confirmButton.setEnabled(
-                                open
-                                                && booking.status.equals(
-                                                                "Pending"));
-
-                payButton.setEnabled(
-                                open
-                                                && booking.paymentStatus.equals(
-                                                                "Unpaid"));
-
-                completeButton.setEnabled(
-                                open
-                                                && booking.status.equals(
-                                                                "Confirmed"));
+                boolean cancellable = booking != null
+                                && !"CANCELLED".equalsIgnoreCase(
+                                                booking.getStatus())
+                                && !"COMPLETED".equalsIgnoreCase(
+                                                booking.getStatus());
 
                 cancelButton.setEnabled(
-                                open);
+                                cancellable);
         }
 
-        // ================================================================
-        // CLEAR DETAILS
-        // ================================================================
+        private BookingResponse getSelectedBooking() {
 
-        private void clearDetails() {
+                int viewRow = bookingTable.getSelectedRow();
 
-                detailBookingId.setText("-");
-
-                detailPassenger.setText("-");
-
-                detailTrip.setText("-");
-
-                detailRoute.setText("-");
-
-                detailSeat.setText("-");
-
-                detailFare.setText("-");
-
-                detailPayment.setText("-");
-
-                detailCreated.setText("-");
-
-                updateStatusBadge(
-                                "No Status");
-
-                confirmButton.setEnabled(false);
-
-                payButton.setEnabled(false);
-
-                completeButton.setEnabled(false);
-
-                cancelButton.setEnabled(false);
-        }
-
-        // ================================================================
-        // STATUS BADGE
-        // ================================================================
-
-        private void updateStatusBadge(
-                        String status) {
-
-                AppBadge.Status badgeStatus;
-
-                switch (status) {
-
-                        case "Confirmed" ->
-                                badgeStatus = AppBadge.Status.SUCCESS;
-
-                        case "Pending" ->
-                                badgeStatus = AppBadge.Status.WARNING;
-
-                        case "Cancelled" ->
-                                badgeStatus = AppBadge.Status.DANGER;
-
-                        case "Completed" ->
-                                badgeStatus = AppBadge.Status.INFO;
-
-                        case "Paid" ->
-                                badgeStatus = AppBadge.Status.SUCCESS;
-
-                        case "Unpaid" ->
-                                badgeStatus = AppBadge.Status.WARNING;
-
-                        case "Refunded" ->
-                                badgeStatus = AppBadge.Status.NEUTRAL;
-
-                        default ->
-                                badgeStatus = AppBadge.Status.NEUTRAL;
+                if (viewRow < 0) {
+                        return null;
                 }
 
-                detailStatus.setText(
-                                status.toUpperCase());
+                int modelRow = bookingTable
+                                .convertRowIndexToModel(
+                                                viewRow);
 
-                detailStatus.setForeground(
-                                switch (badgeStatus) {
+                if (modelRow < 0
+                                || modelRow >= filteredBookings.size()) {
 
-                                        case SUCCESS ->
-                                                BussinTheme.SUCCESS;
+                        return null;
+                }
 
-                                        case WARNING ->
-                                                BussinTheme.WARNING;
-
-                                        case DANGER ->
-                                                BussinTheme.DANGER;
-
-                                        case INFO ->
-                                                BussinTheme.TEXT_PRIMARY;
-
-                                        case NEUTRAL ->
-                                                BussinTheme.TEXT_SECONDARY;
-                                });
-
-                detailStatus.setBackground(
-                                switch (badgeStatus) {
-
-                                        case SUCCESS ->
-                                                BussinTheme.SUCCESS_LIGHT;
-
-                                        case WARNING ->
-                                                BussinTheme.WARNING_LIGHT;
-
-                                        case DANGER ->
-                                                BussinTheme.DANGER_LIGHT;
-
-                                        case INFO ->
-                                                BussinTheme.INFO_LIGHT;
-
-                                        case NEUTRAL ->
-                                                BussinTheme.SURFACE_ALT;
-                                });
+                return filteredBookings.get(
+                                modelRow);
         }
 
-        // ================================================================
-        // CANCEL BOOKING
-        // ================================================================
+        private String getSelectedReference() {
+
+                BookingResponse booking = getSelectedBooking();
+
+                return booking == null
+                                ? null
+                                : booking.getBookingReference();
+        }
 
         private void cancelSelectedBooking() {
 
-                Booking booking = selectedBooking();
+                BookingResponse booking = getSelectedBooking();
 
                 if (booking == null) {
+                        return;
+                }
+
+                if ("CANCELLED".equalsIgnoreCase(
+                                booking.getStatus())) {
 
                         return;
                 }
 
-                /*
-                 * USER can only cancel their own booking.
-                 */
+                if ("COMPLETED".equalsIgnoreCase(
+                                booking.getStatus())) {
 
-                if (isUser()
-                                && !isOwnedByCurrentUser(
-                                                booking)) {
-
-                        showAccessDenied();
-
-                        return;
-                }
-
-                /*
-                 * ADMIN / EMPLOYEE can manage all bookings.
-                 */
-
-                if (!isUser()
-                                && !canManageBooking(
-                                                booking)) {
-
-                        showAccessDenied();
-
-                        return;
-                }
-
-                /*
-                 * Completed and cancelled bookings cannot
-                 * be changed.
-                 */
-
-                if (isLocked(booking)) {
-
-                        showLockedMessage();
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Completed bookings cannot be cancelled.",
+                                        "Booking Locked",
+                                        JOptionPane.WARNING_MESSAGE);
 
                         return;
                 }
@@ -1727,35 +963,40 @@ public class BookingScreen extends JPanel {
                 int result = JOptionPane.showConfirmDialog(
                                 this,
                                 "Cancel booking "
-                                                + booking.bookingId
-                                                + " for "
-                                                + booking.passenger
-                                                + "?"
-                                                + (booking.paymentStatus.equals(
-                                                                "Paid")
-                                                                                ? "\nThe payment will be marked as refunded."
-                                                                                : ""),
+                                                + booking.getBookingReference()
+                                                + "?",
                                 "Cancel Booking",
                                 JOptionPane.YES_NO_OPTION,
                                 JOptionPane.WARNING_MESSAGE);
 
-                if (result == JOptionPane.YES_OPTION) {
+                if (result != JOptionPane.YES_OPTION) {
 
-                        booking.status = "Cancelled";
+                        return;
+                }
 
-                        if (booking.paymentStatus.equals(
-                                        "Paid")) {
+                try {
 
-                                booking.paymentStatus = "Refunded";
-                        }
+                        BookingApiService.cancelBooking(
+                                        booking.getId());
 
-                        refreshBookings();
+                        loadBookings();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Booking cancelled successfully.",
+                                        "Booking Cancelled",
+                                        JOptionPane.INFORMATION_MESSAGE);
+
+                } catch (Exception exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        getErrorMessage(
+                                                        exception),
+                                        "Cancellation Failed",
+                                        JOptionPane.ERROR_MESSAGE);
                 }
         }
-
-        // ================================================================
-        // CREATE BOOKING
-        // ================================================================
 
         private void showCreateBookingDialog() {
 
@@ -1763,19 +1004,14 @@ public class BookingScreen extends JPanel {
                                 SwingUtilities.getWindowAncestor(
                                                 this),
                                 "Create Booking",
-                                Dialog.ModalityType.APPLICATION_MODAL);
+                                java.awt.Dialog.ModalityType.APPLICATION_MODAL);
 
                 dialog.setDefaultCloseOperation(
                                 JDialog.DISPOSE_ON_CLOSE);
 
-                dialog.setMinimumSize(
-                                new Dimension(
-                                                480,
-                                                620));
-
                 dialog.setSize(
                                 520,
-                                640);
+                                600);
 
                 dialog.setLocationRelativeTo(
                                 this);
@@ -1786,120 +1022,109 @@ public class BookingScreen extends JPanel {
                 root.setBackground(
                                 BussinTheme.BACKGROUND);
 
-                JPanel content = new JPanel();
+                JPanel content = new JPanel(
+                                new GridBagLayout());
 
                 content.setOpaque(false);
 
                 content.setBorder(
                                 BorderFactory.createEmptyBorder(
-                                                24,
+                                                20,
                                                 24,
                                                 10,
                                                 24));
 
-                content.setLayout(
-                                new GridBagLayout());
-
                 GridBagConstraints gbc = new GridBagConstraints();
 
-                gbc.insets = new Insets(
-                                7,
-                                0,
-                                7,
-                                0);
-
+                gbc.gridx = 0;
+                gbc.weightx = 1;
                 gbc.fill = GridBagConstraints.HORIZONTAL;
 
-                gbc.weightx = 1.0;
-
-                // ------------------------------------------------------------
-                // PASSENGER
-                // ------------------------------------------------------------
+                gbc.insets = new Insets(
+                                6,
+                                0,
+                                6,
+                                0);
 
                 JTextField passengerField = new JTextField();
 
-                if (isUser()) {
+                JTextField phoneField = new JTextField();
 
-                        /*
-                         * USER cannot type another passenger's name.
-                         *
-                         * The booking belongs to the authenticated account.
-                         */
+                JTextField emailField = new JTextField();
 
-                        passengerField.setText(
-                                        getCurrentPassengerName());
-
-                        passengerField.setEditable(false);
-
-                        passengerField.setBackground(
-                                        BussinTheme.SURFACE_ALT);
-
-                }
-
-                // ------------------------------------------------------------
-                // TRIP
-                // ------------------------------------------------------------
-
-                JComboBox<String> tripCombo = new JComboBox<>(
-                                new String[] {
-                                                "Trip 102 • 10:00 AM",
-                                                "Trip 114 • 10:30 AM",
-                                                "Trip 121 • 11:00 AM"
-                                });
-
-                // ------------------------------------------------------------
-                // ROUTE
-                // ------------------------------------------------------------
-
-                JComboBox<String> routeCombo = new JComboBox<>(
-                                new String[] {
-                                                "Manila → Batangas",
-                                                "Manila → Lucena",
-                                                "Manila → Nasugbu"
-                                });
-
-                routeCombo.setEnabled(false);
-
-                tripCombo.addActionListener(
-                                event -> routeCombo.setSelectedIndex(
-                                                tripCombo.getSelectedIndex()));
-
-                // ------------------------------------------------------------
-                // SEAT
-                // ------------------------------------------------------------
+                JComboBox<TripResponse> tripCombo = new JComboBox<>();
 
                 JTextField seatField = new JTextField();
 
-                // ------------------------------------------------------------
-                // FARE
-                // ------------------------------------------------------------
-
                 JTextField fareField = new JTextField();
 
-                // ------------------------------------------------------------
-                // PAYMENT
-                // ------------------------------------------------------------
+                fareField.setEditable(false);
 
-                JComboBox<String> paymentCombo = new JComboBox<>(
-                                new String[] {
-                                                "Unpaid",
-                                                "Paid"
+                fareField.setBackground(
+                                BussinTheme.SURFACE_ALT);
+
+                loadCurrentUserProfile(
+                                passengerField,
+                                phoneField,
+                                emailField);
+
+                List<TripResponse> availableTrips = getAvailableTrips();
+
+                tripCombo.setModel(
+                                new DefaultComboBoxModel<>(
+                                                availableTrips.toArray(
+                                                                new TripResponse[0])));
+
+                tripCombo.setRenderer(
+                                new DefaultListCellRenderer() {
+
+                                        @Override
+                                        public Component getListCellRendererComponent(
+                                                        javax.swing.JList<?> list,
+                                                        Object value,
+                                                        int index,
+                                                        boolean isSelected,
+                                                        boolean cellHasFocus) {
+
+                                                super.getListCellRendererComponent(
+                                                                list,
+                                                                value,
+                                                                index,
+                                                                isSelected,
+                                                                cellHasFocus);
+
+                                                if (value instanceof TripResponse trip) {
+
+                                                        setText(
+                                                                        "Trip "
+                                                                                        + trip.getId()
+                                                                                        + " • "
+                                                                                        + formatDateTime(
+                                                                                                        trip.getScheduledDeparture())
+                                                                                        + " • "
+                                                                                        + safe(
+                                                                                                        trip.getRouteIdentifier()));
+                                                }
+
+                                                return this;
+                                        }
                                 });
 
-                /*
-                 * USER should not be allowed to mark their own booking
-                 * as paid manually.
-                 *
-                 * Payment processing belongs to BUSSIN staff.
-                 */
+                tripCombo.addActionListener(
+                                event -> {
 
-                if (isUser()) {
+                                        TripResponse trip = (TripResponse) tripCombo.getSelectedItem();
 
-                        paymentCombo.setSelectedItem(
-                                        "Unpaid");
+                                        if (trip == null) {
 
-                        paymentCombo.setEnabled(false);
-                }
+                                                fareField.setText("");
+
+                                                return;
+                                        }
+
+                                        fareField.setText(
+                                                        "Calculated by server");
+                                });
 
                 int row = 0;
 
@@ -1914,6 +1139,20 @@ public class BookingScreen extends JPanel {
                                 content,
                                 gbc,
                                 row,
+                                "Phone",
+                                phoneField);
+
+                row = addFormRow(
+                                content,
+                                gbc,
+                                row,
+                                "Email",
+                                emailField);
+
+                row = addFormRow(
+                                content,
+                                gbc,
+                                row,
                                 "Trip",
                                 tripCombo);
 
@@ -1921,44 +1160,18 @@ public class BookingScreen extends JPanel {
                                 content,
                                 gbc,
                                 row,
-                                "Route",
-                                routeCombo);
-
-                row = addFormRow(
-                                content,
-                                gbc,
-                                row,
-                                "Seat",
+                                "Seat Number",
                                 seatField);
-
-                row = addFormRow(
-                                content,
-                                gbc,
-                                row,
-                                "Fare (₱)",
-                                fareField);
 
                 addFormRow(
                                 content,
                                 gbc,
                                 row,
-                                "Payment",
-                                paymentCombo);
+                                "Fare",
+                                fareField);
 
-                // ------------------------------------------------------------
-                // TITLE
-                // ------------------------------------------------------------
-
-                JLabel title = new JLabel(
-                                isUser()
-                                                ? "Create My Booking"
-                                                : "Create New Booking");
-
-                title.setFont(
-                                BussinTheme.SECTION_TITLE);
-
-                title.setForeground(
-                                BussinTheme.TEXT_PRIMARY);
+                JLabel title = AppLabel.section(
+                                "Create New Booking");
 
                 JPanel titlePanel = new JPanel(
                                 new BorderLayout());
@@ -1967,7 +1180,7 @@ public class BookingScreen extends JPanel {
 
                 titlePanel.setBorder(
                                 BorderFactory.createEmptyBorder(
-                                                24,
+                                                20,
                                                 24,
                                                 0,
                                                 24));
@@ -1976,75 +1189,60 @@ public class BookingScreen extends JPanel {
                                 title,
                                 BorderLayout.WEST);
 
-                // ------------------------------------------------------------
-                // BUTTONS
-                // ------------------------------------------------------------
-
-                JPanel buttons = new JPanel(
+                JPanel actions = new JPanel(
                                 new FlowLayout(
                                                 FlowLayout.RIGHT,
                                                 8,
-                                                12));
+                                                10));
 
-                buttons.setOpaque(false);
+                actions.setOpaque(false);
 
-                AppButton cancel = new AppButton(
+                AppButton closeButton = new AppButton(
                                 "Cancel",
                                 AppButton.Variant.SECONDARY);
 
-                AppButton save = new AppButton(
+                AppButton createButton = new AppButton(
                                 "Create Booking");
 
-                cancel.addActionListener(
+                closeButton.addActionListener(
                                 event -> dialog.dispose());
 
-                save.addActionListener(
+                createButton.addActionListener(
                                 event -> {
 
-                                        String passenger = passengerField
+                                        TripResponse trip = (TripResponse) tripCombo.getSelectedItem();
+
+                                        String passengerName = passengerField
                                                         .getText()
                                                         .trim();
 
-                                        String seat = seatField
+                                        String passengerPhone = phoneField
                                                         .getText()
                                                         .trim();
 
-                                        String fareText = fareField
+                                        String passengerEmail = emailField
                                                         .getText()
                                                         .trim();
 
-                                        // ------------------------------------------------
-                                        // USER OWNERSHIP
-                                        // ------------------------------------------------
+                                        String seatNumber = seatField
+                                                        .getText()
+                                                        .trim();
 
-                                        if (isUser()) {
+                                        if (trip == null) {
 
-                                                /*
-                                                 * Force the passenger name to the
-                                                 * authenticated user.
-                                                 */
+                                                JOptionPane.showMessageDialog(
+                                                                dialog,
+                                                                "Please select a trip.",
+                                                                "Invalid Booking",
+                                                                JOptionPane.WARNING_MESSAGE);
 
-                                                passenger = getCurrentPassengerName();
-
-                                                if (passenger.isBlank()) {
-
-                                                        JOptionPane.showMessageDialog(
-                                                                        dialog,
-                                                                        "Your account name could not be determined.",
-                                                                        "Invalid Account",
-                                                                        JOptionPane.WARNING_MESSAGE);
-
-                                                        return;
-                                                }
+                                                return;
                                         }
 
-                                        // ------------------------------------------------
-                                        // VALIDATION
-                                        // ------------------------------------------------
-
-                                        if (passenger.isEmpty()
-                                                        || seat.isEmpty()
-                                                        || fareText.isEmpty()) {
+                                        if (passengerName.isBlank()
+                                                        || passengerPhone.isBlank()
+                                                        || passengerEmail.isBlank()
+                                                        || seatNumber.isBlank()) {
 
                                                 JOptionPane.showMessageDialog(
                                                                 dialog,
@@ -2055,109 +1253,191 @@ public class BookingScreen extends JPanel {
                                                 return;
                                         }
 
-                                        double fare;
-
                                         try {
 
-                                                fare = Double.parseDouble(
-                                                                fareText);
+                                                BookingApiService.createBooking(
+                                                                trip.getId(),
+                                                                seatNumber,
+                                                                passengerName,
+                                                                passengerPhone,
+                                                                passengerEmail);
 
-                                                if (fare < 0) {
+                                                dialog.dispose();
 
-                                                        throw new NumberFormatException();
-                                                }
+                                                loadBookings();
 
-                                        } catch (NumberFormatException exception) {
+                                                JOptionPane.showMessageDialog(
+                                                                this,
+                                                                "Booking created successfully.",
+                                                                "Booking Created",
+                                                                JOptionPane.INFORMATION_MESSAGE);
+
+                                        } catch (Exception exception) {
 
                                                 JOptionPane.showMessageDialog(
                                                                 dialog,
-                                                                "Fare must be a valid positive number.",
-                                                                "Invalid Fare",
-                                                                JOptionPane.WARNING_MESSAGE);
-
-                                                return;
+                                                                getErrorMessage(
+                                                                                exception),
+                                                                "Booking Failed",
+                                                                JOptionPane.ERROR_MESSAGE);
                                         }
-
-                                        /*
-                                         * USER bookings are ALWAYS owned by the
-                                         * authenticated user.
-                                         */
-
-                                        String ownerEmail = currentUserEmail;
-
-                                        String payment = isUser()
-                                                        ? "Unpaid"
-                                                        : String.valueOf(
-                                                                        paymentCombo
-                                                                                        .getSelectedItem());
-
-                                        String status = payment.equals("Paid")
-                                                        ? "Confirmed"
-                                                        : "Pending";
-
-                                        String id = generateBookingId();
-
-                                        bookings.add(
-                                                        new Booking(
-                                                                        id,
-                                                                        ownerEmail,
-                                                                        passenger,
-                                                                        String.valueOf(
-                                                                                        tripCombo
-                                                                                                        .getSelectedItem()),
-                                                                        String.valueOf(
-                                                                                        routeCombo
-                                                                                                        .getSelectedItem()),
-                                                                        seat,
-                                                                        fare,
-                                                                        payment,
-                                                                        status,
-                                                                        LocalDateTime.now()));
-
-                                        refreshBookings();
-
-                                        dialog.dispose();
-
-                                        JOptionPane.showMessageDialog(
-                                                        this,
-                                                        "Booking "
-                                                                        + id
-                                                                        + " was created successfully.",
-                                                        "Booking Created",
-                                                        JOptionPane.INFORMATION_MESSAGE);
                                 });
 
-                buttons.add(
-                                cancel);
+                actions.add(
+                                closeButton);
 
-                buttons.add(
-                                save);
-
-                // ------------------------------------------------------------
-                // ROOT
-                // ------------------------------------------------------------
+                actions.add(
+                                createButton);
 
                 root.add(
                                 titlePanel,
                                 BorderLayout.NORTH);
 
                 root.add(
-                                content,
+                                new JScrollPane(
+                                                content),
                                 BorderLayout.CENTER);
 
                 root.add(
-                                buttons,
+                                actions,
                                 BorderLayout.SOUTH);
 
                 dialog.setContentPane(
                                 root);
 
+                if (tripCombo.getItemCount() > 0) {
+                        tripCombo.setSelectedIndex(0);
+                        fareField.setText(
+                                        "Calculated by server");
+                }
+
                 dialog.setVisible(true);
         }
 
-        // ================================================================
-        // FORM ROW
-        // ================================================================
+        private List<TripResponse> getAvailableTrips() {
+
+                List<TripResponse> result = new ArrayList<>();
+
+                System.out.println("========== BOOKING TRIP DEBUG ==========");
+                System.out.println("Total trips received: " + trips.size());
+
+                for (TripResponse trip : trips) {
+
+                        if (trip == null) {
+                                System.out.println("Trip: NULL");
+                                continue;
+                        }
+
+                        String status = safe(trip.getStatus()).toUpperCase();
+
+                        System.out.println(
+                                        "Trip ID: " + trip.getId()
+                                                        + " | Route: " + trip.getRouteIdentifier()
+                                                        + " | Bus: " + trip.getBusPlateNumber()
+                                                        + " | Status: " + status);
+
+                        if ("SCHEDULED".equals(status)
+                                        || "BOARDING".equals(status)) {
+
+                                result.add(trip);
+                        }
+                }
+
+                System.out.println("Available trips: " + result.size());
+                System.out.println("========================================");
+
+                return result;
+        }
+
+        private void loadCurrentUserProfile(
+                        JTextField passengerField,
+                        JTextField phoneField,
+                        JTextField emailField) {
+
+                try {
+
+                        UserResponse user = UserApiService
+                                        .getCurrentUser();
+
+                        if (user != null) {
+
+                                passengerField.setText(
+                                                buildFullName(
+                                                                user.getFirstName(),
+                                                                user.getMiddleName(),
+                                                                user.getLastName()));
+
+                                phoneField.setText(
+                                                safe(
+                                                                user.getContactNumber()));
+
+                                emailField.setText(
+                                                safe(
+                                                                user.getEmail()));
+                        }
+
+                } catch (Exception exception) {
+
+                        emailField.setText(
+                                        currentUserEmail);
+                }
+
+                passengerField.setEditable(false);
+                phoneField.setEditable(false);
+                emailField.setEditable(false);
+
+                passengerField.setBackground(
+                                BussinTheme.SURFACE_ALT);
+
+                phoneField.setBackground(
+                                BussinTheme.SURFACE_ALT);
+
+                emailField.setBackground(
+                                BussinTheme.SURFACE_ALT);
+        }
+
+        private String buildFullName(
+                        String firstName,
+                        String middleName,
+                        String lastName) {
+
+                StringBuilder name = new StringBuilder();
+
+                appendName(
+                                name,
+                                firstName);
+
+                appendName(
+                                name,
+                                middleName);
+
+                appendName(
+                                name,
+                                lastName);
+
+                if (name.isEmpty()) {
+                        return currentUserEmail;
+                }
+
+                return name.toString();
+        }
+
+        private void appendName(
+                        StringBuilder builder,
+                        String value) {
+
+                if (value == null
+                                || value.isBlank()) {
+                        return;
+                }
+
+                if (!builder.isEmpty()) {
+                        builder.append(" ");
+                }
+
+                builder.append(
+                                value.trim());
+        }
 
         private int addFormRow(
                         JPanel panel,
@@ -2166,11 +1446,7 @@ public class BookingScreen extends JPanel {
                         String labelText,
                         JComponent field) {
 
-                gbc.gridx = 0;
-
                 gbc.gridy = row;
-
-                gbc.gridwidth = 1;
 
                 JLabel label = new JLabel(
                                 labelText);
@@ -2199,205 +1475,114 @@ public class BookingScreen extends JPanel {
                 return row + 2;
         }
 
-        // ================================================================
-        // BOOKING ID
-        // ================================================================
+        private void clearDetails() {
 
-        private String generateBookingId() {
+                detailBookingId.setText("-");
+                detailPassenger.setText("-");
+                detailTrip.setText("-");
+                detailRoute.setText("-");
+                detailSeat.setText("-");
+                detailFare.setText("-");
+                detailPayment.setText("-");
+                detailCreated.setText("-");
 
-                int highest = 1000;
+                detailStatus.setText(
+                                "NO STATUS");
 
-                for (Booking booking : bookings) {
-
-                        try {
-
-                                int number = Integer.parseInt(
-                                                booking.bookingId
-                                                                .substring(3));
-
-                                highest = Math.max(
-                                                highest,
-                                                number);
-
-                        } catch (NumberFormatException ignored) {
-
-                                // Ignore unexpected mock IDs.
-                        }
-                }
-
-                return "BK-"
-                                + (highest + 1);
+                cancelButton.setEnabled(
+                                false);
         }
 
-        // ================================================================
-        // OWNERSHIP
-        // ================================================================
+        private void updateStatusBadge(
+                        String status) {
 
-        private boolean isOwnedByCurrentUser(
-                        Booking booking) {
+                AppBadge.Status badgeStatus;
 
-                return booking != null
-                                && booking.ownerEmail
-                                                .equalsIgnoreCase(
-                                                                currentUserEmail);
+                switch (status) {
+
+                        case "Confirmed" ->
+                                badgeStatus = AppBadge.Status.SUCCESS;
+
+                        case "Pending" ->
+                                badgeStatus = AppBadge.Status.WARNING;
+
+                        case "Completed" ->
+                                badgeStatus = AppBadge.Status.INFO;
+
+                        case "Cancelled" ->
+                                badgeStatus = AppBadge.Status.DANGER;
+
+                        default ->
+                                badgeStatus = AppBadge.Status.NEUTRAL;
+                }
+
+                detailStatus.setText(
+                                status.toUpperCase());
         }
 
-        private boolean canManageBooking(
-                        Booking booking) {
+        private String displayStatus(
+                        String status) {
 
-                if (booking == null) {
+                if (status == null
+                                || status.isBlank()) {
 
-                        return false;
+                        return "Unknown";
                 }
 
-                /*
-                 * ADMIN and EMPLOYEE are operational staff.
-                 *
-                 * USER never reaches this as a management operation.
-                 */
+                return switch (status.toUpperCase()) {
 
-                return isStaff();
+                        case "PENDING" ->
+                                "Pending";
+
+                        case "CONFIRMED" ->
+                                "Confirmed";
+
+                        case "COMPLETED" ->
+                                "Completed";
+
+                        case "CANCELLED" ->
+                                "Cancelled";
+
+                        default ->
+                                status;
+                };
         }
 
-        // ================================================================
-        // LOCKED BOOKINGS
-        // ================================================================
+        private String displayPayment(
+                        String payment) {
 
-        private boolean isLocked(
-                        Booking booking) {
+                if (payment == null
+                                || payment.isBlank()) {
 
-                if (booking == null) {
-
-                        return true;
+                        return "Unknown";
                 }
 
-                return "Completed".equals(
-                                booking.status)
-                                || "Cancelled".equals(
-                                                booking.status);
+                return switch (payment.toUpperCase()) {
+
+                        case "PAID" ->
+                                "Paid";
+
+                        case "UNPAID" ->
+                                "Unpaid";
+
+                        case "REFUNDED" ->
+                                "Refunded";
+
+                        default ->
+                                payment;
+                };
         }
 
-        private void showLockedMessage() {
+        private String formatDateTime(
+                        LocalDateTime dateTime) {
 
-                JOptionPane.showMessageDialog(
-                                this,
-                                "Completed or cancelled bookings cannot be modified.",
-                                "Booking Locked",
-                                JOptionPane.WARNING_MESSAGE);
+                if (dateTime == null) {
+                        return "-";
+                }
+
+                return dateTime.format(
+                                SHORT_DATE_TIME_FORMAT);
         }
-
-        private void showAccessDenied() {
-
-                JOptionPane.showMessageDialog(
-                                this,
-                                "You do not have permission to modify this booking.",
-                                "Access Denied",
-                                JOptionPane.WARNING_MESSAGE);
-        }
-
-        // ================================================================
-        // CURRENT PASSENGER NAME
-        // ================================================================
-
-        private String getCurrentPassengerName() {
-
-                /*
-                 * For now this is mock frontend data.
-                 *
-                 * Later, the backend/Firebase profile will provide the
-                 * actual authenticated user's display name.
-                 */
-
-                if (currentUserEmail == null
-                                || currentUserEmail.isBlank()) {
-
-                        return "";
-                }
-
-                if (currentUserEmail.equalsIgnoreCase(
-                                "admin@bussin.com")) {
-
-                        return "Administrator";
-                }
-
-                if (currentUserEmail.equalsIgnoreCase(
-                                "employee@bussin.com")) {
-
-                        return "Employee";
-                }
-
-                if (currentUserEmail.equalsIgnoreCase(
-                                "user@bussin.com")) {
-
-                        return "User";
-                }
-
-                /*
-                 * Registered USER accounts do not yet have a connected
-                 * profile source in this mock frontend.
-                 *
-                 * Use the email as a temporary display name rather than
-                 * allowing the user to enter another passenger.
-                 */
-
-                int at = currentUserEmail.indexOf('@');
-
-                if (at > 0) {
-
-                        String localPart = currentUserEmail.substring(
-                                        0,
-                                        at);
-
-                        return formatName(
-                                        localPart);
-                }
-
-                return currentUserEmail;
-        }
-
-        private String formatName(
-                        String value) {
-
-                if (value == null
-                                || value.isBlank()) {
-
-                        return "";
-                }
-
-                String[] parts = value.split("[._-]+");
-
-                StringBuilder result = new StringBuilder();
-
-                for (String part : parts) {
-
-                        if (part.isBlank()) {
-
-                                continue;
-                        }
-
-                        if (result.length() > 0) {
-
-                                result.append(" ");
-                        }
-
-                        result.append(
-                                        Character.toUpperCase(
-                                                        part.charAt(0)));
-
-                        if (part.length() > 1) {
-
-                                result.append(
-                                                part.substring(1)
-                                                                .toLowerCase());
-                        }
-                }
-
-                return result.toString();
-        }
-
-        // ================================================================
-        // ROLE NORMALIZATION
-        // ================================================================
 
         private String normalizeRole(
                         String role) {
@@ -2405,80 +1590,53 @@ public class BookingScreen extends JPanel {
                 if (role == null
                                 || role.isBlank()) {
 
-                        return "USER";
+                        return "COMMUTER";
                 }
 
-                return role
-                                .trim()
+                String value = role.trim()
                                 .toUpperCase();
-        }
 
-        // ================================================================
-        // BOOKING MODEL
-        // ================================================================
-
-        private static class Booking {
-
-                private final String bookingId;
-
-                /*
-                 * The account that owns the booking.
-                 */
-                private final String ownerEmail;
-
-                private final String passenger;
-
-                private final String trip;
-
-                private final String route;
-
-                private final String seat;
-
-                private final double fare;
-
-                private String paymentStatus;
-
-                private String status;
-
-                private final LocalDateTime createdAt;
-
-                private Booking(
-                                String bookingId,
-                                String ownerEmail,
-                                String passenger,
-                                String trip,
-                                String route,
-                                String seat,
-                                double fare,
-                                String paymentStatus,
-                                String status,
-                                LocalDateTime createdAt) {
-
-                        this.bookingId = bookingId;
-
-                        this.ownerEmail = ownerEmail;
-
-                        this.passenger = passenger;
-
-                        this.trip = trip;
-
-                        this.route = route;
-
-                        this.seat = seat;
-
-                        this.fare = fare;
-
-                        this.paymentStatus = paymentStatus;
-
-                        this.status = status;
-
-                        this.createdAt = createdAt;
+                if ("USER".equals(value)) {
+                        return "COMMUTER";
                 }
+
+                return value;
         }
 
-        // ================================================================
-        // TABLE MODEL
-        // ================================================================
+        private boolean contains(
+                        String value,
+                        String query) {
+
+                return value != null
+                                && value.toLowerCase()
+                                                .contains(query);
+        }
+
+        private String safe(
+                        String value) {
+
+                return value == null
+                                ? "-"
+                                : value;
+        }
+
+        private String getErrorMessage(
+                        Exception exception) {
+
+                if (exception == null) {
+                        return "Unknown error.";
+                }
+
+                if (exception.getMessage() == null
+                                || exception.getMessage().isBlank()) {
+
+                        return exception
+                                        .getClass()
+                                        .getSimpleName();
+                }
+
+                return exception.getMessage();
+        }
 
         private class BookingTableModel
                         extends AbstractTableModel {
@@ -2497,13 +1655,11 @@ public class BookingScreen extends JPanel {
 
                 @Override
                 public int getRowCount() {
-
                         return filteredBookings.size();
                 }
 
                 @Override
                 public int getColumnCount() {
-
                         return columns.length;
                 }
 
@@ -2516,45 +1672,49 @@ public class BookingScreen extends JPanel {
 
                 @Override
                 public Object getValueAt(
-                                int rowIndex,
-                                int columnIndex) {
+                                int row,
+                                int column) {
 
-                        Booking booking = filteredBookings.get(
-                                        rowIndex);
+                        BookingResponse booking = filteredBookings.get(row);
 
-                        return switch (columnIndex) {
+                        return switch (column) {
 
                                 case 0 ->
-                                        booking.bookingId;
+                                        booking.getBookingReference();
 
                                 case 1 ->
-                                        booking.passenger;
+                                        booking.getPassengerName();
 
                                 case 2 ->
-                                        booking.trip.replace(
-                                                        "Trip ",
-                                                        "");
+                                        "Trip "
+                                                        + booking.getTripId();
 
                                 case 3 ->
-                                        booking.route;
+                                        safe(
+                                                        booking.getRouteIdentifier());
 
                                 case 4 ->
-                                        booking.seat;
+                                        booking.getSeatNumber();
 
                                 case 5 ->
                                         String.format(
                                                         "₱%,.2f",
-                                                        booking.fare);
+                                                        booking.getFare());
 
                                 case 6 ->
-                                        booking.status;
+                                        displayStatus(
+                                                        booking.getStatus());
 
                                 case 7 ->
-                                        booking.paymentStatus;
+                                        displayPayment(
+                                                        booking.getPaymentStatus());
 
                                 case 8 ->
-                                        booking.createdAt.format(
-                                                        TABLE_TIME_FORMAT);
+                                        booking.getCreatedAt() == null
+                                                        ? "-"
+                                                        : booking.getCreatedAt()
+                                                                        .format(
+                                                                                        SHORT_DATE_TIME_FORMAT);
 
                                 default ->
                                         "";
@@ -2563,16 +1723,12 @@ public class BookingScreen extends JPanel {
 
                 @Override
                 public boolean isCellEditable(
-                                int rowIndex,
-                                int columnIndex) {
+                                int row,
+                                int column) {
 
                         return false;
                 }
         }
-
-        // ================================================================
-        // STATUS CELL RENDERER
-        // ================================================================
 
         private static class StatusCellRenderer
                         extends DefaultTableCellRenderer {
@@ -2581,79 +1737,47 @@ public class BookingScreen extends JPanel {
                 public Component getTableCellRendererComponent(
                                 JTable table,
                                 Object value,
-                                boolean isSelected,
-                                boolean hasFocus,
+                                boolean selected,
+                                boolean focused,
                                 int row,
                                 int column) {
 
+                        JLabel label = (JLabel) super.getTableCellRendererComponent(
+                                        table,
+                                        value,
+                                        selected,
+                                        focused,
+                                        row,
+                                        column);
+
                         String status = String.valueOf(value);
 
-                        AppBadge.Status badgeStatus;
+                        label.setOpaque(true);
 
-                        switch (status) {
+                        if ("Confirmed".equals(status)
+                                        || "Paid".equals(status)) {
 
-                                case "Confirmed" ->
-                                        badgeStatus = AppBadge.Status.SUCCESS;
+                                label.setForeground(
+                                                BussinTheme.SUCCESS);
 
-                                case "Pending" ->
-                                        badgeStatus = AppBadge.Status.WARNING;
+                        } else if ("Pending".equals(status)
+                                        || "Unpaid".equals(status)) {
 
-                                case "Cancelled" ->
-                                        badgeStatus = AppBadge.Status.DANGER;
+                                label.setForeground(
+                                                BussinTheme.WARNING);
 
-                                case "Completed" ->
-                                        badgeStatus = AppBadge.Status.INFO;
+                        } else if ("Cancelled".equals(status)) {
 
-                                case "Paid" ->
-                                        badgeStatus = AppBadge.Status.SUCCESS;
+                                label.setForeground(
+                                                BussinTheme.DANGER);
 
-                                case "Unpaid" ->
-                                        badgeStatus = AppBadge.Status.WARNING;
+                        } else {
 
-                                case "Refunded" ->
-                                        badgeStatus = AppBadge.Status.NEUTRAL;
-
-                                default ->
-                                        badgeStatus = AppBadge.Status.NEUTRAL;
+                                label.setForeground(
+                                                BussinTheme.TEXT_PRIMARY);
                         }
 
-                        AppBadge badge = new AppBadge(
-                                        status,
-                                        badgeStatus);
-
-                        JPanel wrapper = new JPanel(
-                                        new BorderLayout());
-
-                        wrapper.setOpaque(true);
-
-                        wrapper.setBackground(
-                                        isSelected
-                                                        ? table.getSelectionBackground()
-                                                        : table.getBackground());
-
-                        wrapper.setBorder(
-                                        BorderFactory.createEmptyBorder(
-                                                        7,
-                                                        0,
-                                                        7,
-                                                        0));
-
-                        JPanel left = new JPanel(
-                                        new FlowLayout(
-                                                        FlowLayout.LEFT,
-                                                        0,
-                                                        0));
-
-                        left.setOpaque(false);
-
-                        left.add(
-                                        badge);
-
-                        wrapper.add(
-                                        left,
-                                        BorderLayout.WEST);
-
-                        return wrapper;
+                        return label;
                 }
         }
 }

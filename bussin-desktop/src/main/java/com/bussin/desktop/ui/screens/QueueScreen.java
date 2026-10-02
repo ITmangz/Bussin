@@ -1,5 +1,9 @@
 package com.bussin.desktop.ui.screens;
 
+import com.bussin.desktop.services.QueueApiService;
+import com.bussin.desktop.services.QueueApiService.QueueResponse;
+import com.bussin.desktop.services.TripApiService;
+import com.bussin.desktop.services.TripApiService.TripResponse;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
@@ -12,12 +16,18 @@ import com.bussin.desktop.ui.components.ResponsiveLayouts;
 import com.bussin.desktop.ui.components.SectionHeader;
 import com.bussin.desktop.ui.components.StatCard;
 import com.bussin.desktop.ui.theme.BussinTheme;
+
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -28,30 +38,32 @@ import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-/**
- * Queue Management (frontend only, mock data).
- *
- * Passengers queue per trip. Staff call the next waiting passenger to board,
- * complete boarding, or skip a no-show. Statuses: Waiting, Boarding,
- * Completed, Skipped.
- */
 public class QueueScreen extends JPanel {
 
     private static final String ALL_TRIPS = "All trips";
     private static final String ALL_STATUS = "All statuses";
 
-    private static final String WAITING = "Waiting";
-    private static final String BOARDING = "Boarding";
-    private static final String COMPLETED = "Completed";
-    private static final String SKIPPED = "Skipped";
+    private static final String WAITING = "WAITING";
+    private static final String CALLED = "CALLED";
+    private static final String BOARDED = "BOARDED";
+    private static final String CANCELLED = "CANCELLED";
 
-    private final List<Trip> trips = new ArrayList<>();
-    private final List<QueueEntry> entries = new ArrayList<>();
+    private static final DateTimeFormatter DISPLAY_TIME = DateTimeFormatter.ofPattern("hh:mm a");
+
+    private final List<TripResponse> trips = new ArrayList<>();
+    private final List<QueueResponse> entries = new ArrayList<>();
+    private final Map<Long, TripResponse> tripMap = new HashMap<>();
 
     private final JTextField searchField = new JTextField();
     private final JComboBox<String> tripFilter = new JComboBox<>();
-    private final JComboBox<String> statusFilter = new JComboBox<>(new String[] {
-            ALL_STATUS, WAITING, BOARDING, COMPLETED, SKIPPED });
+    private final JComboBox<String> statusFilter = new JComboBox<>(
+            new String[] {
+                    ALL_STATUS,
+                    WAITING,
+                    CALLED,
+                    BOARDED,
+                    CANCELLED
+            });
 
     private final JPanel statsHolder = transparent();
     private final JPanel boardingHolder = transparent();
@@ -61,8 +73,6 @@ public class QueueScreen extends JPanel {
     private final AppButton callNextButton = new AppButton("Call Next");
 
     public QueueScreen() {
-
-        initializeData();
 
         setBackground(BussinTheme.BACKGROUND);
         setLayout(new BorderLayout());
@@ -76,86 +86,81 @@ public class QueueScreen extends JPanel {
         page.addBlock(waitingHolder, 18);
         page.addBlock(historyHolder, 18);
 
-        add(page.inScrollPane(), BorderLayout.CENTER);
+        add(
+                page.inScrollPane(),
+                BorderLayout.CENTER);
 
-        refresh();
+        loadData();
     }
-
-    // ================================================================
-    // MOCK DATA
-    // ================================================================
-
-    private void initializeData() {
-
-        Trip t1 = new Trip("10:00 AM", "Manila → Batangas", "BUS-101", "A");
-        Trip t2 = new Trip("10:30 AM", "Manila → Lucena", "BUS-104", "B");
-        Trip t3 = new Trip("11:00 AM", "Manila → Nasugbu", "BUS-107", "C");
-
-        trips.add(t1);
-        trips.add(t2);
-        trips.add(t3);
-
-        tripFilter.addItem(ALL_TRIPS);
-        for (Trip t : trips) {
-            tripFilter.addItem(t.label());
-        }
-
-        add(t1, "A-021", "Mark Villanueva", "0917 555 0121", "Regular", "08:58 AM", COMPLETED);
-        add(t1, "A-022", "Sofia Ramos", "0918 555 0122", "Student", "09:05 AM", COMPLETED);
-        add(t1, "A-023", "Pedro Garcia", "0920 555 0123", "Regular", "09:10 AM", BOARDING);
-        add(t1, "A-020", "Daniel Flores", "0917 555 0120", "Senior", "08:50 AM", SKIPPED);
-        add(t1, "A-024", "Juan Dela Cruz", "0919 555 0124", "Regular", "09:15 AM", WAITING);
-        add(t1, "A-025", "Maria Santos", "0927 555 0125", "PWD", "09:18 AM", WAITING);
-        add(t1, "A-026", "Carlo Reyes", "0917 555 0126", "Regular", "09:21 AM", WAITING);
-
-        add(t2, "B-011", "Liza Mendoza", "0921 555 0211", "Regular", "09:30 AM", BOARDING);
-        add(t2, "B-012", "Rico Bautista", "0917 555 0212", "Student", "09:36 AM", WAITING);
-        add(t2, "B-013", "Angela Cruz", "0935 555 0213", "Regular", "09:41 AM", WAITING);
-
-        add(t3, "C-004", "Nina Aquino", "0917 555 0304", "Senior", "09:44 AM", COMPLETED);
-        add(t3, "C-005", "Paolo Navarro", "0908 555 0305", "Regular", "09:50 AM", WAITING);
-    }
-
-    private void add(Trip trip, String number, String passenger, String contact,
-            String fareType, String joined, String status) {
-
-        entries.add(new QueueEntry(trip, number, passenger, contact, fareType, joined, status));
-    }
-
-    // ================================================================
-    // HEADER + FILTERS
-    // ================================================================
 
     private JPanel createHeader() {
 
         JPanel header = new JPanel(new BorderLayout(24, 0));
+
         header.setOpaque(false);
 
         JPanel text = new JPanel();
+
         text.setOpaque(false);
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.add(AppLabel.title("Queue Management"));
-        text.add(Box.createVerticalStrut(4));
-        text.add(AppLabel.secondary(
-                "Call passengers to board, track queue position per trip, and clear no-shows."));
+        text.setLayout(
+                new BoxLayout(
+                        text,
+                        BoxLayout.Y_AXIS));
 
-        AppButton refresh = new AppButton("Refresh", AppButton.Variant.SECONDARY);
-        refresh.setIcon(IconFactory.create("arrow-right", 16, BussinTheme.TEXT_PRIMARY));
-        refresh.addActionListener(e -> refresh());
+        text.add(
+                AppLabel.title(
+                        "Queue Management"));
 
-        callNextButton.addActionListener(e -> callNext());
+        text.add(
+                Box.createVerticalStrut(4));
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        text.add(
+                AppLabel.secondary(
+                        "Manage passenger queues, call passengers to board, and track boarding status."));
+
+        AppButton refresh = new AppButton(
+                "Refresh",
+                AppButton.Variant.SECONDARY);
+
+        refresh.setIcon(
+                IconFactory.create(
+                        "arrow-right",
+                        16,
+                        BussinTheme.TEXT_PRIMARY));
+
+        refresh.addActionListener(
+                e -> loadData());
+
+        callNextButton.addActionListener(
+                e -> callNext());
+
+        JPanel actions = new JPanel(
+                new FlowLayout(
+                        FlowLayout.RIGHT,
+                        10,
+                        0));
+
         actions.setOpaque(false);
+
         actions.add(refresh);
         actions.add(callNextButton);
 
-        JPanel actionHolder = new JPanel(new BorderLayout());
-        actionHolder.setOpaque(false);
-        actionHolder.add(actions, BorderLayout.SOUTH);
+        JPanel actionHolder = new JPanel(
+                new BorderLayout());
 
-        header.add(text, BorderLayout.CENTER);
-        header.add(actionHolder, BorderLayout.EAST);
+        actionHolder.setOpaque(false);
+
+        actionHolder.add(
+                actions,
+                BorderLayout.SOUTH);
+
+        header.add(
+                text,
+                BorderLayout.CENTER);
+
+        header.add(
+                actionHolder,
+                BorderLayout.EAST);
 
         return header;
     }
@@ -163,25 +168,60 @@ public class QueueScreen extends JPanel {
     private JPanel createFilterBar() {
 
         AppCard card = new AppCard();
-        card.setLayout(new ResponsiveLayouts.Grid(4, 180, 12));
 
-        searchField.setToolTipText("Search by passenger or queue number");
-        searchField.putClientProperty("JTextField.placeholderText", "Search passenger or queue no.");
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { refresh(); }
-            @Override public void removeUpdate(DocumentEvent e) { refresh(); }
-            @Override public void changedUpdate(DocumentEvent e) { refresh(); }
-        });
+        card.setLayout(
+                new ResponsiveLayouts.Grid(
+                        4,
+                        180,
+                        12));
 
-        tripFilter.addActionListener(e -> refresh());
-        statusFilter.addActionListener(e -> refresh());
+        searchField.setToolTipText(
+                "Search by passenger or queue number");
 
-        AppButton clear = new AppButton("Clear Filters", AppButton.Variant.SECONDARY);
-        clear.addActionListener(e -> {
-            searchField.setText("");
-            tripFilter.setSelectedIndex(0);
-            statusFilter.setSelectedIndex(0);
-        });
+        searchField.putClientProperty(
+                "JTextField.placeholderText",
+                "Search passenger or queue no.");
+
+        searchField
+                .getDocument()
+                .addDocumentListener(
+                        new DocumentListener() {
+
+                            @Override
+                            public void insertUpdate(
+                                    DocumentEvent e) {
+                                refreshView();
+                            }
+
+                            @Override
+                            public void removeUpdate(
+                                    DocumentEvent e) {
+                                refreshView();
+                            }
+
+                            @Override
+                            public void changedUpdate(
+                                    DocumentEvent e) {
+                                refreshView();
+                            }
+                        });
+
+        tripFilter.addActionListener(
+                e -> refreshView());
+
+        statusFilter.addActionListener(
+                e -> refreshView());
+
+        AppButton clear = new AppButton(
+                "Clear Filters",
+                AppButton.Variant.SECONDARY);
+
+        clear.addActionListener(
+                e -> {
+                    searchField.setText("");
+                    tripFilter.setSelectedIndex(0);
+                    statusFilter.setSelectedIndex(0);
+                });
 
         card.add(searchField);
         card.add(tripFilter);
@@ -191,46 +231,176 @@ public class QueueScreen extends JPanel {
         return card;
     }
 
-    // ================================================================
-    // REFRESH / RENDER
-    // ================================================================
+    private void loadData() {
 
-    private void refresh() {
+        new Thread(() -> {
 
-        // Statistics reflect the trip filter only, so the numbers stay meaningful
-        // while the user narrows the lists by status or search.
-        Trip selectedTrip = selectedTrip();
+            try {
 
-        int waiting = 0, boarding = 0, completed = 0, skipped = 0;
+                List<TripResponse> loadedTrips = TripApiService.getAllTrips();
 
-        for (QueueEntry e : entries) {
-            if (selectedTrip != null && e.trip != selectedTrip) {
+                List<QueueResponse> loadedEntries = new ArrayList<>();
+
+                for (TripResponse trip : loadedTrips) {
+
+                    try {
+
+                        loadedEntries.addAll(
+                                QueueApiService.getTripQueue(
+                                        trip.getId()));
+
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                javax.swing.SwingUtilities.invokeLater(
+                        () -> {
+
+                            trips.clear();
+                            trips.addAll(
+                                    loadedTrips);
+
+                            entries.clear();
+                            entries.addAll(
+                                    loadedEntries);
+
+                            rebuildTripFilter();
+                            rebuildTripMap();
+                            refreshView();
+                        });
+
+            } catch (Exception ex) {
+
+                javax.swing.SwingUtilities.invokeLater(
+                        () -> showError(
+                                "Failed to load queue data",
+                                ex));
+            }
+
+        }).start();
+    }
+
+    private void rebuildTripMap() {
+
+        tripMap.clear();
+
+        for (TripResponse trip : trips) {
+
+            if (trip.getId() != null) {
+                tripMap.put(
+                        trip.getId(),
+                        trip);
+            }
+        }
+    }
+
+    private void rebuildTripFilter() {
+
+        Object previous = tripFilter.getSelectedItem();
+
+        tripFilter.removeAllItems();
+
+        tripFilter.addItem(
+                ALL_TRIPS);
+
+        for (TripResponse trip : trips) {
+
+            tripFilter.addItem(
+                    tripLabel(trip));
+        }
+
+        if (previous != null) {
+
+            for (int i = 0; i < tripFilter.getItemCount(); i++) {
+
+                if (previous.equals(
+                        tripFilter.getItemAt(i))) {
+
+                    tripFilter.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void refreshView() {
+
+        int waiting = 0;
+        int called = 0;
+        int boarded = 0;
+        int cancelled = 0;
+
+        TripResponse selected = selectedTrip();
+
+        for (QueueResponse entry : entries) {
+
+            if (selected != null
+                    && !selected.getId()
+                            .equals(entry.getTripId())) {
                 continue;
             }
-            switch (e.status) {
-                case WAITING -> waiting++;
-                case BOARDING -> boarding++;
-                case COMPLETED -> completed++;
-                case SKIPPED -> skipped++;
-                default -> { }
+
+            switch (entry.getStatus()) {
+
+                case WAITING ->
+                    waiting++;
+
+                case CALLED ->
+                    called++;
+
+                case BOARDED ->
+                    boarded++;
+
+                case CANCELLED ->
+                    cancelled++;
+
+                default -> {
+                }
             }
         }
 
         statsHolder.removeAll();
-        statsHolder.setLayout(new ResponsiveLayouts.Grid(4, 200, 14));
-        statsHolder.add(new StatCard("WAITING", String.valueOf(waiting),
-                "in line", "queue"));
-        statsHolder.add(new StatCard("BOARDING", String.valueOf(boarding),
-                "called to bus", "bus"));
-        statsHolder.add(new StatCard("COMPLETED", String.valueOf(completed),
-                "boarded today", "seat"));
-        statsHolder.add(new StatCard("SKIPPED", String.valueOf(skipped),
-                "no-shows", "users"));
 
-        List<QueueEntry> visible = new ArrayList<>();
-        for (QueueEntry e : entries) {
-            if (matches(e)) {
-                visible.add(e);
+        statsHolder.setLayout(
+                new ResponsiveLayouts.Grid(
+                        4,
+                        200,
+                        14));
+
+        statsHolder.add(
+                new StatCard(
+                        "WAITING",
+                        String.valueOf(waiting),
+                        "in line",
+                        "queue"));
+
+        statsHolder.add(
+                new StatCard(
+                        "CALLED",
+                        String.valueOf(called),
+                        "called to bus",
+                        "bus"));
+
+        statsHolder.add(
+                new StatCard(
+                        "BOARDED",
+                        String.valueOf(boarded),
+                        "boarded",
+                        "seat"));
+
+        statsHolder.add(
+                new StatCard(
+                        "CANCELLED",
+                        String.valueOf(cancelled),
+                        "cancelled",
+                        "users"));
+
+        List<QueueResponse> visible = new ArrayList<>();
+
+        for (QueueResponse entry : entries) {
+
+            if (matches(entry)) {
+                visible.add(entry);
             }
         }
 
@@ -238,276 +408,563 @@ public class QueueScreen extends JPanel {
         renderWaiting(visible);
         renderHistory(visible);
 
-        callNextButton.setEnabled(nextWaiting() != null);
+        callNextButton.setEnabled(
+                nextWaiting() != null);
 
         revalidate();
         repaint();
     }
 
-    private void renderBoarding(List<QueueEntry> visible) {
+    private void renderBoarding(
+            List<QueueResponse> visible) {
 
-        List<QueueEntry> boarding = filterByStatus(visible, BOARDING);
+        List<QueueResponse> boarding = filterByStatus(
+                visible,
+                CALLED);
 
         boardingHolder.removeAll();
-        boardingHolder.setLayout(new BorderLayout());
+
+        boardingHolder.setLayout(
+                new BorderLayout());
 
         AppCard card = new AppCard();
-        card.setLayout(new BorderLayout(0, 14));
-        card.add(new SectionHeader("Now Boarding",
-                boarding.size() + " passenger(s) called to the bus"), BorderLayout.NORTH);
+
+        card.setLayout(
+                new BorderLayout(
+                        0,
+                        14));
+
+        card.add(
+                new SectionHeader(
+                        "Now Boarding",
+                        boarding.size()
+                                + " passenger(s) called to the bus"),
+                BorderLayout.NORTH);
 
         if (boarding.isEmpty()) {
 
-            card.add(emptyState("No passengers are boarding. Use Call Next to start boarding."),
+            card.add(
+                    emptyState(
+                            "No passengers are currently called to board."),
                     BorderLayout.CENTER);
 
         } else {
 
-            JPanel grid = new JPanel(new ResponsiveLayouts.Grid(3, 280, 14));
+            JPanel grid = new JPanel(
+                    new ResponsiveLayouts.Grid(
+                            3,
+                            280,
+                            14));
+
             grid.setOpaque(false);
 
-            for (QueueEntry e : boarding) {
+            for (QueueResponse entry : boarding) {
 
-                JPanel holder = new JPanel(new BorderLayout(0, 10));
+                JPanel holder = new JPanel(
+                        new BorderLayout(
+                                0,
+                                10));
+
                 holder.setOpaque(false);
 
-                holder.add(new QueueCard(
-                        e.number,
-                        e.passenger,
-                        e.trip.label(),
-                        e.status,
-                        countFor(e.trip, WAITING),
-                        countFor(e.trip, BOARDING),
-                        countFor(e.trip, COMPLETED)), BorderLayout.CENTER);
+                TripResponse trip = tripMap.get(
+                        entry.getTripId());
 
-                AppButton complete = small("Complete", AppButton.Variant.PRIMARY);
-                complete.addActionListener(ev -> setStatus(e, COMPLETED));
+                holder.add(
+                        new QueueCard(
+                                queueNumber(entry),
+                                safe(entry.getCommuterName()),
+                                tripLabel(trip),
+                                displayStatus(entry.getStatus()),
+                                countFor(
+                                        entry.getTripId(),
+                                        WAITING),
+                                countFor(
+                                        entry.getTripId(),
+                                        CALLED),
+                                countFor(
+                                        entry.getTripId(),
+                                        BOARDED)),
+                        BorderLayout.CENTER);
 
-                AppButton skip = small("Skip", AppButton.Variant.SECONDARY);
-                skip.addActionListener(ev -> setStatus(e, SKIPPED));
+                AppButton complete = small(
+                        "Complete",
+                        AppButton.Variant.PRIMARY);
 
-                JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+                complete.addActionListener(
+                        ev -> updateStatus(
+                                entry,
+                                BOARDED));
+
+                AppButton cancel = small(
+                        "Cancel",
+                        AppButton.Variant.SECONDARY);
+
+                cancel.addActionListener(
+                        ev -> cancelEntry(entry));
+
+                JPanel actions = new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                8,
+                                0));
+
                 actions.setOpaque(false);
-                actions.add(complete);
-                actions.add(skip);
 
-                holder.add(actions, BorderLayout.SOUTH);
+                actions.add(complete);
+                actions.add(cancel);
+
+                holder.add(
+                        actions,
+                        BorderLayout.SOUTH);
 
                 grid.add(holder);
             }
 
-            card.add(grid, BorderLayout.CENTER);
+            card.add(
+                    grid,
+                    BorderLayout.CENTER);
         }
 
-        boardingHolder.add(card, BorderLayout.CENTER);
+        boardingHolder.add(
+                card,
+                BorderLayout.CENTER);
     }
 
-    private void renderWaiting(List<QueueEntry> visible) {
+    private void renderWaiting(
+            List<QueueResponse> visible) {
 
-        List<QueueEntry> waiting = filterByStatus(visible, WAITING);
+        List<QueueResponse> waiting = filterByStatus(
+                visible,
+                WAITING);
+
+        waiting.sort(
+                (a, b) -> Integer.compare(
+                        safeQueueNumber(a),
+                        safeQueueNumber(b)));
 
         waitingHolder.removeAll();
-        waitingHolder.setLayout(new BorderLayout());
+
+        waitingHolder.setLayout(
+                new BorderLayout());
 
         AppCard card = new AppCard();
-        card.setLayout(new BorderLayout(0, 10));
-        card.add(new SectionHeader("Waiting Queue",
-                waiting.size() + " passenger(s) waiting, ordered by queue position"),
+
+        card.setLayout(
+                new BorderLayout(
+                        0,
+                        10));
+
+        card.add(
+                new SectionHeader(
+                        "Waiting Queue",
+                        waiting.size()
+                                + " passenger(s) waiting, ordered by queue position"),
                 BorderLayout.NORTH);
 
         if (waiting.isEmpty()) {
 
-            card.add(emptyState("No waiting passengers match the current filters."),
+            card.add(
+                    emptyState(
+                            "No waiting passengers match the current filters."),
                     BorderLayout.CENTER);
 
         } else {
 
             DataGrid grid = new DataGrid(
-                    new String[] { "Pos.", "Queue No.", "Passenger", "Trip", "Fare", "Joined", "Actions" },
-                    new double[] { 0.4, 0.8, 1.6, 2.0, 0.8, 0.9, 1.7 });
+                    new String[] {
+                            "Pos.",
+                            "Queue No.",
+                            "Passenger",
+                            "Trip",
+                            "Joined",
+                            "Actions"
+                    },
+                    new double[] {
+                            0.4,
+                            0.8,
+                            1.6,
+                            2.0,
+                            1.0,
+                            1.7
+                    });
 
-            for (QueueEntry e : waiting) {
+            for (QueueResponse entry : waiting) {
 
-                AppButton call = small("Call", AppButton.Variant.PRIMARY);
-                call.addActionListener(ev -> callEntry(e));
+                AppButton call = small(
+                        "Call",
+                        AppButton.Variant.PRIMARY);
 
-                AppButton skip = small("Skip", AppButton.Variant.SECONDARY);
-                skip.addActionListener(ev -> setStatus(e, SKIPPED));
+                call.addActionListener(
+                        ev -> updateStatus(
+                                entry,
+                                CALLED));
 
-                JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+                AppButton cancel = small(
+                        "Cancel",
+                        AppButton.Variant.SECONDARY);
+
+                cancel.addActionListener(
+                        ev -> cancelEntry(entry));
+
+                JPanel actions = new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                6,
+                                0));
+
                 actions.setOpaque(false);
+
                 actions.add(call);
-                actions.add(skip);
+                actions.add(cancel);
+
+                TripResponse trip = tripMap.get(
+                        entry.getTripId());
 
                 grid.addRow(
-                        DataGrid.colored(String.valueOf(positionOf(e)), BussinTheme.RED),
-                        DataGrid.strong(e.number),
-                        passengerCell(e),
-                        DataGrid.text(e.trip.label()),
-                        DataGrid.text(e.fareType),
-                        DataGrid.text(e.joined),
+                        DataGrid.colored(
+                                String.valueOf(
+                                        positionOf(entry)),
+                                BussinTheme.RED),
+
+                        DataGrid.strong(
+                                queueNumber(entry)),
+
+                        passengerCell(entry),
+
+                        DataGrid.text(
+                                tripLabel(trip)),
+
+                        DataGrid.text(
+                                formatTime(
+                                        entry.getJoinedAt())),
+
                         actions);
             }
 
-            card.add(grid, BorderLayout.CENTER);
+            card.add(
+                    grid,
+                    BorderLayout.CENTER);
         }
 
-        waitingHolder.add(card, BorderLayout.CENTER);
+        waitingHolder.add(
+                card,
+                BorderLayout.CENTER);
     }
 
-    private void renderHistory(List<QueueEntry> visible) {
+    private void renderHistory(
+            List<QueueResponse> visible) {
 
-        List<QueueEntry> history = new ArrayList<>();
-        for (QueueEntry e : visible) {
-            if (e.status.equals(COMPLETED) || e.status.equals(SKIPPED)) {
-                history.add(e);
+        List<QueueResponse> history = new ArrayList<>();
+
+        for (QueueResponse entry : visible) {
+
+            if (BOARDED.equals(
+                    entry.getStatus())
+                    || CANCELLED.equals(
+                            entry.getStatus())) {
+
+                history.add(entry);
             }
         }
 
         historyHolder.removeAll();
-        historyHolder.setLayout(new BorderLayout());
+
+        historyHolder.setLayout(
+                new BorderLayout());
 
         AppCard card = new AppCard();
-        card.setLayout(new BorderLayout(0, 10));
-        card.add(new SectionHeader("Completed & Skipped",
-                history.size() + " entr" + (history.size() == 1 ? "y" : "ies")),
+
+        card.setLayout(
+                new BorderLayout(
+                        0,
+                        10));
+
+        card.add(
+                new SectionHeader(
+                        "Completed & Cancelled",
+                        history.size()
+                                + " entr"
+                                + (history.size() == 1
+                                        ? "y"
+                                        : "ies")),
                 BorderLayout.NORTH);
 
         if (history.isEmpty()) {
 
-            card.add(emptyState("No completed or skipped passengers match the current filters."),
+            card.add(
+                    emptyState(
+                            "No completed or cancelled passengers match the current filters."),
                     BorderLayout.CENTER);
 
         } else {
 
             DataGrid grid = new DataGrid(
-                    new String[] { "Queue No.", "Passenger", "Trip", "Joined", "Status", "Actions" },
-                    new double[] { 0.8, 1.6, 2.0, 0.9, 1.0, 1.2 });
+                    new String[] {
+                            "Queue No.",
+                            "Passenger",
+                            "Trip",
+                            "Joined",
+                            "Status"
+                    },
+                    new double[] {
+                            0.8,
+                            1.6,
+                            2.0,
+                            1.0,
+                            1.2
+                    });
 
-            for (QueueEntry e : history) {
+            for (QueueResponse entry : history) {
 
-                JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-                actions.setOpaque(false);
+                TripResponse trip = tripMap.get(
+                        entry.getTripId());
 
-                if (e.status.equals(SKIPPED)) {
-                    AppButton requeue = small("Requeue", AppButton.Variant.SECONDARY);
-                    requeue.addActionListener(ev -> setStatus(e, WAITING));
-                    actions.add(requeue);
-                } else {
-                    actions.add(DataGrid.text("—"));
-                }
+                AppBadge badge = new AppBadge(
+                        displayStatus(
+                                entry.getStatus()),
+                        BOARDED.equals(
+                                entry.getStatus())
+                                        ? AppBadge.Status.SUCCESS
+                                        : AppBadge.Status.DANGER);
 
                 grid.addRow(
-                        DataGrid.strong(e.number),
-                        passengerCell(e),
-                        DataGrid.text(e.trip.label()),
-                        DataGrid.text(e.joined),
-                        new AppBadge(e.status, e.status.equals(COMPLETED)
-                                ? AppBadge.Status.SUCCESS : AppBadge.Status.DANGER),
-                        actions);
+                        DataGrid.strong(
+                                queueNumber(entry)),
+
+                        passengerCell(entry),
+
+                        DataGrid.text(
+                                tripLabel(trip)),
+
+                        DataGrid.text(
+                                formatTime(
+                                        entry.getJoinedAt())),
+
+                        badge);
             }
 
-            card.add(grid, BorderLayout.CENTER);
+            card.add(
+                    grid,
+                    BorderLayout.CENTER);
         }
 
-        historyHolder.add(card, BorderLayout.CENTER);
+        historyHolder.add(
+                card,
+                BorderLayout.CENTER);
     }
-
-    // ================================================================
-    // ACTIONS (mock state changes)
-    // ================================================================
 
     private void callNext() {
 
-        QueueEntry next = nextWaiting();
+        QueueResponse next = nextWaiting();
 
         if (next != null) {
-            callEntry(next);
+            updateStatus(
+                    next,
+                    CALLED);
         }
     }
 
-    /** First waiting passenger for the selected trip (or overall, by trip departure). */
-    private QueueEntry nextWaiting() {
+    private QueueResponse nextWaiting() {
 
-        Trip selected = selectedTrip();
+        TripResponse selected = selectedTrip();
 
-        for (Trip t : trips) {
-            if (selected != null && t != selected) {
+        QueueResponse result = null;
+
+        for (QueueResponse entry : entries) {
+
+            if (!WAITING.equals(
+                    entry.getStatus())) {
                 continue;
             }
-            for (QueueEntry e : entries) {
-                if (e.trip == t && e.status.equals(WAITING)) {
-                    return e;
-                }
+
+            if (selected != null
+                    && !selected.getId()
+                            .equals(entry.getTripId())) {
+                continue;
             }
-        }
 
-        return null;
-    }
+            if (result == null
+                    || safeQueueNumber(entry) < safeQueueNumber(result)) {
 
-    private void callEntry(QueueEntry entry) {
-
-        setStatus(entry, BOARDING);
-    }
-
-    private void setStatus(QueueEntry entry, String status) {
-
-        entry.status = status;
-
-        refresh();
-    }
-
-    // ================================================================
-    // HELPERS
-    // ================================================================
-
-    private boolean matches(QueueEntry e) {
-
-        Trip selected = selectedTrip();
-
-        if (selected != null && e.trip != selected) {
-            return false;
-        }
-
-        Object status = statusFilter.getSelectedItem();
-
-        if (status != null && !status.equals(ALL_STATUS) && !status.equals(e.status)) {
-            return false;
-        }
-
-        String q = searchField.getText().trim().toLowerCase();
-
-        return q.isEmpty()
-                || e.passenger.toLowerCase().contains(q)
-                || e.number.toLowerCase().contains(q);
-    }
-
-    private Trip selectedTrip() {
-
-        int index = tripFilter.getSelectedIndex();
-
-        return index <= 0 ? null : trips.get(index - 1);
-    }
-
-    private List<QueueEntry> filterByStatus(List<QueueEntry> source, String status) {
-
-        List<QueueEntry> result = new ArrayList<>();
-
-        for (QueueEntry e : source) {
-            if (e.status.equals(status)) {
-                result.add(e);
+                result = entry;
             }
         }
 
         return result;
     }
 
-    private int countFor(Trip trip, String status) {
+    private void updateStatus(
+            QueueResponse entry,
+            String status) {
+
+        new Thread(() -> {
+
+            try {
+
+                QueueResponse updated = QueueApiService.updateQueueStatus(
+                        entry.getId(),
+                        status);
+
+                javax.swing.SwingUtilities.invokeLater(
+                        () -> {
+
+                            replaceEntry(
+                                    updated);
+
+                            refreshView();
+                        });
+
+            } catch (Exception ex) {
+
+                javax.swing.SwingUtilities.invokeLater(
+                        () -> showError(
+                                "Failed to update queue status",
+                                ex));
+            }
+
+        }).start();
+    }
+
+    private void cancelEntry(
+            QueueResponse entry) {
+
+        new Thread(() -> {
+
+            try {
+
+                QueueResponse updated = QueueApiService.cancelQueueEntry(
+                        entry.getId());
+
+                javax.swing.SwingUtilities.invokeLater(
+                        () -> {
+
+                            replaceEntry(
+                                    updated);
+
+                            refreshView();
+                        });
+
+            } catch (Exception ex) {
+
+                javax.swing.SwingUtilities.invokeLater(
+                        () -> showError(
+                                "Failed to cancel queue entry",
+                                ex));
+            }
+
+        }).start();
+    }
+
+    private void replaceEntry(
+            QueueResponse updated) {
+
+        for (int i = 0; i < entries.size(); i++) {
+
+            QueueResponse current = entries.get(i);
+
+            if (current.getId()
+                    .equals(updated.getId())) {
+
+                entries.set(
+                        i,
+                        updated);
+
+                return;
+            }
+        }
+
+        entries.add(updated);
+    }
+
+    private boolean matches(
+            QueueResponse entry) {
+
+        TripResponse selected = selectedTrip();
+
+        if (selected != null
+                && !selected.getId()
+                        .equals(entry.getTripId())) {
+
+            return false;
+        }
+
+        Object status = statusFilter.getSelectedItem();
+
+        if (status != null
+                && !ALL_STATUS.equals(status)
+                && !status.equals(
+                        entry.getStatus())) {
+
+            return false;
+        }
+
+        String q = searchField
+                .getText()
+                .trim()
+                .toLowerCase();
+
+        if (q.isEmpty()) {
+            return true;
+        }
+
+        String name = safe(entry.getCommuterName())
+                .toLowerCase();
+
+        String number = queueNumber(entry)
+                .toLowerCase();
+
+        return name.contains(q)
+                || number.contains(q);
+    }
+
+    private TripResponse selectedTrip() {
+
+        int index = tripFilter.getSelectedIndex();
+
+        if (index <= 0) {
+            return null;
+        }
+
+        if (index - 1 >= trips.size()) {
+            return null;
+        }
+
+        return trips.get(
+                index - 1);
+    }
+
+    private List<QueueResponse> filterByStatus(
+            List<QueueResponse> source,
+            String status) {
+
+        List<QueueResponse> result = new ArrayList<>();
+
+        for (QueueResponse entry : source) {
+
+            if (status.equals(
+                    entry.getStatus())) {
+
+                result.add(entry);
+            }
+        }
+
+        return result;
+    }
+
+    private int countFor(
+            Long tripId,
+            String status) {
 
         int count = 0;
 
-        for (QueueEntry e : entries) {
-            if (e.trip == trip && e.status.equals(status)) {
+        for (QueueResponse entry : entries) {
+
+            if (tripId.equals(
+                    entry.getTripId())
+                    && status.equals(
+                            entry.getStatus())) {
+
                 count++;
             }
         }
@@ -515,16 +972,27 @@ public class QueueScreen extends JPanel {
         return count;
     }
 
-    /** Position within the trip's waiting line (1 = next to be called). */
-    private int positionOf(QueueEntry target) {
+    private int positionOf(
+            QueueResponse target) {
 
         int position = 1;
 
-        for (QueueEntry e : entries) {
-            if (e == target) {
-                return position;
+        for (QueueResponse entry : entries) {
+
+            if (!target.getTripId()
+                    .equals(entry.getTripId())) {
+
+                continue;
             }
-            if (e.trip == target.trip && e.status.equals(WAITING)) {
+
+            if (!WAITING.equals(
+                    entry.getStatus())) {
+
+                continue;
+            }
+
+            if (safeQueueNumber(entry) < safeQueueNumber(target)) {
+
                 position++;
             }
         }
@@ -532,15 +1000,28 @@ public class QueueScreen extends JPanel {
         return position;
     }
 
-    private Component passengerCell(QueueEntry e) {
+    private Component passengerCell(
+            QueueResponse entry) {
 
         JPanel cell = transparent();
-        cell.setLayout(new BoxLayout(cell, BoxLayout.Y_AXIS));
 
-        JLabel name = DataGrid.strong(e.passenger);
-        JLabel contact = new JLabel(e.contact);
-        contact.setFont(BussinTheme.SMALL);
-        contact.setForeground(BussinTheme.TEXT_MUTED);
+        cell.setLayout(
+                new BoxLayout(
+                        cell,
+                        BoxLayout.Y_AXIS));
+
+        JLabel name = DataGrid.strong(
+                safe(entry.getCommuterName()));
+
+        String email = safe(entry.getCommuterEmail());
+
+        JLabel contact = new JLabel(email);
+
+        contact.setFont(
+                BussinTheme.SMALL);
+
+        contact.setForeground(
+                BussinTheme.TEXT_MUTED);
 
         cell.add(name);
         cell.add(contact);
@@ -548,68 +1029,151 @@ public class QueueScreen extends JPanel {
         return cell;
     }
 
-    private AppButton small(String text, AppButton.Variant variant) {
+    private AppButton small(
+            String text,
+            AppButton.Variant variant) {
 
-        AppButton button = new AppButton(text, variant);
-        button.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        AppButton button = new AppButton(
+                text,
+                variant);
+
+        button.setBorder(
+                BorderFactory.createEmptyBorder(
+                        6,
+                        12,
+                        6,
+                        12));
 
         return button;
     }
 
-    private JPanel emptyState(String message) {
+    private JPanel emptyState(
+            String message) {
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(
+                new GridBagLayout());
+
         panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(24, 0, 24, 0));
+
+        panel.setBorder(
+                BorderFactory.createEmptyBorder(
+                        24,
+                        0,
+                        24,
+                        0));
 
         JLabel label = new JLabel(message);
-        label.setFont(BussinTheme.BODY);
-        label.setForeground(BussinTheme.TEXT_MUTED);
+
+        label.setFont(
+                BussinTheme.BODY);
+
+        label.setForeground(
+                BussinTheme.TEXT_MUTED);
+
         panel.add(label);
 
         return panel;
     }
 
+    private void showError(
+            String title,
+            Exception ex) {
+
+        javax.swing.JOptionPane.showMessageDialog(
+                this,
+                ex.getMessage(),
+                title,
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+    }
+
+    private String tripLabel(
+            TripResponse trip) {
+
+        if (trip == null) {
+            return "Unknown Trip";
+        }
+
+        String route = safe(
+                trip.getRouteIdentifier());
+
+        String bus = safe(
+                trip.getBusPlateNumber());
+
+        String departure = formatTime(
+                trip.getScheduledDeparture());
+
+        return departure
+                + " · "
+                + route
+                + " · "
+                + bus;
+    }
+
+    private String formatTime(
+            LocalDateTime value) {
+
+        if (value == null) {
+            return "—";
+        }
+
+        return value.format(
+                DISPLAY_TIME);
+    }
+
+    private String queueNumber(
+            QueueResponse entry) {
+
+        if (entry.getQueueNumber() == null) {
+            return "—";
+        }
+
+        return "#" + entry.getQueueNumber();
+    }
+
+    private int safeQueueNumber(
+            QueueResponse entry) {
+
+        return entry.getQueueNumber() == null
+                ? Integer.MAX_VALUE
+                : entry.getQueueNumber();
+    }
+
+    private String displayStatus(
+            String status) {
+
+        return switch (status) {
+
+            case WAITING ->
+                "Waiting";
+
+            case CALLED ->
+                "Boarding";
+
+            case BOARDED ->
+                "Completed";
+
+            case CANCELLED ->
+                "Cancelled";
+
+            default ->
+                status;
+        };
+    }
+
+    private static String safe(
+            String value) {
+
+        return value == null
+                ? ""
+                : value;
+    }
+
     private static JPanel transparent() {
 
         JPanel panel = new JPanel();
+
         panel.setOpaque(false);
 
         return panel;
-    }
-
-    // ================================================================
-    // MODEL
-    // ================================================================
-
-    private record Trip(String departure, String route, String bus, String prefix) {
-
-        String label() {
-            return departure + " · " + route;
-        }
-    }
-
-    private static class QueueEntry {
-
-        private final Trip trip;
-        private final String number;
-        private final String passenger;
-        private final String contact;
-        private final String fareType;
-        private final String joined;
-
-        private String status;
-
-        private QueueEntry(Trip trip, String number, String passenger, String contact,
-                String fareType, String joined, String status) {
-
-            this.trip = trip;
-            this.number = number;
-            this.passenger = passenger;
-            this.contact = contact;
-            this.fareType = fareType;
-            this.joined = joined;
-            this.status = status;
-        }
     }
 }
