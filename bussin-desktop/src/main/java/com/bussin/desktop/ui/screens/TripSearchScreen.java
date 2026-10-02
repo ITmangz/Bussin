@@ -3,8 +3,12 @@ package com.bussin.desktop.ui.screens;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
@@ -13,8 +17,12 @@ import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingWorker;
 
-import com.bussin.desktop.data.TripStore;
+import com.bussin.desktop.services.RouteApiService;
+import com.bussin.desktop.services.RouteApiService.RouteResponse;
+import com.bussin.desktop.services.TripApiService;
+import com.bussin.desktop.services.TripApiService.TripResponse;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
 import com.bussin.desktop.ui.components.AppLabel;
@@ -26,22 +34,21 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class TripSearchScreen extends JPanel {
 
+        private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter
+                        .ofPattern("MMM d, yyyy • h:mm a");
+
         private final Consumer<String> navigationHandler;
         private final BookingFlowState flowState;
 
         private final JPanel resultsPanel = new JPanel();
 
-        private final JComboBox<String> originCombo = new JComboBox<>(new String[] {
-                        "Manila"
-        });
+        private final JComboBox<String> originCombo = new JComboBox<>();
 
-        private final JComboBox<String> destinationCombo = new JComboBox<>(new String[] {
-                        "All destinations",
-                        "Batangas",
-                        "Lucena",
-                        "Nasugbu",
-                        "Naga"
-        });
+        private final JComboBox<String> destinationCombo = new JComboBox<>();
+
+        private final Map<Long, RouteResponse> routesById = new LinkedHashMap<>();
+
+        private List<TripResponse> trips = new ArrayList<>();
 
         public TripSearchScreen(
                         Consumer<String> navigationHandler,
@@ -51,7 +58,7 @@ public class TripSearchScreen extends JPanel {
                 this.flowState = flowState;
 
                 initializeUI();
-                renderResults();
+                loadData();
         }
 
         private void initializeUI() {
@@ -65,9 +72,9 @@ public class TripSearchScreen extends JPanel {
                 page.addBlock(createSearchCard(), 24);
                 page.addBlock(resultsPanel, 18);
 
-                add(
-                                page.inScrollPane(),
-                                BorderLayout.CENTER);
+                add(page.inScrollPane(), BorderLayout.CENTER);
+
+                showMessage("Loading available trips...");
         }
 
         private JPanel createHeader() {
@@ -109,19 +116,17 @@ public class TripSearchScreen extends JPanel {
 
                 fields.setOpaque(false);
 
-                JPanel from = fieldPanel(
-                                "FROM",
-                                originCombo);
+                fields.add(
+                                fieldPanel(
+                                                "FROM",
+                                                originCombo));
 
-                JPanel to = fieldPanel(
-                                "TO",
-                                destinationCombo);
+                fields.add(
+                                fieldPanel(
+                                                "TO",
+                                                destinationCombo));
 
-                fields.add(from);
-                fields.add(to);
-
-                AppButton searchButton = new AppButton(
-                                "Search Trips");
+                AppButton searchButton = new AppButton("Search Trips");
 
                 searchButton.addActionListener(
                                 event -> renderResults());
@@ -183,6 +188,159 @@ public class TripSearchScreen extends JPanel {
                 return panel;
         }
 
+        private void loadData() {
+
+                SwingWorker<LoadedData, Void> worker = new SwingWorker<>() {
+
+                        @Override
+                        protected LoadedData doInBackground()
+                                        throws Exception {
+
+                                List<RouteResponse> routes = RouteApiService.getAllRoutes();
+
+                                List<TripResponse> loadedTrips = TripApiService.getAllTrips();
+
+                                return new LoadedData(
+                                                routes,
+                                                loadedTrips);
+                        }
+
+                        @Override
+                        protected void done() {
+
+                                try {
+
+                                        LoadedData data = get();
+
+                                        routesById.clear();
+
+                                        for (RouteResponse route : data.routes()) {
+
+                                                if (route.getId() != null
+                                                                && route.isActive()) {
+
+                                                        routesById.put(
+                                                                        route.getId(),
+                                                                        route);
+                                                }
+                                        }
+
+                                        trips = new ArrayList<>(
+                                                        data.trips());
+
+                                        populateFilters();
+                                        renderResults();
+
+                                } catch (Exception ex) {
+
+                                        showMessage(
+                                                        "Unable to load trips. "
+                                                                        + getErrorMessage(ex));
+                                }
+                        }
+                };
+
+                worker.execute();
+        }
+
+        private void populateFilters() {
+
+                String selectedOrigin = String.valueOf(
+                                originCombo.getSelectedItem());
+
+                String selectedDestination = String.valueOf(
+                                destinationCombo.getSelectedItem());
+
+                originCombo.removeAllItems();
+
+                destinationCombo.removeAllItems();
+
+                originCombo.addItem(
+                                "All origins");
+
+                destinationCombo.addItem(
+                                "All destinations");
+
+                List<String> origins = new ArrayList<>();
+
+                List<String> destinations = new ArrayList<>();
+
+                for (TripResponse trip : trips) {
+
+                        if (trip.getRouteId() == null) {
+                                continue;
+                        }
+
+                        RouteResponse route = routesById.get(
+                                        trip.getRouteId());
+
+                        if (route == null) {
+                                continue;
+                        }
+
+                        if (route.getOrigin() != null
+                                        && !route.getOrigin().isBlank()
+                                        && !origins.contains(
+                                                        route.getOrigin())) {
+
+                                origins.add(
+                                                route.getOrigin());
+                        }
+
+                        if (route.getDestination() != null
+                                        && !route.getDestination().isBlank()
+                                        && !destinations.contains(
+                                                        route.getDestination())) {
+
+                                destinations.add(
+                                                route.getDestination());
+                        }
+                }
+
+                origins.sort(String::compareToIgnoreCase);
+                destinations.sort(String::compareToIgnoreCase);
+
+                for (String origin : origins) {
+                        originCombo.addItem(origin);
+                }
+
+                for (String destination : destinations) {
+                        destinationCombo.addItem(destination);
+                }
+
+                restoreSelection(
+                                originCombo,
+                                selectedOrigin,
+                                "All origins");
+
+                restoreSelection(
+                                destinationCombo,
+                                selectedDestination,
+                                "All destinations");
+        }
+
+        private void restoreSelection(
+                        JComboBox<String> combo,
+                        String value,
+                        String fallback) {
+
+                if (value != null
+                                && !value.equals("null")) {
+
+                        for (int i = 0; i < combo.getItemCount(); i++) {
+
+                                if (value.equals(
+                                                combo.getItemAt(i))) {
+
+                                        combo.setSelectedIndex(i);
+                                        return;
+                                }
+                        }
+                }
+
+                combo.setSelectedItem(fallback);
+        }
+
         private void renderResults() {
 
                 resultsPanel.removeAll();
@@ -201,49 +359,63 @@ public class TripSearchScreen extends JPanel {
                                                 wrapper,
                                                 BoxLayout.Y_AXIS));
 
-                JLabel title = AppLabel.section(
-                                "Available Trips");
-
-                wrapper.add(title);
+                wrapper.add(
+                                AppLabel.section(
+                                                "Available Trips"));
 
                 wrapper.add(
                                 Box.createVerticalStrut(12));
 
-                String origin = String.valueOf(
+                String selectedOrigin = String.valueOf(
                                 originCombo.getSelectedItem());
 
-                String destination = String.valueOf(
+                String selectedDestination = String.valueOf(
                                 destinationCombo.getSelectedItem());
 
-                /*
-                 * ------------------------------------------------------------
-                 * Shared trip state
-                 * ------------------------------------------------------------
-                 *
-                 * TripSearchScreen no longer creates its own trips.
-                 *
-                 * TripStore is now the single source of truth for:
-                 *
-                 * - Trip information
-                 * - Bus information
-                 * - Seat availability
-                 * - Seat reservations
-                 *
-                 * This means the trip selected here is the exact same
-                 * CommuterTrip instance used by the rest of the booking flow.
-                 */
-                List<CommuterTrip> matches = new ArrayList<>(
-                                TripStore.search(
-                                                origin,
-                                                "All destinations".equalsIgnoreCase(destination)
-                                                                ? ""
-                                                                : destination));
+                List<CommuterTrip> matches = new ArrayList<>();
+
+                for (TripResponse trip : trips) {
+
+                        RouteResponse route = routesById.get(
+                                        trip.getRouteId());
+
+                        if (route == null) {
+                                continue;
+                        }
+
+                        if (!matchesFilter(
+                                        selectedOrigin,
+                                        route.getOrigin(),
+                                        "All origins")) {
+
+                                continue;
+                        }
+
+                        if (!matchesFilter(
+                                        selectedDestination,
+                                        route.getDestination(),
+                                        "All destinations")) {
+
+                                continue;
+                        }
+
+                        if (!isBookableStatus(
+                                        trip.getStatus())) {
+
+                                continue;
+                        }
+
+                        matches.add(
+                                        toCommuterTrip(
+                                                        trip,
+                                                        route));
+                }
 
                 if (matches.isEmpty()) {
 
                         wrapper.add(
                                         createEmptyState(
-                                                        "No trips match your selected destination."));
+                                                        "No available trips match your selected filters."));
 
                 } else {
 
@@ -273,6 +445,67 @@ public class TripSearchScreen extends JPanel {
                 resultsPanel.repaint();
         }
 
+        private boolean matchesFilter(
+                        String selected,
+                        String actual,
+                        String allValue) {
+
+                if (allValue.equalsIgnoreCase(selected)) {
+                        return true;
+                }
+
+                if (actual == null) {
+                        return false;
+                }
+
+                return actual.equalsIgnoreCase(selected);
+        }
+
+        private boolean isBookableStatus(
+                        String status) {
+
+                if (status == null) {
+                        return false;
+                }
+
+                return "SCHEDULED".equalsIgnoreCase(status)
+                                || "BOARDING".equalsIgnoreCase(status);
+        }
+
+        private CommuterTrip toCommuterTrip(
+                        TripResponse trip,
+                        RouteResponse route) {
+
+                String departure = formatDateTime(
+                                trip.getScheduledDeparture());
+
+                String arrival = formatDateTime(
+                                trip.getScheduledArrival());
+
+                String busNumber = trip.getBusPlateNumber() == null
+                                ? "Unassigned"
+                                : trip.getBusPlateNumber();
+
+                double fare = route.getBaseFare() == null
+                                ? 0.0
+                                : route.getBaseFare().doubleValue();
+
+                int totalSeats = trip.getBusCapacity() == null
+                                ? 0
+                                : trip.getBusCapacity();
+
+                return new CommuterTrip(
+                                String.valueOf(
+                                                trip.getId()),
+                                departure,
+                                arrival,
+                                route.getOrigin(),
+                                route.getDestination(),
+                                busNumber,
+                                fare,
+                                totalSeats);
+        }
+
         private JPanel createTripCard(
                         CommuterTrip trip) {
 
@@ -296,7 +529,7 @@ public class TripSearchScreen extends JPanel {
                                 trip.getRoute());
 
                 JLabel tripId = new JLabel(
-                                trip.getTripId());
+                                "Trip #" + trip.getTripId());
 
                 tripId.setFont(
                                 BussinTheme.SMALL_BOLD);
@@ -342,37 +575,20 @@ public class TripSearchScreen extends JPanel {
                                                                 "₱%,.2f",
                                                                 trip.getFare())));
 
-                JLabel availability = new JLabel(
-                                trip.getAvailableSeats()
-                                                + " seats available");
+                JLabel status = new JLabel(
+                                "Available for booking");
 
-                availability.setFont(
+                status.setFont(
                                 BussinTheme.SMALL_BOLD);
 
-                availability.setForeground(
-                                trip.getAvailableSeats() > 0
-                                                ? BussinTheme.SUCCESS
-                                                : BussinTheme.DANGER);
+                status.setForeground(
+                                BussinTheme.SUCCESS);
 
                 AppButton select = new AppButton(
-                                trip.getAvailableSeats() > 0
-                                                ? "Select Trip"
-                                                : "Fully Booked");
-
-                select.setEnabled(
-                                trip.getAvailableSeats() > 0);
+                                "Select Trip");
 
                 select.addActionListener(
-                                event -> {
-
-                                        flowState.reset();
-
-                                        flowState.setSelectedTrip(
-                                                        trip);
-
-                                        navigationHandler.accept(
-                                                        "seat-selection");
-                                });
+                                event -> selectTrip(trip));
 
                 card.add(
                                 top,
@@ -388,7 +604,7 @@ public class TripSearchScreen extends JPanel {
                 bottom.setOpaque(false);
 
                 bottom.add(
-                                availability,
+                                status,
                                 BorderLayout.WEST);
 
                 bottom.add(
@@ -400,6 +616,18 @@ public class TripSearchScreen extends JPanel {
                                 BorderLayout.SOUTH);
 
                 return card;
+        }
+
+        private void selectTrip(
+                        CommuterTrip trip) {
+
+                flowState.reset();
+
+                flowState.setSelectedTrip(
+                                trip);
+
+                navigationHandler.accept(
+                                "seat-selection");
         }
 
         private JPanel info(
@@ -468,5 +696,57 @@ public class TripSearchScreen extends JPanel {
                 panel.add(label);
 
                 return panel;
+        }
+
+        private void showMessage(
+                        String message) {
+
+                resultsPanel.removeAll();
+
+                resultsPanel.setOpaque(false);
+
+                resultsPanel.setLayout(
+                                new BorderLayout());
+
+                resultsPanel.add(
+                                createEmptyState(message),
+                                BorderLayout.CENTER);
+
+                resultsPanel.revalidate();
+                resultsPanel.repaint();
+        }
+
+        private String formatDateTime(
+                        LocalDateTime value) {
+
+                if (value == null) {
+                        return "Not scheduled";
+                }
+
+                return value.format(
+                                DATE_TIME_FORMATTER);
+        }
+
+        private String getErrorMessage(
+                        Exception exception) {
+
+                Throwable cause = exception;
+
+                while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                }
+
+                if (cause.getMessage() == null
+                                || cause.getMessage().isBlank()) {
+
+                        return "Please check that the BUSSIN API is running.";
+                }
+
+                return cause.getMessage();
+        }
+
+        private record LoadedData(
+                        List<RouteResponse> routes,
+                        List<TripResponse> trips) {
         }
 }

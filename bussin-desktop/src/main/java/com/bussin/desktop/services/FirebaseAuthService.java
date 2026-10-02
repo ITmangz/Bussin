@@ -94,6 +94,8 @@ public final class FirebaseAuthService {
                                 firebaseUid,
                                 responseEmail);
 
+                AuthSession.printIdToken();
+
                 return true;
         }
 

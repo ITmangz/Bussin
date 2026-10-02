@@ -19,6 +19,7 @@ import com.bussin.desktop.App;
 import com.bussin.desktop.ui.components.Sidebar;
 import com.bussin.desktop.ui.components.TopBar;
 import com.bussin.desktop.ui.flow.BookingFlowState;
+import com.bussin.desktop.ui.screens.AiBookingScreen;
 import com.bussin.desktop.ui.screens.BookingConfirmationScreen;
 import com.bussin.desktop.ui.screens.BookingReviewScreen;
 import com.bussin.desktop.ui.screens.BookingScreen;
@@ -33,6 +34,7 @@ import com.bussin.desktop.ui.screens.RouteScreen;
 import com.bussin.desktop.ui.screens.SeatSelectionScreen;
 import com.bussin.desktop.ui.screens.TripScreen;
 import com.bussin.desktop.ui.screens.TripSearchScreen;
+import com.bussin.desktop.ui.screens.UserBookingScreen;
 import com.bussin.desktop.ui.screens.UserBookingsScreen;
 import com.bussin.desktop.ui.screens.UserDashboardScreen;
 import com.bussin.desktop.ui.screens.UserQueueScreen;
@@ -101,7 +103,8 @@ public class MainFrame extends JFrame {
                 contentPanel.setBorder(
                                 BorderFactory.createEmptyBorder());
 
-                JPanel mainPanel = new JPanel(new BorderLayout());
+                JPanel mainPanel = new JPanel(
+                                new BorderLayout());
 
                 mainPanel.setBackground(
                                 BussinTheme.BACKGROUND);
@@ -110,7 +113,8 @@ public class MainFrame extends JFrame {
                                 sidebar,
                                 BorderLayout.WEST);
 
-                JPanel rightPanel = new JPanel(new BorderLayout());
+                JPanel rightPanel = new JPanel(
+                                new BorderLayout());
 
                 rightPanel.setBackground(
                                 BussinTheme.BACKGROUND);
@@ -244,7 +248,8 @@ public class MainFrame extends JFrame {
 
                 return switch (route) {
 
-                        case "trip-search",
+                        case "ai-booking",
+                                        "trip-search",
                                         "seat-selection",
                                         "passenger-information",
                                         "booking-review",
@@ -293,8 +298,7 @@ public class MainFrame extends JFrame {
 
                                 if ("USER".equals(userRole)) {
 
-                                        yield new UserBookingsScreen(
-                                                        currentUserEmail,
+                                        yield new UserBookingScreen(
                                                         this::navigate,
                                                         bookingFlowState);
 
@@ -305,6 +309,23 @@ public class MainFrame extends JFrame {
                                                         currentUserEmail);
                                 }
                         }
+
+                        case "bookings-list" ->
+                                new UserBookingsScreen(
+                                                currentUserEmail,
+                                                this::navigate,
+                                                bookingFlowState);
+
+                        case "user-booking" ->
+                                new UserBookingScreen(
+                                                this::navigate,
+                                                bookingFlowState);
+
+                        case "ai-booking" ->
+                                new AiBookingScreen(
+                                                this::navigate,
+                                                currentUserEmail,
+                                                bookingFlowState);
 
                         case "trip-search" ->
                                 new TripSearchScreen(
@@ -333,8 +354,19 @@ public class MainFrame extends JFrame {
                                                 this::navigate,
                                                 bookingFlowState);
 
-                        case "trips" ->
-                                new TripScreen();
+                        case "trips" -> {
+
+                                if ("USER".equals(userRole)) {
+
+                                        yield new TripSearchScreen(
+                                                        this::navigate,
+                                                        bookingFlowState);
+
+                                } else {
+
+                                        yield new TripScreen();
+                                }
+                        }
 
                         case "buses" ->
                                 new BusScreen();
@@ -397,6 +429,26 @@ public class MainFrame extends JFrame {
                                         "routes",
                                         "employees",
                                         "reports",
+                                        "profile" ->
+                                true;
+
+                        default ->
+                                false;
+                };
+        }
+
+        private boolean hasUserAccess(
+                        String route) {
+
+                return switch (route) {
+
+                        case "dashboard",
+                                        "queue",
+                                        "bookings",
+                                        "bookings-list",
+                                        "user-booking",
+                                        "ai-booking",
+                                        "trips",
                                         "profile",
                                         "trip-search",
                                         "seat-selection",
@@ -421,27 +473,6 @@ public class MainFrame extends JFrame {
                                         "trips",
                                         "buses",
                                         "profile" ->
-                                true;
-
-                        default ->
-                                false;
-                };
-        }
-
-        private boolean hasUserAccess(
-                        String route) {
-
-                return switch (route) {
-
-                        case "dashboard",
-                                        "queue",
-                                        "bookings",
-                                        "profile",
-                                        "trip-search",
-                                        "seat-selection",
-                                        "passenger-information",
-                                        "booking-review",
-                                        "booking-confirmation" ->
                                 true;
 
                         default ->
@@ -474,7 +505,16 @@ public class MainFrame extends JFrame {
                                                 : "Queue";
 
                         case "bookings" ->
-                                "Bookings";
+                                "Book a Trip";
+
+                        case "bookings-list" ->
+                                "My Bookings";
+
+                        case "user-booking" ->
+                                "Book a Trip";
+
+                        case "ai-booking" ->
+                                "AI Booking Assistant";
 
                         case "trip-search" ->
                                 "Find a Trip";
@@ -492,7 +532,7 @@ public class MainFrame extends JFrame {
                                 "Booking Confirmed";
 
                         case "trips" ->
-                                "Trips";
+                                "Find a Trip";
 
                         case "buses" ->
                                 "Bus Management";
@@ -521,7 +561,8 @@ public class MainFrame extends JFrame {
                         String title,
                         String message) {
 
-                JPanel panel = new JPanel(new GridBagLayout());
+                JPanel panel = new JPanel(
+                                new GridBagLayout());
 
                 panel.setBackground(
                                 BussinTheme.BACKGROUND);
@@ -589,8 +630,7 @@ public class MainFrame extends JFrame {
                         return "USER";
                 }
 
-                String normalized = role.trim()
-                                .toUpperCase();
+                String normalized = role.trim().toUpperCase();
 
                 return switch (normalized) {
 

@@ -42,6 +42,11 @@ public final class AuthSession {
         return email;
     }
 
+    public static void printIdToken() {
+        System.out.println("FIREBASE ID TOKEN:");
+        System.out.println(idToken);
+    }
+
     public static void clear() {
         idToken = null;
         refreshToken = null;
