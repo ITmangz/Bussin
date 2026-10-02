@@ -12,24 +12,29 @@ import com.bussin.bussin_api.entity.TripStatus;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
 
-    List<Trip> findByBusOrderByScheduledDepartureDesc(Bus bus);
+        List<Trip> findByBusOrderByScheduledDepartureDesc(Bus bus);
 
-    List<Trip> findByRouteOrderByScheduledDepartureDesc(Route route);
+        List<Trip> findByRouteOrderByScheduledDepartureDesc(Route route);
 
-    List<Trip> findByStatusOrderByScheduledDepartureDesc(TripStatus status);
+        List<Trip> findByStatusOrderByScheduledDepartureDesc(TripStatus status);
 
-    boolean existsByBusAndIdNot(Bus bus, Long id);
+        boolean existsByBusAndIdNot(Bus bus, Long id);
 
-    boolean existsByRouteAndIdNot(Route route, Long id);
+        boolean existsByRouteAndIdNot(Route route, Long id);
 
-    List<Trip> findByRouteIdAndStatusInOrderByScheduledDepartureDesc(
-            Long routeId,
-            List<TripStatus> statuses);
+        List<Trip> findByRouteIdAndStatusInOrderByScheduledDepartureDesc(
+                        Long routeId,
+                        List<TripStatus> statuses);
 
-    List<Trip> findByScheduledDepartureBetweenOrderByScheduledDepartureDesc(
-            LocalDateTime start,
-            LocalDateTime end);
+        List<Trip> findByRouteIdOrderByScheduledDepartureDesc(
+                        Long routeId);
 
-    List<Trip> findByScheduledDepartureAfterOrderByScheduledDepartureDesc(
-            LocalDateTime after);
+        List<Trip> findByScheduledDepartureBetweenOrderByScheduledDepartureDesc(
+                        LocalDateTime start,
+                        LocalDateTime end);
+
+        List<Trip> findByScheduledDepartureAfterOrderByScheduledDepartureDesc(
+                        LocalDateTime after);
+
+        List<Trip> findAllByOrderByScheduledDepartureDesc();
 }
