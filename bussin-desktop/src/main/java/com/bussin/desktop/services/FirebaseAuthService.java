@@ -12,176 +12,226 @@ import com.google.gson.JsonParser;
 
 public final class FirebaseAuthService {
 
-    private static final String API_KEY = "AIzaSyAHq7KEgGZnN6MPImmniDN2MuXgFiaDdSQ";
+        private static final String API_KEY = "AIzaSyAHq7KEgGZnN6MPImmniDN2MuXgFiaDdSQ";
 
-    private static final String SIGN_IN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="
-            + API_KEY;
+        private static final String SIGN_IN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="
+                        + API_KEY;
 
-    private static final String SIGN_UP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="
-            + API_KEY;
+        private static final String SIGN_UP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="
+                        + API_KEY;
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+        private static final String PASSWORD_RESET_URL = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key="
+                        + API_KEY;
 
-    private static final Gson GSON = new Gson();
+        private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-    private FirebaseAuthService() {
-    }
+        private static final Gson GSON = new Gson();
 
-    // ============================================================
-    // LOGIN
-    // ============================================================
-
-    public static boolean login(
-            String email,
-            String password)
-            throws IOException, InterruptedException {
-
-        JsonObject requestBody = new JsonObject();
-
-        requestBody.addProperty(
-                "email",
-                email);
-
-        requestBody.addProperty(
-                "password",
-                password);
-
-        requestBody.addProperty(
-                "returnSecureToken",
-                true);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(SIGN_IN_URL))
-                .header(
-                        "Content-Type",
-                        "application/json")
-                .POST(
-                        HttpRequest.BodyPublishers.ofString(
-                                GSON.toJson(requestBody)))
-                .build();
-
-        HttpResponse<String> response = HTTP_CLIENT.send(
-                request,
-                HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-
-            System.out.println(
-                    "Firebase Login HTTP Status: "
-                            + response.statusCode());
-
-            System.out.println(
-                    "Firebase Login Response: "
-                            + response.body());
-
-            return false;
+        private FirebaseAuthService() {
         }
 
-        JsonObject json = JsonParser.parseString(
-                response.body())
-                .getAsJsonObject();
+        // ============================================================
+        // LOGIN
+        // ============================================================
 
-        String idToken = json.get("idToken")
-                .getAsString();
+        public static boolean login(
+                        String email,
+                        String password)
+                        throws IOException, InterruptedException {
 
-        String refreshToken = json.get("refreshToken")
-                .getAsString();
+                JsonObject requestBody = new JsonObject();
 
-        String firebaseUid = json.get("localId")
-                .getAsString();
+                requestBody.addProperty(
+                                "email",
+                                email);
 
-        String authenticatedEmail = json.get("email")
-                .getAsString();
+                requestBody.addProperty(
+                                "password",
+                                password);
 
-        AuthSession.start(
-                idToken,
-                refreshToken,
-                firebaseUid,
-                authenticatedEmail);
+                requestBody.addProperty(
+                                "returnSecureToken",
+                                true);
 
-        return true;
-    }
+                HttpRequest request = HttpRequest.newBuilder()
+                                .uri(URI.create(SIGN_IN_URL))
+                                .header(
+                                                "Content-Type",
+                                                "application/json")
+                                .POST(
+                                                HttpRequest.BodyPublishers.ofString(
+                                                                GSON.toJson(requestBody)))
+                                .build();
 
-    // ============================================================
-    // REGISTER
-    // ============================================================
+                HttpResponse<String> response = HTTP_CLIENT.send(
+                                request,
+                                HttpResponse.BodyHandlers.ofString());
 
-    public static boolean register(
-            String email,
-            String password)
-            throws IOException, InterruptedException {
+                if (response.statusCode() != 200) {
 
-        JsonObject requestBody = new JsonObject();
+                        System.out.println(
+                                        "Firebase Login HTTP Status: "
+                                                        + response.statusCode());
 
-        requestBody.addProperty(
-                "email",
-                email);
+                        System.out.println(
+                                        "Firebase Login Response: "
+                                                        + response.body());
 
-        requestBody.addProperty(
-                "password",
-                password);
+                        return false;
+                }
 
-        requestBody.addProperty(
-                "returnSecureToken",
-                true);
+                JsonObject json = JsonParser.parseString(
+                                response.body())
+                                .getAsJsonObject();
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(SIGN_UP_URL))
-                .header(
-                        "Content-Type",
-                        "application/json")
-                .POST(
-                        HttpRequest.BodyPublishers.ofString(
-                                GSON.toJson(requestBody)))
-                .build();
+                String idToken = json.get("idToken")
+                                .getAsString();
 
-        HttpResponse<String> response = HTTP_CLIENT.send(
-                request,
-                HttpResponse.BodyHandlers.ofString());
+                String refreshToken = json.get("refreshToken")
+                                .getAsString();
 
-        if (response.statusCode() != 200) {
+                String firebaseUid = json.get("localId")
+                                .getAsString();
 
-            System.out.println(
-                    "Firebase Registration HTTP Status: "
-                            + response.statusCode());
+                String authenticatedEmail = json.get("email")
+                                .getAsString();
 
-            System.out.println(
-                    "Firebase Registration Response: "
-                            + response.body());
+                AuthSession.start(
+                                idToken,
+                                refreshToken,
+                                firebaseUid,
+                                authenticatedEmail);
 
-            return false;
+                return true;
         }
 
-        JsonObject json = JsonParser.parseString(
-                response.body())
-                .getAsJsonObject();
+        // ============================================================
+        // PASSWORD RESET
+        // ============================================================
 
-        String idToken = json.get("idToken")
-                .getAsString();
+        public static boolean sendPasswordReset(
+                        String email)
+                        throws IOException, InterruptedException {
 
-        String refreshToken = json.get("refreshToken")
-                .getAsString();
+                JsonObject requestBody = new JsonObject();
 
-        String firebaseUid = json.get("localId")
-                .getAsString();
+                requestBody.addProperty(
+                                "requestType",
+                                "PASSWORD_RESET");
 
-        String registeredEmail = json.get("email")
-                .getAsString();
+                requestBody.addProperty(
+                                "email",
+                                email);
 
-        AuthSession.start(
-                idToken,
-                refreshToken,
-                firebaseUid,
-                registeredEmail);
+                HttpRequest request = HttpRequest.newBuilder()
+                                .uri(URI.create(PASSWORD_RESET_URL))
+                                .header(
+                                                "Content-Type",
+                                                "application/json")
+                                .POST(
+                                                HttpRequest.BodyPublishers.ofString(
+                                                                GSON.toJson(requestBody)))
+                                .build();
 
-        return true;
-    }
+                HttpResponse<String> response = HTTP_CLIENT.send(
+                                request,
+                                HttpResponse.BodyHandlers.ofString());
 
-    // ============================================================
-    // LOGOUT
-    // ============================================================
+                System.out.println(
+                                "Firebase Password Reset HTTP Status: "
+                                                + response.statusCode());
 
-    public static void logout() {
-        AuthSession.clear();
-    }
+                System.out.println(
+                                "Firebase Password Reset Response: "
+                                                + response.body());
+
+                if (response.statusCode() != 200) {
+                        return false;
+                }
+
+                return true;
+        }
+
+        // ============================================================
+        // REGISTER
+        // ============================================================
+
+        public static boolean register(
+                        String email,
+                        String password)
+                        throws IOException, InterruptedException {
+
+                JsonObject requestBody = new JsonObject();
+
+                requestBody.addProperty(
+                                "email",
+                                email);
+
+                requestBody.addProperty(
+                                "password",
+                                password);
+
+                requestBody.addProperty(
+                                "returnSecureToken",
+                                true);
+
+                HttpRequest request = HttpRequest.newBuilder()
+                                .uri(URI.create(SIGN_UP_URL))
+                                .header(
+                                                "Content-Type",
+                                                "application/json")
+                                .POST(
+                                                HttpRequest.BodyPublishers.ofString(
+                                                                GSON.toJson(requestBody)))
+                                .build();
+
+                HttpResponse<String> response = HTTP_CLIENT.send(
+                                request,
+                                HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() != 200) {
+
+                        System.out.println(
+                                        "Firebase Registration HTTP Status: "
+                                                        + response.statusCode());
+
+                        System.out.println(
+                                        "Firebase Registration Response: "
+                                                        + response.body());
+
+                        return false;
+                }
+
+                JsonObject json = JsonParser.parseString(
+                                response.body())
+                                .getAsJsonObject();
+
+                String idToken = json.get("idToken")
+                                .getAsString();
+
+                String refreshToken = json.get("refreshToken")
+                                .getAsString();
+
+                String firebaseUid = json.get("localId")
+                                .getAsString();
+
+                String registeredEmail = json.get("email")
+                                .getAsString();
+
+                AuthSession.start(
+                                idToken,
+                                refreshToken,
+                                firebaseUid,
+                                registeredEmail);
+
+                return true;
+        }
+
+        // ============================================================
+        // LOGOUT
+        // ============================================================
+
+        public static void logout() {
+                AuthSession.clear();
+        }
 }

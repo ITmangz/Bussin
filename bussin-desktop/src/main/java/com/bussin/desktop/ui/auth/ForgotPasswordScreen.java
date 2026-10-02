@@ -18,7 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
-import com.bussin.desktop.services.MockAuthService;
+import com.bussin.desktop.services.FirebaseAuthService;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
@@ -235,9 +235,9 @@ public class ForgotPasswordScreen extends JPanel {
 
         private void handleReset() {
 
-                String value = emailField.getText().trim();
+                String email = emailField.getText().trim();
 
-                if (value.isEmpty()) {
+                if (email.isEmpty()) {
 
                         JOptionPane.showMessageDialog(
                                         this,
@@ -248,27 +248,47 @@ public class ForgotPasswordScreen extends JPanel {
                         return;
                 }
 
-                if (MockAuthService.sendPasswordReset(
-                                value)) {
+                try {
+
+                        boolean sent = FirebaseAuthService.sendPasswordReset(
+                                        email);
+
+                        if (sent) {
+
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Password reset instructions have been sent to:\n\n"
+                                                                + email
+                                                                + "\n\n"
+                                                                + "Please check your inbox and follow the "
+                                                                + "instructions to create a new password.",
+                                                "Password Reset",
+                                                JOptionPane.INFORMATION_MESSAGE);
+
+                                navigationHandler.accept(
+                                                "login");
+
+                        } else {
+
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Unable to send password reset instructions.\n\n"
+                                                                + "Please check that the email address is correct "
+                                                                + "and that the account exists.",
+                                                "Password Reset",
+                                                JOptionPane.WARNING_MESSAGE);
+                        }
+
+                } catch (Exception exception) {
+
+                        exception.printStackTrace();
 
                         JOptionPane.showMessageDialog(
                                         this,
-                                        "Password reset instructions would be sent to "
-                                                        + value
-                                                        + ".\n\nFirebase will handle this once authentication is connected.",
-                                        "Password Reset",
-                                        JOptionPane.INFORMATION_MESSAGE);
-
-                        navigationHandler.accept(
-                                        "login");
-
-                } else {
-
-                        JOptionPane.showMessageDialog(
-                                        this,
-                                        "No BUSSIN account was found with that email.",
-                                        "Password Reset",
-                                        JOptionPane.WARNING_MESSAGE);
+                                        "An error occurred while requesting the password reset.\n\n"
+                                                        + exception.getMessage(),
+                                        "Password Reset Error",
+                                        JOptionPane.ERROR_MESSAGE);
                 }
         }
 }
