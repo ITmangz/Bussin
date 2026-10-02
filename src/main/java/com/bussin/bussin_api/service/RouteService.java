@@ -23,10 +23,6 @@ public class RouteService {
         this.routeRepository = routeRepository;
     }
 
-    // ============================================================
-    // GET ALL ROUTES (optionally only active)
-    // ============================================================
-
     public List<RouteResponse> getAllRoutes(Boolean activeOnly) {
 
         List<Route> routes;
@@ -42,18 +38,10 @@ public class RouteService {
                 .toList();
     }
 
-    // ============================================================
-    // GET ROUTE BY ID
-    // ============================================================
-
     public RouteResponse getRoute(Long routeId) {
 
         return toResponse(findRoute(routeId));
     }
-
-    // ============================================================
-    // CREATE ROUTE
-    // ============================================================
 
     public RouteResponse createRoute(CreateRouteRequest request) {
 
@@ -83,10 +71,6 @@ public class RouteService {
         return toResponse(saveOrConflict(route));
     }
 
-    // ============================================================
-    // UPDATE ROUTE
-    // ============================================================
-
     public RouteResponse updateRoute(
             Long routeId,
             UpdateRouteRequest request) {
@@ -109,14 +93,15 @@ public class RouteService {
                 request.getDescription() != null
                         ? request.getDescription().trim()
                         : null);
-        route.setUpdatedAt(LocalDateTime.now());
+
+        route.setActive(
+                request.isActive());
+
+        route.setUpdatedAt(
+                LocalDateTime.now());
 
         return toResponse(saveOrConflict(route));
     }
-
-    // ============================================================
-    // DELETE ROUTE
-    // ============================================================
 
     public void deleteRoute(Long routeId) {
 
@@ -130,10 +115,6 @@ public class RouteService {
                     "Route cannot be deleted because it is referenced by other records");
         }
     }
-
-    // ============================================================
-    // HELPERS
-    // ============================================================
 
     private Route findRoute(Long routeId) {
 
