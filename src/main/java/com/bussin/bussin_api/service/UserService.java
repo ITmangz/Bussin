@@ -108,12 +108,23 @@ public class UserService {
     // ============================================================
 
     public UserResponse createUser(
-            CreateUserRequest request) {
+                CreateUserRequest request) {
+
+        System.out.println("========================================");
+        System.out.println("DEBUG: createUser() WAS CALLED");
+        System.out.println("DEBUG REQUEST VALUES:");
+        System.out.println("firstName     = [" + request.getFirstName() + "]");
+        System.out.println("middleName    = [" + request.getMiddleName() + "]");
+        System.out.println("lastName      = [" + request.getLastName() + "]");
+        System.out.println("gender        = [" + request.getGender() + "]");
+        System.out.println("age           = [" + request.getAge() + "]");
+        System.out.println("dateOfBirth   = [" + request.getDateOfBirth() + "]");
+        System.out.println("contactNumber = [" + request.getContactNumber() + "]");
+        System.out.println("========================================");
 
         FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
 
         String firebaseUid = firebaseToken.getUid();
-
         String email = firebaseToken.getEmail();
 
         validateUserDoesNotExist(firebaseUid);
@@ -124,9 +135,13 @@ public class UserService {
         user.setEmail(email);
 
         user.setFirstName(request.getFirstName());
+        user.setMiddleName(request.getMiddleName());
         user.setLastName(request.getLastName());
+        user.setGender(request.getGender());
+        user.setAge(request.getAge());
+        user.setDateOfBirth(request.getDateOfBirth());
+        user.setContactNumber(request.getContactNumber());
 
-        // Every newly registered user starts as a commuter.
         user.setRole(Role.COMMUTER);
 
         LocalDateTime now = LocalDateTime.now();
@@ -134,10 +149,30 @@ public class UserService {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
+        System.out.println("DEBUG ENTITY VALUES BEFORE SAVE:");
+        System.out.println("firstName     = [" + user.getFirstName() + "]");
+        System.out.println("middleName    = [" + user.getMiddleName() + "]");
+        System.out.println("lastName      = [" + user.getLastName() + "]");
+        System.out.println("gender        = [" + user.getGender() + "]");
+        System.out.println("age           = [" + user.getAge() + "]");
+        System.out.println("dateOfBirth   = [" + user.getDateOfBirth() + "]");
+        System.out.println("contactNumber = [" + user.getContactNumber() + "]");
+        System.out.println("========================================");
+
         User savedUser = userRepository.save(user);
 
+        System.out.println("DEBUG ENTITY VALUES AFTER SAVE:");
+        System.out.println("firstName     = [" + savedUser.getFirstName() + "]");
+        System.out.println("middleName    = [" + savedUser.getMiddleName() + "]");
+        System.out.println("lastName      = [" + savedUser.getLastName() + "]");
+        System.out.println("gender        = [" + savedUser.getGender() + "]");
+        System.out.println("age           = [" + savedUser.getAge() + "]");
+        System.out.println("dateOfBirth   = [" + savedUser.getDateOfBirth() + "]");
+        System.out.println("contactNumber = [" + savedUser.getContactNumber() + "]");
+        System.out.println("========================================");
+
         return toResponse(savedUser);
-    }
+}
 
     // ============================================================
     // UPDATE CURRENT USER

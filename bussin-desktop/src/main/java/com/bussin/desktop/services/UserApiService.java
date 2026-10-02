@@ -1,11 +1,32 @@
 package com.bussin.desktop.services;
 
+import java.lang.reflect.Type;
+import java.time.LocalDate;
+
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public final class UserApiService {
 
-        private static final Gson GSON = new Gson();
+        private static final Gson GSON = new GsonBuilder()
+                        .registerTypeAdapter(
+                                        LocalDate.class,
+                                        new JsonDeserializer<LocalDate>() {
+                                                @Override
+                                                public LocalDate deserialize(
+                                                                JsonElement json,
+                                                                Type typeOfT,
+                                                                JsonDeserializationContext context) {
+
+                                                        return LocalDate.parse(
+                                                                        json.getAsString());
+                                                }
+                                        })
+                        .create();
 
         private UserApiService() {
         }
@@ -41,7 +62,12 @@ public final class UserApiService {
 
         public static UserResponse createCurrentUser(
                         String firstName,
-                        String lastName)
+                        String middleName,
+                        String lastName,
+                        String gender,
+                        Integer age,
+                        LocalDate dateOfBirth,
+                        String contactNumber)
                         throws Exception {
 
                 JsonObject requestBody = new JsonObject();
@@ -51,8 +77,32 @@ public final class UserApiService {
                                 firstName);
 
                 requestBody.addProperty(
+                                "middleName",
+                                middleName);
+
+                requestBody.addProperty(
                                 "lastName",
                                 lastName);
+
+                requestBody.addProperty(
+                                "gender",
+                                gender);
+
+                if (age != null) {
+                        requestBody.addProperty(
+                                        "age",
+                                        age);
+                }
+
+                if (dateOfBirth != null) {
+                        requestBody.addProperty(
+                                        "dateOfBirth",
+                                        dateOfBirth.toString());
+                }
+
+                requestBody.addProperty(
+                                "contactNumber",
+                                contactNumber);
 
                 var response = ApiClient.post(
                                 "/users",
@@ -121,8 +171,16 @@ public final class UserApiService {
                 private Long id;
                 private String firebaseUid;
                 private String email;
+
                 private String firstName;
+                private String middleName;
                 private String lastName;
+
+                private String gender;
+                private Integer age;
+                private LocalDate dateOfBirth;
+                private String contactNumber;
+
                 private String role;
 
                 public Long getId() {
@@ -141,8 +199,28 @@ public final class UserApiService {
                         return firstName;
                 }
 
+                public String getMiddleName() {
+                        return middleName;
+                }
+
                 public String getLastName() {
                         return lastName;
+                }
+
+                public String getGender() {
+                        return gender;
+                }
+
+                public Integer getAge() {
+                        return age;
+                }
+
+                public LocalDate getDateOfBirth() {
+                        return dateOfBirth;
+                }
+
+                public String getContactNumber() {
+                        return contactNumber;
                 }
 
                 public String getRole() {

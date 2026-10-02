@@ -31,7 +31,8 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
-import com.bussin.desktop.services.MockAuthService;
+import com.bussin.desktop.services.FirebaseAuthService;
+import com.bussin.desktop.services.UserApiService;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
 public class LoginScreen extends JPanel {
@@ -656,32 +657,69 @@ public class LoginScreen extends JPanel {
                         return;
                 }
 
-                if (MockAuthService.login(
-                                email,
-                                password)) {
+                try {
 
-                        RegistrationData user = MockAuthService.getUser(
-                                        email);
+                        boolean authenticated = FirebaseAuthService.login(
+                                        email,
+                                        password);
 
-                        if (user != null) {
+                        if (!authenticated) {
 
-                                String role = user.getRole();
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Invalid email or password.",
+                                                "Sign In",
+                                                JOptionPane.ERROR_MESSAGE);
 
-                                navigationHandler.accept(
-                                                "authenticated:"
-                                                                + user.getRole()
-                                                                + ":"
-                                                                + email);
+                                return;
                         }
 
-                        return;
-                }
+                        UserApiService.UserResponse user = UserApiService.getCurrentUser();
 
-                JOptionPane.showMessageDialog(
-                                this,
-                                "Invalid email or password.",
-                                "Sign In",
-                                JOptionPane.ERROR_MESSAGE);
+                        if (user == null
+                                        || user.getRole() == null
+                                        || user.getRole().isBlank()) {
+
+                                FirebaseAuthService.logout();
+
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Your account does not have a valid BUSSIN profile.",
+                                                "Sign In",
+                                                JOptionPane.ERROR_MESSAGE);
+
+                                return;
+                        }
+
+                        navigationHandler.accept(
+                                        "authenticated:"
+                                                        + user.getRole()
+                                                        + ":"
+                                                        + user.getEmail());
+
+                } catch (InterruptedException exception) {
+
+                        Thread.currentThread().interrupt();
+
+                        FirebaseAuthService.logout();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "The login request was interrupted.",
+                                        "Sign In",
+                                        JOptionPane.ERROR_MESSAGE);
+
+                } catch (Exception exception) {
+
+                        FirebaseAuthService.logout();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to sign in right now.\n\n"
+                                                        + exception.getMessage(),
+                                        "Sign In",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
         }
 
         // =============================================================

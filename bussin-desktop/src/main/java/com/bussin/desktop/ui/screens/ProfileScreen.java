@@ -11,6 +11,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.time.LocalDate;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -40,16 +41,19 @@ import com.bussin.desktop.ui.theme.BussinTheme;
  *
  * Profile information is loaded from the BUSSIN API.
  *
- * Current backend-supported profile fields:
+ * Backend-supported profile fields:
  * - User ID / Firebase UID
  * - Email
  * - First name
+ * - Middle name
  * - Last name
+ * - Gender
+ * - Age
+ * - Date of birth
+ * - Contact number
  * - Role
  *
- * Phone number and address are currently displayed as
- * "Not provided" because they are not yet persisted
- * by the backend.
+ * Address is currently not persisted by the backend.
  */
 public class ProfileScreen extends JPanel {
 
@@ -59,10 +63,20 @@ public class ProfileScreen extends JPanel {
 
         private String userRole;
 
+        private String firstName = "";
+        private String middleName = "";
+        private String lastName = "";
+
         private String fullName;
         private String email;
+
+        private String gender = "";
+        private Integer age;
+        private LocalDate dateOfBirth;
+
         private String phone = "";
         private String address = "";
+
         private String userId;
 
         private final String accountStatus = "Active";
@@ -79,7 +93,12 @@ public class ProfileScreen extends JPanel {
         private AppBadge roleBadge;
         private AppBadge statusBadge;
 
-        private JLabel nameValue;
+        private JLabel firstNameValue;
+        private JLabel middleNameValue;
+        private JLabel lastNameValue;
+        private JLabel genderValue;
+        private JLabel ageValue;
+        private JLabel dateOfBirthValue;
         private JLabel emailValue;
         private JLabel phoneValue;
         private JLabel addressValue;
@@ -130,20 +149,21 @@ public class ProfileScreen extends JPanel {
                                 "ACTIVE",
                                 AppBadge.Status.SUCCESS);
 
-                nameValue = new JLabel();
+                firstNameValue = new JLabel();
+                middleNameValue = new JLabel();
+                lastNameValue = new JLabel();
+
+                genderValue = new JLabel();
+                ageValue = new JLabel();
+                dateOfBirthValue = new JLabel();
 
                 emailValue = new JLabel();
-
                 phoneValue = new JLabel();
-
                 addressValue = new JLabel();
 
                 userIdValue = new JLabel();
-
                 roleValue = new JLabel();
-
                 statusValue = new JLabel();
-
                 memberSinceValue = new JLabel();
 
                 editProfileButton = new AppButton(
@@ -401,8 +421,33 @@ public class ProfileScreen extends JPanel {
 
                 information.add(
                                 createInfoField(
-                                                "FULL NAME",
-                                                nameValue));
+                                                "FIRST NAME",
+                                                firstNameValue));
+
+                information.add(
+                                createInfoField(
+                                                "MIDDLE NAME",
+                                                middleNameValue));
+
+                information.add(
+                                createInfoField(
+                                                "LAST NAME",
+                                                lastNameValue));
+
+                information.add(
+                                createInfoField(
+                                                "GENDER",
+                                                genderValue));
+
+                information.add(
+                                createInfoField(
+                                                "AGE",
+                                                ageValue));
+
+                information.add(
+                                createInfoField(
+                                                "DATE OF BIRTH",
+                                                dateOfBirthValue));
 
                 information.add(
                                 createInfoField(
@@ -682,14 +727,29 @@ public class ProfileScreen extends JPanel {
 
                 emailHeader.setText("");
 
-                nameValue.setText(
+                firstNameValue.setText(
+                                "Loading...");
+
+                middleNameValue.setText(
+                                "Loading...");
+
+                lastNameValue.setText(
+                                "Loading...");
+
+                genderValue.setText(
+                                "Loading...");
+
+                ageValue.setText(
+                                "Loading...");
+
+                dateOfBirthValue.setText(
                                 "Loading...");
 
                 emailValue.setText(
                                 "Loading...");
 
                 phoneValue.setText(
-                                "Not provided");
+                                "Loading...");
 
                 addressValue.setText(
                                 "Not provided");
@@ -711,34 +771,54 @@ public class ProfileScreen extends JPanel {
 
                                         try {
 
-                                                UserApiService.UserResponse user = UserApiService.getCurrentUser();
+                                                UserApiService.UserResponse user = UserApiService
+                                                                .getCurrentUser();
 
-                                                String firstName = user.getFirstName();
+                                                // ------------------------------------------------
+                                                // Basic information
+                                                // ------------------------------------------------
 
-                                                String lastName = user.getLastName();
+                                                firstName = safeValue(
+                                                                user.getFirstName());
 
-                                                String combinedName = ((firstName == null)
-                                                                ? ""
-                                                                : firstName.trim())
-                                                                + " "
-                                                                + ((lastName == null)
-                                                                                ? ""
-                                                                                : lastName.trim());
+                                                middleName = safeValue(
+                                                                user.getMiddleName());
 
-                                                fullName = combinedName.trim();
+                                                lastName = safeValue(
+                                                                user.getLastName());
+
+                                                fullName = buildFullName();
 
                                                 if (fullName.isBlank()) {
 
                                                         fullName = "BUSSIN User";
                                                 }
 
-                                                email = user.getEmail();
+                                                email = safeValue(
+                                                                user.getEmail());
 
-                                                if (email == null
-                                                                || email.isBlank()) {
+                                                if (email.isBlank()) {
 
                                                         email = "Not provided";
                                                 }
+
+                                                // ------------------------------------------------
+                                                // Additional profile information
+                                                // ------------------------------------------------
+
+                                                gender = safeValue(
+                                                                user.getGender());
+
+                                                age = user.getAge();
+
+                                                dateOfBirth = user.getDateOfBirth();
+
+                                                phone = safeValue(
+                                                                user.getContactNumber());
+
+                                                // ------------------------------------------------
+                                                // Account information
+                                                // ------------------------------------------------
 
                                                 userId = user.getFirebaseUid();
 
@@ -766,10 +846,28 @@ public class ProfileScreen extends JPanel {
                                                                         emailHeader.setText(
                                                                                         "");
 
-                                                                        nameValue.setText(
+                                                                        firstNameValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        middleNameValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        lastNameValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        genderValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        ageValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        dateOfBirthValue.setText(
                                                                                         "Unavailable");
 
                                                                         emailValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        phoneValue.setText(
                                                                                         "Unavailable");
 
                                                                         userIdValue.setText(
@@ -816,25 +914,36 @@ public class ProfileScreen extends JPanel {
                 // Personal Information
                 // ------------------------------------------------------------
 
-                nameValue.setText(
-                                fullName == null || fullName.isBlank()
+                firstNameValue.setText(
+                                displayValue(firstName));
+
+                middleNameValue.setText(
+                                displayValue(middleName));
+
+                lastNameValue.setText(
+                                displayValue(lastName));
+
+                genderValue.setText(
+                                displayValue(gender));
+
+                ageValue.setText(
+                                age == null
                                                 ? "Not provided"
-                                                : fullName);
+                                                : String.valueOf(age));
+
+                dateOfBirthValue.setText(
+                                dateOfBirth == null
+                                                ? "Not provided"
+                                                : dateOfBirth.toString());
 
                 emailValue.setText(
-                                email == null || email.isBlank()
-                                                ? "Not provided"
-                                                : email);
+                                displayValue(email));
 
                 phoneValue.setText(
-                                phone == null || phone.isBlank()
-                                                ? "Not provided"
-                                                : phone);
+                                displayValue(phone));
 
                 addressValue.setText(
-                                address == null || address.isBlank()
-                                                ? "Not provided"
-                                                : address);
+                                displayValue(address));
 
                 // ------------------------------------------------------------
                 // Account Information
@@ -883,8 +992,23 @@ public class ProfileScreen extends JPanel {
                 emailHeader.revalidate();
                 emailHeader.repaint();
 
-                nameValue.revalidate();
-                nameValue.repaint();
+                firstNameValue.revalidate();
+                firstNameValue.repaint();
+
+                middleNameValue.revalidate();
+                middleNameValue.repaint();
+
+                lastNameValue.revalidate();
+                lastNameValue.repaint();
+
+                genderValue.revalidate();
+                genderValue.repaint();
+
+                ageValue.revalidate();
+                ageValue.repaint();
+
+                dateOfBirthValue.revalidate();
+                dateOfBirthValue.repaint();
 
                 emailValue.revalidate();
                 emailValue.repaint();
@@ -1108,13 +1232,13 @@ public class ProfileScreen extends JPanel {
                                                         "\\s+",
                                                         2);
 
-                                        String firstName = nameParts[0];
+                                        String newFirstName = nameParts[0];
 
-                                        String lastName = nameParts.length > 1
+                                        String newLastName = nameParts.length > 1
                                                         ? nameParts[1]
                                                         : "";
 
-                                        if (lastName.isBlank()) {
+                                        if (newLastName.isBlank()) {
 
                                                 JOptionPane.showMessageDialog(
                                                                 dialog,
@@ -1140,18 +1264,19 @@ public class ProfileScreen extends JPanel {
 
                                                                         UserApiService.UserResponse updatedUser = UserApiService
                                                                                         .updateCurrentUser(
-                                                                                                        firstName,
-                                                                                                        lastName);
+                                                                                                        newFirstName,
+                                                                                                        newLastName);
 
-                                                                        fullName = ((updatedUser.getFirstName() == null)
-                                                                                        ? ""
-                                                                                        : updatedUser.getFirstName())
-                                                                                        + " "
-                                                                                        + ((updatedUser.getLastName() == null)
-                                                                                                        ? ""
-                                                                                                        : updatedUser.getLastName());
+                                                                        firstName = safeValue(
+                                                                                        updatedUser.getFirstName());
 
-                                                                        fullName = fullName.trim();
+                                                                        middleName = safeValue(
+                                                                                        updatedUser.getMiddleName());
+
+                                                                        lastName = safeValue(
+                                                                                        updatedUser.getLastName());
+
+                                                                        fullName = buildFullName();
 
                                                                         email = updatedUser.getEmail();
 
@@ -1544,11 +1669,31 @@ public class ProfileScreen extends JPanel {
 
                 String information = "BUSSIN ACCOUNT INFORMATION\n"
                                 + "--------------------------\n"
-                                + "Name: "
-                                + fullName
+                                + "First Name: "
+                                + firstName
+                                + "\n"
+                                + "Middle Name: "
+                                + middleName
+                                + "\n"
+                                + "Last Name: "
+                                + lastName
+                                + "\n"
+                                + "Gender: "
+                                + gender
+                                + "\n"
+                                + "Age: "
+                                + (age == null ? "Not provided" : age)
+                                + "\n"
+                                + "Date of Birth: "
+                                + (dateOfBirth == null
+                                                ? "Not provided"
+                                                : dateOfBirth)
                                 + "\n"
                                 + "Email: "
                                 + email
+                                + "\n"
+                                + "Phone Number: "
+                                + phone
                                 + "\n"
                                 + "User ID: "
                                 + userId
@@ -1660,5 +1805,58 @@ public class ProfileScreen extends JPanel {
                         default ->
                                 "COMMUTER";
                 };
+        }
+
+        // ================================================================
+        // VALUE HELPERS
+        // ================================================================
+
+        private String safeValue(
+                        String value) {
+
+                return value == null
+                                ? ""
+                                : value.trim();
+        }
+
+        private String displayValue(
+                        String value) {
+
+                return value == null || value.isBlank()
+                                ? "Not provided"
+                                : value;
+        }
+
+        private String buildFullName() {
+
+                StringBuilder builder = new StringBuilder();
+
+                if (firstName != null
+                                && !firstName.isBlank()) {
+
+                        builder.append(firstName.trim());
+                }
+
+                if (middleName != null
+                                && !middleName.isBlank()) {
+
+                        if (builder.length() > 0) {
+                                builder.append(" ");
+                        }
+
+                        builder.append(middleName.trim());
+                }
+
+                if (lastName != null
+                                && !lastName.isBlank()) {
+
+                        if (builder.length() > 0) {
+                                builder.append(" ");
+                        }
+
+                        builder.append(lastName.trim());
+                }
+
+                return builder.toString().trim();
         }
 }

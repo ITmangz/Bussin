@@ -1,7 +1,6 @@
 package com.bussin.desktop.ui.auth;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -12,22 +11,24 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
+import com.bussin.desktop.services.FirebaseAuthService;
+import com.bussin.desktop.services.UserApiService;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppLabel;
 import com.bussin.desktop.ui.theme.BussinTheme;
@@ -722,9 +723,10 @@ public class RegistrationStep2Screen extends JPanel {
                                 genderComboBox
                                                 .getSelectedItem());
 
-                /*
-                 * Validate required fields.
-                 */
+                // --------------------------------------------------------
+                // Validate required fields
+                // --------------------------------------------------------
+
                 if (firstName.isBlank()
                                 || lastName.isBlank()
                                 || age.isBlank()
@@ -741,16 +743,15 @@ public class RegistrationStep2Screen extends JPanel {
                         return;
                 }
 
-                /*
-                 * Validate age.
-                 *
-                 * RegistrationData currently stores age
-                 * as a String, so we validate it as an
-                 * integer but save the original String.
-                 */
+                // --------------------------------------------------------
+                // Validate age
+                // --------------------------------------------------------
+
+                int parsedAge;
+
                 try {
 
-                        int parsedAge = Integer.parseInt(age);
+                        parsedAge = Integer.parseInt(age);
 
                         if (parsedAge <= 0
                                         || parsedAge > 120) {
@@ -775,9 +776,31 @@ public class RegistrationStep2Screen extends JPanel {
                         return;
                 }
 
-                /*
-                 * Save personal information.
-                 */
+                // --------------------------------------------------------
+                // Validate date of birth
+                // --------------------------------------------------------
+
+                LocalDate parsedDateOfBirth;
+
+                try {
+
+                        parsedDateOfBirth = LocalDate.parse(dateOfBirth);
+
+                } catch (DateTimeParseException exception) {
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Date of birth must use the format YYYY-MM-DD.",
+                                        "Registration",
+                                        JOptionPane.WARNING_MESSAGE);
+
+                        return;
+                }
+
+                // --------------------------------------------------------
+                // Save personal information into RegistrationData
+                // --------------------------------------------------------
+
                 registrationData.setFirstName(
                                 firstName);
 
@@ -790,11 +813,6 @@ public class RegistrationStep2Screen extends JPanel {
                 registrationData.setGender(
                                 gender);
 
-                /*
-                 * IMPORTANT:
-                 *
-                 * RegistrationData expects String for age.
-                 */
                 registrationData.setAge(
                                 age);
 
@@ -804,29 +822,85 @@ public class RegistrationStep2Screen extends JPanel {
                 registrationData.setContactNumber(
                                 contact);
 
-                /*
-                 * Temporary registration behavior.
-                 *
-                 * Firebase Authentication will eventually
-                 * replace this when authentication is integrated.
-                 */
-                JOptionPane.showMessageDialog(
-                                this,
-                                "Account created successfully.",
-                                "Registration Complete",
-                                JOptionPane.INFORMATION_MESSAGE);
+                // --------------------------------------------------------
+                // Create account
+                // --------------------------------------------------------
 
-                /*
-                 * IMPORTANT FIX:
-                 *
-                 * Do NOT send "register" here.
-                 *
-                 * App.java currently interprets "register"
-                 * as "open Registration Step 1".
-                 *
-                 * After successful registration, go to Login.
-                 */
-                navigationHandler.accept(
-                                "login");
+                try {
+
+                        // ------------------------------------------------
+                        // 1. Create Firebase account
+                        // ------------------------------------------------
+
+                        boolean registered = FirebaseAuthService.register(
+                                        registrationData.getEmail(),
+                                        registrationData.getPassword());
+
+                        if (!registered) {
+
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Unable to create your Firebase account.",
+                                                "Registration Failed",
+                                                JOptionPane.ERROR_MESSAGE);
+
+                                return;
+                        }
+
+                        // ------------------------------------------------
+                        // 2. Create BUSSIN user profile
+                        // ------------------------------------------------
+
+                        UserApiService.createCurrentUser(
+                                        registrationData.getFirstName(),
+                                        registrationData.getMiddleName(),
+                                        registrationData.getLastName(),
+                                        registrationData.getGender(),
+                                        parsedAge,
+                                        parsedDateOfBirth,
+                                        registrationData.getContactNumber());
+
+                        // ------------------------------------------------
+                        // 3. Clear authenticated session
+                        // ------------------------------------------------
+
+                        FirebaseAuthService.logout();
+
+                        // ------------------------------------------------
+                        // 4. Registration complete
+                        // ------------------------------------------------
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Account created successfully.",
+                                        "Registration Complete",
+                                        JOptionPane.INFORMATION_MESSAGE);
+
+                        navigationHandler.accept(
+                                        "login");
+
+                } catch (InterruptedException exception) {
+
+                        Thread.currentThread().interrupt();
+
+                        FirebaseAuthService.logout();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "The registration request was interrupted.",
+                                        "Registration Failed",
+                                        JOptionPane.ERROR_MESSAGE);
+
+                } catch (Exception exception) {
+
+                        FirebaseAuthService.logout();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to complete registration.\n\n"
+                                                        + exception.getMessage(),
+                                        "Registration Failed",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
         }
 }
