@@ -33,17 +33,11 @@ import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppLabel;
 import com.bussin.desktop.ui.theme.BussinTheme;
 
-/**
- * BUSSIN Registration - Step 2
- *
- * Collects the user's personal information after the account
- * information has already been entered in Step 1.
- */
 public class RegistrationStep2Screen extends JPanel {
 
         private final java.util.function.Consumer<String> navigationHandler;
-
         private final RegistrationData registrationData;
+        private final boolean googleProfileCompletion;
 
         private JTextField firstNameField;
         private JTextField middleNameField;
@@ -56,10 +50,12 @@ public class RegistrationStep2Screen extends JPanel {
 
         public RegistrationStep2Screen(
                         java.util.function.Consumer<String> navigationHandler,
-                        RegistrationData registrationData) {
+                        RegistrationData registrationData,
+                        boolean googleProfileCompletion) {
 
                 this.navigationHandler = navigationHandler;
                 this.registrationData = registrationData;
+                this.googleProfileCompletion = googleProfileCompletion;
 
                 setLayout(new BorderLayout());
                 setBackground(BussinTheme.BACKGROUND);
@@ -195,7 +191,9 @@ public class RegistrationStep2Screen extends JPanel {
                                 Box.createVerticalStrut(7));
 
                 JLabel title = new JLabel(
-                                "Tell us about yourself");
+                                googleProfileCompletion
+                                                ? "Complete your profile"
+                                                : "Tell us about yourself");
 
                 title.setFont(
                                 new Font(
@@ -212,7 +210,9 @@ public class RegistrationStep2Screen extends JPanel {
                                 Box.createVerticalStrut(6));
 
                 JLabel subtitle = new JLabel(
-                                "Complete your personal information to finish creating your account.");
+                                googleProfileCompletion
+                                                ? "Complete your personal information to finish setting up your BUSSIN account."
+                                                : "Complete your personal information to finish creating your account.");
 
                 subtitle.setFont(
                                 new Font(
@@ -604,7 +604,9 @@ public class RegistrationStep2Screen extends JPanel {
                                 Box.createVerticalStrut(18));
 
                 AppButton createAccountButton = new AppButton(
-                                "Create Account");
+                                googleProfileCompletion
+                                                ? "Complete Profile"
+                                                : "Create Account");
 
                 createAccountButton.setAlignmentX(
                                 CENTER_ALIGNMENT);
@@ -690,9 +692,6 @@ public class RegistrationStep2Screen extends JPanel {
                 return footer;
         }
 
-        /**
-         * Validates the form and creates the account.
-         */
         private void createAccount() {
 
                 String firstName = firstNameField
@@ -723,10 +722,6 @@ public class RegistrationStep2Screen extends JPanel {
                                 genderComboBox
                                                 .getSelectedItem());
 
-                // --------------------------------------------------------
-                // Validate required fields
-                // --------------------------------------------------------
-
                 if (firstName.isBlank()
                                 || lastName.isBlank()
                                 || age.isBlank()
@@ -742,10 +737,6 @@ public class RegistrationStep2Screen extends JPanel {
 
                         return;
                 }
-
-                // --------------------------------------------------------
-                // Validate age
-                // --------------------------------------------------------
 
                 int parsedAge;
 
@@ -776,10 +767,6 @@ public class RegistrationStep2Screen extends JPanel {
                         return;
                 }
 
-                // --------------------------------------------------------
-                // Validate date of birth
-                // --------------------------------------------------------
-
                 LocalDate parsedDateOfBirth;
 
                 try {
@@ -796,10 +783,6 @@ public class RegistrationStep2Screen extends JPanel {
 
                         return;
                 }
-
-                // --------------------------------------------------------
-                // Save personal information into RegistrationData
-                // --------------------------------------------------------
 
                 registrationData.setFirstName(
                                 firstName);
@@ -822,15 +805,24 @@ public class RegistrationStep2Screen extends JPanel {
                 registrationData.setContactNumber(
                                 contact);
 
-                // --------------------------------------------------------
-                // Create account
-                // --------------------------------------------------------
-
                 try {
 
-                        // ------------------------------------------------
-                        // 1. Create Firebase account
-                        // ------------------------------------------------
+                        if (googleProfileCompletion) {
+
+                                UserApiService.createCurrentUser(
+                                                registrationData.getFirstName(),
+                                                registrationData.getMiddleName(),
+                                                registrationData.getLastName(),
+                                                registrationData.getGender(),
+                                                parsedAge,
+                                                parsedDateOfBirth,
+                                                registrationData.getContactNumber());
+
+                                navigationHandler.accept(
+                                                "google-profile-complete");
+
+                                return;
+                        }
 
                         boolean registered = FirebaseAuthService.register(
                                         registrationData.getEmail(),
@@ -847,10 +839,6 @@ public class RegistrationStep2Screen extends JPanel {
                                 return;
                         }
 
-                        // ------------------------------------------------
-                        // 2. Create BUSSIN user profile
-                        // ------------------------------------------------
-
                         UserApiService.createCurrentUser(
                                         registrationData.getFirstName(),
                                         registrationData.getMiddleName(),
@@ -860,15 +848,7 @@ public class RegistrationStep2Screen extends JPanel {
                                         parsedDateOfBirth,
                                         registrationData.getContactNumber());
 
-                        // ------------------------------------------------
-                        // 3. Clear authenticated session
-                        // ------------------------------------------------
-
                         FirebaseAuthService.logout();
-
-                        // ------------------------------------------------
-                        // 4. Registration complete
-                        // ------------------------------------------------
 
                         JOptionPane.showMessageDialog(
                                         this,
@@ -883,7 +863,9 @@ public class RegistrationStep2Screen extends JPanel {
 
                         Thread.currentThread().interrupt();
 
-                        FirebaseAuthService.logout();
+                        if (!googleProfileCompletion) {
+                                FirebaseAuthService.logout();
+                        }
 
                         JOptionPane.showMessageDialog(
                                         this,
@@ -893,7 +875,9 @@ public class RegistrationStep2Screen extends JPanel {
 
                 } catch (Exception exception) {
 
-                        FirebaseAuthService.logout();
+                        if (!googleProfileCompletion) {
+                                FirebaseAuthService.logout();
+                        }
 
                         JOptionPane.showMessageDialog(
                                         this,

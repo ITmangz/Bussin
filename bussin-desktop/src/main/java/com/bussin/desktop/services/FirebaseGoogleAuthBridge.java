@@ -30,8 +30,7 @@ public final class FirebaseGoogleAuthBridge {
     private FirebaseGoogleAuthBridge() {
     }
 
-    public static String authenticate()
-            throws Exception {
+    public static String authenticate() throws Exception {
 
         String state = UUID.randomUUID().toString();
 
@@ -82,8 +81,7 @@ public final class FirebaseGoogleAuthBridge {
             String state)
             throws IOException {
 
-        String query = exchange.getRequestURI()
-                .getQuery();
+        String query = exchange.getRequestURI().getQuery();
 
         if (query == null
                 || !query.contains(
@@ -98,23 +96,47 @@ public final class FirebaseGoogleAuthBridge {
             return;
         }
 
-        String html = createAuthenticationPage(
-                state);
+        try {
 
-        byte[] bytes = html.getBytes(
-                StandardCharsets.UTF_8);
+            String html = createAuthenticationPage(state);
 
-        exchange.getResponseHeaders()
-                .set(
-                        "Content-Type",
-                        "text/html; charset=UTF-8");
+            byte[] bytes = html.getBytes(
+                    StandardCharsets.UTF_8);
 
-        exchange.sendResponseHeaders(
-                200,
-                bytes.length);
+            exchange.getResponseHeaders()
+                    .set(
+                            "Content-Type",
+                            "text/html; charset=UTF-8");
 
-        try (var output = exchange.getResponseBody()) {
-            output.write(bytes);
+            exchange.sendResponseHeaders(
+                    200,
+                    bytes.length);
+
+            try (var output = exchange.getResponseBody()) {
+
+                output.write(bytes);
+            }
+
+        } catch (Exception exception) {
+
+            exception.printStackTrace();
+
+            sendResponse(
+                    exchange,
+                    500,
+                    """
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <title>BUSSIN Authentication Error</title>
+                            </head>
+                            <body>
+                                <h2>BUSSIN Authentication Error</h2>
+                                <p>The authentication page could not be loaded.</p>
+                            </body>
+                            </html>
+                            """);
         }
     }
 
@@ -124,8 +146,7 @@ public final class FirebaseGoogleAuthBridge {
             CompletableFuture<String> tokenFuture)
             throws IOException {
 
-        String query = exchange.getRequestURI()
-                .getQuery();
+        String query = exchange.getRequestURI().getQuery();
 
         if (query == null
                 || !query.contains(
@@ -152,7 +173,8 @@ public final class FirebaseGoogleAuthBridge {
         }
 
         String body = new String(
-                exchange.getRequestBody().readAllBytes(),
+                exchange.getRequestBody()
+                        .readAllBytes(),
                 StandardCharsets.UTF_8);
 
         if (body.isBlank()) {
@@ -233,6 +255,7 @@ public final class FirebaseGoogleAuthBridge {
                 bytes.length);
 
         try (var output = exchange.getResponseBody()) {
+
             output.write(bytes);
         }
     }
@@ -247,6 +270,7 @@ public final class FirebaseGoogleAuthBridge {
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>BUSSIN Google Sign-In</title>
+
                     <style>
                         body {
                             margin: 0;
@@ -279,7 +303,7 @@ public final class FirebaseGoogleAuthBridge {
                         }
 
                         button {
-                            width: 100%;
+                            width: 100%%;
                             padding: 13px;
                             margin-top: 18px;
                             border: 1px solid #D1D5DB;
@@ -294,27 +318,43 @@ public final class FirebaseGoogleAuthBridge {
                             background: #F9FAFB;
                         }
 
+                        button:disabled {
+                            cursor: wait;
+                            opacity: 0.6;
+                        }
+
                         #status {
                             margin-top: 18px;
                             font-size: 13px;
+                            color: #6B7280;
+                            word-break: break-word;
                         }
                     </style>
                 </head>
+
                 <body>
+
                     <div class="card">
+
                         <h1>BUSSIN</h1>
-                        <p>Sign in securely using your Google account.</p>
+
+                        <p>
+                            Sign in securely using your Google account.
+                        </p>
 
                         <button id="googleButton">
                             Continue with Google
                         </button>
 
                         <div id="status"></div>
+
                     </div>
 
                     <script type="module">
-                        import { initializeApp }
-                            from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
+                        import {
+                            initializeApp
+                        } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 
                         import {
                             getAuth,
@@ -335,10 +375,14 @@ public final class FirebaseGoogleAuthBridge {
                             new GoogleAuthProvider();
 
                         const button =
-                            document.getElementById("googleButton");
+                            document.getElementById(
+                                "googleButton"
+                            );
 
                         const status =
-                            document.getElementById("status");
+                            document.getElementById(
+                                "status"
+                            );
 
                         button.addEventListener(
                             "click",
@@ -354,10 +398,14 @@ public final class FirebaseGoogleAuthBridge {
                                     const result =
                                         await signInWithPopup(
                                             auth,
-                                            provider);
+                                            provider
+                                        );
 
                                     const idToken =
                                         await result.user.getIdToken();
+
+                                    status.textContent =
+                                        "Google authentication successful. Connecting to BUSSIN...";
 
                                     const response =
                                         await fetch(
@@ -373,11 +421,15 @@ public final class FirebaseGoogleAuthBridge {
                                                         idToken:
                                                             idToken
                                                     })
-                                            });
+                                            }
+                                        );
 
                                     if (!response.ok) {
+
                                         throw new Error(
-                                            "BUSSIN authentication callback failed.");
+                                            "BUSSIN authentication callback failed. HTTP "
+                                            + response.status
+                                        );
                                     }
 
                                     status.textContent =
@@ -385,16 +437,36 @@ public final class FirebaseGoogleAuthBridge {
 
                                 } catch (error) {
 
-                                    console.error(error);
+                                    console.error(
+                                        "Firebase Google Sign-In error:",
+                                        error
+                                    );
 
                                     button.disabled = false;
 
-                                    status.textContent =
+                                    const code =
+                                        error &&
+                                        error.code
+                                            ? error.code
+                                            : "unknown";
+
+                                    const message =
+                                        error &&
                                         error.message
-                                            || "Google authentication failed.";
+                                            ? error.message
+                                            : String(error);
+
+                                    status.textContent =
+                                        "Unable to sign in with Google: "
+                                        + code
+                                        + " — "
+                                        + message;
                                 }
-                            });
+                            }
+                        );
+
                     </script>
+
                 </body>
                 </html>
                 """.formatted(

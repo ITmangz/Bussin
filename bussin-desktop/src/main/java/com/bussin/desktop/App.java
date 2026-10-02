@@ -5,6 +5,8 @@ import java.awt.Dimension;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import com.bussin.desktop.services.AuthSession;
+import com.bussin.desktop.services.FirebaseAuthService;
 import com.bussin.desktop.ui.MainFrame;
 import com.bussin.desktop.ui.auth.ForgotPasswordScreen;
 import com.bussin.desktop.ui.auth.LoginScreen;
@@ -26,10 +28,6 @@ public class App {
         });
     }
 
-    // ================================================================
-    // OPENING
-    // ================================================================
-
     private static void showOpening() {
 
         JFrame frame = createAuthFrame();
@@ -46,10 +44,6 @@ public class App {
 
         frame.setVisible(true);
     }
-
-    // ================================================================
-    // LOGIN
-    // ================================================================
 
     public static void showLogin() {
 
@@ -78,28 +72,14 @@ public class App {
                             showForgotPassword();
                         }
 
-                        default -> {
+                        case "google-profile-completion" -> {
 
-                            /*
-                             * Successful login sends:
-                             *
-                             * authenticated:ADMIN
-                             * authenticated:EMPLOYEE
-                             * authenticated:USER
-                             *
-                             * The LoginScreen also stores the email
-                             * internally, so the route now additionally
-                             * supports:
-                             *
-                             * authenticated:ROLE:EMAIL
-                             *
-                             * Example:
-                             *
-                             * authenticated:USER:user@bussin.com
-                             *
-                             * This allows MainFrame and BookingScreen
-                             * to know which account owns a booking.
-                             */
+                            frame.dispose();
+
+                            showGoogleProfileCompletion();
+                        }
+
+                        default -> {
 
                             if (route.startsWith(
                                     "authenticated:")) {
@@ -140,10 +120,6 @@ public class App {
         frame.setVisible(true);
     }
 
-    // ================================================================
-    // REGISTRATION — STEP 1
-    // ================================================================
-
     private static void showRegistration() {
 
         JFrame frame = createAuthFrame();
@@ -169,11 +145,12 @@ public class App {
 
                             frame.dispose();
 
-                            showRegistrationStep2(data);
+                            showRegistrationStep2(
+                                    data,
+                                    false);
                         }
 
                         default -> {
-                            // No action.
                         }
                     }
                 });
@@ -184,12 +161,9 @@ public class App {
         frame.setVisible(true);
     }
 
-    // ================================================================
-    // REGISTRATION — STEP 2
-    // ================================================================
-
     private static void showRegistrationStep2(
-            RegistrationData data) {
+            RegistrationData data,
+            boolean googleProfileCompletion) {
 
         JFrame frame = createAuthFrame();
 
@@ -213,20 +187,61 @@ public class App {
                         }
 
                         default -> {
-                            // No action.
                         }
                     }
                 },
-                data);
+                data,
+                googleProfileCompletion);
 
         frame.setContentPane(step2);
 
         frame.setVisible(true);
     }
 
-    // ================================================================
-    // FORGOT PASSWORD
-    // ================================================================
+    private static void showGoogleProfileCompletion() {
+
+        JFrame frame = createAuthFrame();
+
+        RegistrationData data = new RegistrationData();
+
+        RegistrationStep2Screen step2 = new RegistrationStep2Screen(
+                route -> {
+
+                    switch (route) {
+
+                        case "google-profile-complete" -> {
+
+                            frame.dispose();
+
+                            String email = AuthSession.getEmail();
+
+                            MainFrame mainFrame = new MainFrame(
+                                    "COMMUTER",
+                                    email);
+
+                            mainFrame.setVisible(true);
+                        }
+
+                        case "login" -> {
+
+                            FirebaseAuthService.logout();
+
+                            frame.dispose();
+
+                            showLogin();
+                        }
+
+                        default -> {
+                        }
+                    }
+                },
+                data,
+                true);
+
+        frame.setContentPane(step2);
+
+        frame.setVisible(true);
+    }
 
     private static void showForgotPassword() {
 
@@ -247,10 +262,6 @@ public class App {
 
         frame.setVisible(true);
     }
-
-    // ================================================================
-    // AUTH WINDOW
-    // ================================================================
 
     private static JFrame createAuthFrame() {
 

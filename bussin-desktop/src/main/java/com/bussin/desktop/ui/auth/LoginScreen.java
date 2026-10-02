@@ -728,11 +728,85 @@ public class LoginScreen extends JPanel {
 
         private void handleGoogleLogin() {
 
-                JOptionPane.showMessageDialog(
-                                this,
-                                "Google authentication will be connected through Firebase.",
-                                "Google Sign-In",
-                                JOptionPane.INFORMATION_MESSAGE);
+                try {
+
+                        String idToken = com.bussin.desktop.services.FirebaseGoogleAuthBridge
+                                        .authenticate();
+
+                        if (idToken == null
+                                        || idToken.isBlank()) {
+
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Google authentication failed.",
+                                                "Google Sign-In",
+                                                JOptionPane.ERROR_MESSAGE);
+
+                                return;
+                        }
+
+                        boolean authenticated = FirebaseAuthService.authenticateWithIdToken(
+                                        idToken);
+
+                        if (!authenticated) {
+
+                                JOptionPane.showMessageDialog(
+                                                this,
+                                                "Unable to authenticate your Google account with Firebase.",
+                                                "Google Sign-In",
+                                                JOptionPane.ERROR_MESSAGE);
+
+                                return;
+                        }
+
+                        try {
+
+                                UserApiService.UserResponse user = UserApiService.getCurrentUser();
+
+                                if (user == null
+                                                || user.getRole() == null
+                                                || user.getRole().isBlank()) {
+
+                                        navigationHandler.accept(
+                                                        "google-profile-completion");
+
+                                        return;
+                                }
+
+                                navigationHandler.accept(
+                                                "authenticated:"
+                                                                + user.getRole()
+                                                                + ":"
+                                                                + user.getEmail());
+
+                        } catch (Exception exception) {
+
+                                String message = exception.getMessage();
+
+                                if (message != null
+                                                && message.contains(
+                                                                "BUSSIN user profile not found")) {
+
+                                        navigationHandler.accept(
+                                                        "google-profile-completion");
+
+                                        return;
+                                }
+
+                                throw exception;
+                        }
+
+                } catch (Exception exception) {
+
+                        FirebaseAuthService.logout();
+
+                        JOptionPane.showMessageDialog(
+                                        this,
+                                        "Unable to sign in with Google.\n\n"
+                                                        + exception.getMessage(),
+                                        "Google Sign-In",
+                                        JOptionPane.ERROR_MESSAGE);
+                }
         }
 
         // =============================================================
