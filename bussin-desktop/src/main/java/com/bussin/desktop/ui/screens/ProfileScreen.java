@@ -1,7 +1,6 @@
 package com.bussin.desktop.ui.screens;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -21,12 +20,13 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPasswordField;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import com.bussin.desktop.services.AuthSession;
+import com.bussin.desktop.services.FirebaseAuthService;
 import com.bussin.desktop.services.UserApiService;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
@@ -1426,12 +1426,12 @@ public class ProfileScreen extends JPanel {
 
                 dialog.setSize(
                                 520,
-                                500);
+                                360);
 
                 dialog.setMinimumSize(
                                 new Dimension(
                                                 480,
-                                                460));
+                                                340));
 
                 dialog.setLocationRelativeTo(this);
 
@@ -1440,10 +1440,6 @@ public class ProfileScreen extends JPanel {
 
                 root.setBackground(
                                 BussinTheme.BACKGROUND);
-
-                // ------------------------------------------------------------
-                // Title
-                // ------------------------------------------------------------
 
                 JPanel titlePanel = new JPanel(
                                 new BorderLayout());
@@ -1461,10 +1457,6 @@ public class ProfileScreen extends JPanel {
                                 AppLabel.section(
                                                 "Change Password"),
                                 BorderLayout.WEST);
-
-                // ------------------------------------------------------------
-                // Form
-                // ------------------------------------------------------------
 
                 JPanel content = new JPanel(
                                 new GridBagLayout());
@@ -1485,58 +1477,67 @@ public class ProfileScreen extends JPanel {
                 gbc.fill = GridBagConstraints.HORIZONTAL;
 
                 gbc.insets = new Insets(
-                                6,
+                                8,
                                 0,
-                                6,
+                                8,
                                 0);
 
-                JPasswordField currentPassword = createPasswordField();
+                String email = AuthSession.getEmail();
 
-                JPasswordField newPassword = createPasswordField();
+                if (email == null || email.isBlank()) {
 
-                JPasswordField confirmPassword = createPasswordField();
+                        JLabel errorLabel = new JLabel(
+                                        "Unable to determine your account email.");
 
-                int row = 0;
+                        errorLabel.setFont(
+                                        BussinTheme.BODY);
 
-                row = addDialogField(
-                                content,
-                                gbc,
-                                row,
-                                "Current Password",
-                                currentPassword);
+                        errorLabel.setForeground(
+                                        BussinTheme.TEXT_MUTED);
 
-                row = addDialogField(
-                                content,
-                                gbc,
-                                row,
-                                "New Password",
-                                newPassword);
+                        gbc.gridy = 0;
 
-                row = addDialogField(
-                                content,
-                                gbc,
-                                row,
-                                "Confirm New Password",
-                                confirmPassword);
+                        content.add(
+                                        errorLabel,
+                                        gbc);
 
-                JLabel hint = new JLabel(
-                                "Password must contain at least 6 characters.");
+                } else {
 
-                hint.setFont(
-                                BussinTheme.SMALL);
+                        JLabel messageLabel = new JLabel(
+                                        "<html>"
+                                                        + "A password reset link will be sent to your registered email address.<br>"
+                                                        + "Use the link in the email to create your new password."
+                                                        + "</html>");
 
-                hint.setForeground(
-                                BussinTheme.TEXT_MUTED);
+                        messageLabel.setFont(
+                                        BussinTheme.BODY);
 
-                gbc.gridy = row;
+                        messageLabel.setForeground(
+                                        BussinTheme.TEXT_PRIMARY);
 
-                content.add(
-                                hint,
-                                gbc);
+                        gbc.gridy = 0;
 
-                // ------------------------------------------------------------
-                // Buttons
-                // ------------------------------------------------------------
+                        content.add(
+                                        messageLabel,
+                                        gbc);
+
+                        JLabel emailLabel = new JLabel(
+                                        "<html><b>Email:</b> "
+                                                        + email
+                                                        + "</html>");
+
+                        emailLabel.setFont(
+                                        BussinTheme.BODY);
+
+                        emailLabel.setForeground(
+                                        BussinTheme.TEXT_MUTED);
+
+                        gbc.gridy = 1;
+
+                        content.add(
+                                        emailLabel,
+                                        gbc);
+                }
 
                 JPanel buttons = new JPanel(
                                 new FlowLayout(
@@ -1550,76 +1551,79 @@ public class ProfileScreen extends JPanel {
                                 "Cancel",
                                 AppButton.Variant.SECONDARY);
 
-                AppButton saveButton = new AppButton(
-                                "Update Password");
+                AppButton sendButton = new AppButton(
+                                "Send Reset Instructions");
 
                 cancelButton.addActionListener(
                                 event -> dialog.dispose());
 
-                saveButton.addActionListener(
+                sendButton.addActionListener(
                                 event -> {
 
-                                        String current = new String(
-                                                        currentPassword
-                                                                        .getPassword());
+                                        String emailAddress = AuthSession.getEmail();
 
-                                        String password = new String(
-                                                        newPassword
-                                                                        .getPassword());
+                                        if (emailAddress == null
+                                                        || emailAddress.isBlank()) {
 
-                                        String confirmation = new String(
-                                                        confirmPassword
-                                                                        .getPassword());
-
-                                        if (current.isBlank()) {
-
-                                                showPasswordError(
+                                                JOptionPane.showMessageDialog(
                                                                 dialog,
-                                                                "Please enter your current password.");
+                                                                "Your account email could not be determined.",
+                                                                "Unable to Continue",
+                                                                JOptionPane.ERROR_MESSAGE);
 
                                                 return;
                                         }
 
-                                        if (password.length() < 6) {
+                                        try {
 
-                                                showPasswordError(
+                                                sendButton.setEnabled(false);
+
+                                                boolean sent = FirebaseAuthService
+                                                                .sendPasswordReset(
+                                                                                emailAddress);
+
+                                                if (sent) {
+
+                                                        JOptionPane.showMessageDialog(
+                                                                        dialog,
+                                                                        "Password reset instructions have been sent to:\n\n"
+                                                                                        + emailAddress
+                                                                                        + "\n\n"
+                                                                                        + "Please check your email and follow the reset link.",
+                                                                        "Reset Email Sent",
+                                                                        JOptionPane.INFORMATION_MESSAGE);
+
+                                                        dialog.dispose();
+
+                                                } else {
+
+                                                        JOptionPane.showMessageDialog(
+                                                                        dialog,
+                                                                        "Firebase could not send the password reset email.\n\n"
+                                                                                        + "Please verify the email address and try again.",
+                                                                        "Password Reset Failed",
+                                                                        JOptionPane.ERROR_MESSAGE);
+
+                                                        sendButton.setEnabled(true);
+                                                }
+
+                                        } catch (Exception exception) {
+
+                                                exception.printStackTrace();
+
+                                                JOptionPane.showMessageDialog(
                                                                 dialog,
-                                                                "New password must contain at least 6 characters.");
+                                                                "An error occurred while sending the password reset email.\n\n"
+                                                                                + exception.getMessage(),
+                                                                "Password Reset Error",
+                                                                JOptionPane.ERROR_MESSAGE);
 
-                                                return;
+                                                sendButton.setEnabled(true);
                                         }
-
-                                        if (!password.equals(
-                                                        confirmation)) {
-
-                                                showPasswordError(
-                                                                dialog,
-                                                                "New password and confirmation do not match.");
-
-                                                return;
-                                        }
-
-                                        /*
-                                         * Password persistence is intentionally
-                                         * not implemented yet.
-                                         *
-                                         * Firebase password update will be
-                                         * implemented in a later authentication
-                                         * integration step.
-                                         */
-
-                                        JOptionPane.showMessageDialog(
-                                                        dialog,
-                                                        "Password update is not connected yet.",
-                                                        "Coming Soon",
-                                                        JOptionPane.INFORMATION_MESSAGE);
                                 });
 
-                buttons.add(
-                                cancelButton);
-
-                buttons.add(
-                                saveButton);
+                buttons.add(cancelButton);
+                buttons.add(sendButton);
 
                 root.add(
                                 titlePanel,
@@ -1636,29 +1640,6 @@ public class ProfileScreen extends JPanel {
                 dialog.setContentPane(root);
 
                 dialog.setVisible(true);
-        }
-
-        private JPasswordField createPasswordField() {
-
-                JPasswordField field = new JPasswordField();
-
-                field.setPreferredSize(
-                                new Dimension(
-                                                0,
-                                                38));
-
-                return field;
-        }
-
-        private void showPasswordError(
-                        Component parent,
-                        String message) {
-
-                JOptionPane.showMessageDialog(
-                                parent,
-                                message,
-                                "Invalid Password",
-                                JOptionPane.WARNING_MESSAGE);
         }
 
         // ================================================================
