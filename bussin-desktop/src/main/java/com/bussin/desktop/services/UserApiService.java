@@ -10,10 +10,15 @@ public final class UserApiService {
         private UserApiService() {
         }
 
+        // ============================================================
+        // GET CURRENT USER
+        // ============================================================
+
         public static UserResponse getCurrentUser()
                         throws Exception {
 
-                var response = ApiClient.get("/users/me");
+                var response = ApiClient.get(
+                                "/users/me");
 
                 if (response.statusCode() != 200) {
 
@@ -29,6 +34,10 @@ public final class UserApiService {
                                 response.body(),
                                 UserResponse.class);
         }
+
+        // ============================================================
+        // CREATE CURRENT USER
+        // ============================================================
 
         public static UserResponse createCurrentUser(
                         String firstName,
@@ -64,6 +73,48 @@ public final class UserApiService {
                                 response.body(),
                                 UserResponse.class);
         }
+
+        // ============================================================
+        // UPDATE CURRENT USER
+        // ============================================================
+
+        public static UserResponse updateCurrentUser(
+                        String firstName,
+                        String lastName)
+                        throws Exception {
+
+                JsonObject requestBody = new JsonObject();
+
+                requestBody.addProperty(
+                                "firstName",
+                                firstName);
+
+                requestBody.addProperty(
+                                "lastName",
+                                lastName);
+
+                var response = ApiClient.put(
+                                "/users/me",
+                                GSON.toJson(requestBody));
+
+                if (response.statusCode() != 200) {
+
+                        throw new IllegalStateException(
+                                        "Failed to update current user. "
+                                                        + "HTTP "
+                                                        + response.statusCode()
+                                                        + ": "
+                                                        + response.body());
+                }
+
+                return GSON.fromJson(
+                                response.body(),
+                                UserResponse.class);
+        }
+
+        // ============================================================
+        // USER RESPONSE
+        // ============================================================
 
         public static class UserResponse {
 

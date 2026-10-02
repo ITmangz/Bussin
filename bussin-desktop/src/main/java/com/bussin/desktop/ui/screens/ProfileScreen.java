@@ -26,6 +26,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import com.bussin.desktop.services.UserApiService;
 import com.bussin.desktop.ui.components.AppBadge;
 import com.bussin.desktop.ui.components.AppButton;
 import com.bussin.desktop.ui.components.AppCard;
@@ -37,11 +38,18 @@ import com.bussin.desktop.ui.theme.BussinTheme;
 /**
  * BUSSIN - Profile & Account Management
  *
- * Frontend/mock implementation.
+ * Profile information is loaded from the BUSSIN API.
  *
- * Profile information is stored in memory for the current
- * application session. Firebase/API persistence will be
- * implemented during the integration phase.
+ * Current backend-supported profile fields:
+ * - User ID / Firebase UID
+ * - Email
+ * - First name
+ * - Last name
+ * - Role
+ *
+ * Phone number and address are currently displayed as
+ * "Not provided" because they are not yet persisted
+ * by the backend.
  */
 public class ProfileScreen extends JPanel {
 
@@ -49,12 +57,12 @@ public class ProfileScreen extends JPanel {
         // USER DATA
         // ================================================================
 
-        private final String userRole;
+        private String userRole;
 
         private String fullName;
         private String email;
-        private String phone;
-        private String address;
+        private String phone = "";
+        private String address = "";
         private String userId;
 
         private final String accountStatus = "Active";
@@ -97,60 +105,10 @@ public class ProfileScreen extends JPanel {
 
                 this.userRole = normalizeRole(userRole);
 
-                initializeProfileData();
                 initializeComponents();
                 initializeUI();
                 refreshProfile();
-        }
-
-        // ================================================================
-        // INITIAL PROFILE DATA
-        // ================================================================
-
-        private void initializeProfileData() {
-
-                switch (userRole) {
-
-                        case "ADMIN":
-
-                                fullName = "Administrator";
-                                email = "admin@bussin.com";
-                                phone = "0917 000 0001";
-                                address = "BUSSIN Operations Office";
-                                userId = "BUSSIN-ADMIN-001";
-
-                                break;
-
-                        case "EMPLOYEE":
-
-                                fullName = "Employee";
-                                email = "employee@bussin.com";
-                                phone = "0917 000 0002";
-                                address = "BUSSIN Staff Residence";
-                                userId = "BUSSIN-EMP-001";
-
-                                break;
-
-                        case "USER":
-
-                                fullName = "Commuter";
-                                email = "user@bussin.com";
-                                phone = "0917 000 0003";
-                                address = "Metro Manila";
-                                userId = "BUSSIN-USER-001";
-
-                                break;
-
-                        default:
-
-                                fullName = "Commuter";
-                                email = "user@bussin.com";
-                                phone = "0917 000 0003";
-                                address = "Metro Manila";
-                                userId = "BUSSIN-USER-001";
-
-                                break;
-                }
+                loadCurrentUser();
         }
 
         // ================================================================
@@ -165,7 +123,7 @@ public class ProfileScreen extends JPanel {
                 emailHeader = new JLabel();
 
                 roleBadge = new AppBadge(
-                                "USER",
+                                "COMMUTER",
                                 AppBadge.Status.INFO);
 
                 statusBadge = new AppBadge(
@@ -714,6 +672,127 @@ public class ProfileScreen extends JPanel {
         }
 
         // ================================================================
+        // LOAD CURRENT USER FROM API
+        // ================================================================
+
+        private void loadCurrentUser() {
+
+                nameHeader.setText(
+                                "Loading profile...");
+
+                emailHeader.setText("");
+
+                nameValue.setText(
+                                "Loading...");
+
+                emailValue.setText(
+                                "Loading...");
+
+                phoneValue.setText(
+                                "Not provided");
+
+                addressValue.setText(
+                                "Not provided");
+
+                userIdValue.setText(
+                                "Loading...");
+
+                roleValue.setText(
+                                "Loading...");
+
+                statusValue.setText(
+                                accountStatus);
+
+                memberSinceValue.setText(
+                                memberSince);
+
+                Thread profileThread = new Thread(
+                                () -> {
+
+                                        try {
+
+                                                UserApiService.UserResponse user = UserApiService.getCurrentUser();
+
+                                                String firstName = user.getFirstName();
+
+                                                String lastName = user.getLastName();
+
+                                                String combinedName = ((firstName == null)
+                                                                ? ""
+                                                                : firstName.trim())
+                                                                + " "
+                                                                + ((lastName == null)
+                                                                                ? ""
+                                                                                : lastName.trim());
+
+                                                fullName = combinedName.trim();
+
+                                                if (fullName.isBlank()) {
+
+                                                        fullName = "BUSSIN User";
+                                                }
+
+                                                email = user.getEmail();
+
+                                                if (email == null
+                                                                || email.isBlank()) {
+
+                                                        email = "Not provided";
+                                                }
+
+                                                userId = user.getFirebaseUid();
+
+                                                if (userId == null
+                                                                || userId.isBlank()) {
+
+                                                        userId = String.valueOf(
+                                                                        user.getId());
+                                                }
+
+                                                userRole = normalizeRole(
+                                                                user.getRole());
+
+                                                SwingUtilities.invokeLater(
+                                                                this::refreshProfile);
+
+                                        } catch (Exception exception) {
+
+                                                SwingUtilities.invokeLater(
+                                                                () -> {
+
+                                                                        nameHeader.setText(
+                                                                                        "Unable to load profile");
+
+                                                                        emailHeader.setText(
+                                                                                        "");
+
+                                                                        nameValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        emailValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        userIdValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        roleValue.setText(
+                                                                                        "Unavailable");
+
+                                                                        JOptionPane.showMessageDialog(
+                                                                                        this,
+                                                                                        "Unable to load your profile.\n\n"
+                                                                                                        + exception.getMessage(),
+                                                                                        "Profile Error",
+                                                                                        JOptionPane.ERROR_MESSAGE);
+                                                                });
+                                        }
+                                });
+
+                profileThread.setDaemon(true);
+                profileThread.start();
+        }
+
+        // ================================================================
         // REFRESH PROFILE
         // ================================================================
 
@@ -724,20 +803,28 @@ public class ProfileScreen extends JPanel {
                 // ------------------------------------------------------------
 
                 nameHeader.setText(
-                                fullName);
+                                fullName == null || fullName.isBlank()
+                                                ? "Loading profile..."
+                                                : fullName);
 
                 emailHeader.setText(
-                                email);
+                                email == null
+                                                ? ""
+                                                : email);
 
                 // ------------------------------------------------------------
                 // Personal Information
                 // ------------------------------------------------------------
 
                 nameValue.setText(
-                                fullName);
+                                fullName == null || fullName.isBlank()
+                                                ? "Not provided"
+                                                : fullName);
 
                 emailValue.setText(
-                                email);
+                                email == null || email.isBlank()
+                                                ? "Not provided"
+                                                : email);
 
                 phoneValue.setText(
                                 phone == null || phone.isBlank()
@@ -754,7 +841,9 @@ public class ProfileScreen extends JPanel {
                 // ------------------------------------------------------------
 
                 userIdValue.setText(
-                                userId);
+                                userId == null || userId.isBlank()
+                                                ? "Not provided"
+                                                : userId);
 
                 roleValue.setText(
                                 getRoleDisplay());
@@ -905,14 +994,11 @@ public class ProfileScreen extends JPanel {
                                 6,
                                 0);
 
-                JTextField nameField = createDialogField(
-                                fullName);
+                JTextField nameField = createDialogField(fullName);
 
-                JTextField phoneField = createDialogField(
-                                phone);
+                JTextField phoneField = createDialogField(phone);
 
-                JTextField addressField = createDialogField(
-                                address);
+                JTextField addressField = createDialogField(address);
 
                 int row = 0;
 
@@ -962,16 +1048,13 @@ public class ProfileScreen extends JPanel {
                 saveButton.addActionListener(
                                 event -> {
 
-                                        String newName = nameField
-                                                        .getText()
+                                        String newName = nameField.getText()
                                                         .trim();
 
-                                        String newPhone = phoneField
-                                                        .getText()
+                                        String newPhone = phoneField.getText()
                                                         .trim();
 
-                                        String newAddress = addressField
-                                                        .getText()
+                                        String newAddress = addressField.getText()
                                                         .trim();
 
                                         // ------------------------------------------------
@@ -1018,34 +1101,110 @@ public class ProfileScreen extends JPanel {
                                         }
 
                                         // ------------------------------------------------
-                                        // Update actual profile state
+                                        // Split full name
                                         // ------------------------------------------------
 
-                                        fullName = newName;
-                                        phone = newPhone;
-                                        address = newAddress;
+                                        String[] nameParts = newName.split(
+                                                        "\\s+",
+                                                        2);
+
+                                        String firstName = nameParts[0];
+
+                                        String lastName = nameParts.length > 1
+                                                        ? nameParts[1]
+                                                        : "";
+
+                                        if (lastName.isBlank()) {
+
+                                                JOptionPane.showMessageDialog(
+                                                                dialog,
+                                                                "Please enter both your first and last name.",
+                                                                "Invalid Profile",
+                                                                JOptionPane.WARNING_MESSAGE);
+
+                                                nameField.requestFocus();
+
+                                                return;
+                                        }
 
                                         // ------------------------------------------------
-                                        // Immediately update screen
+                                        // Update backend
                                         // ------------------------------------------------
 
-                                        refreshProfile();
+                                        saveButton.setEnabled(false);
 
-                                        // ------------------------------------------------
-                                        // Close dialog
-                                        // ------------------------------------------------
+                                        Thread updateThread = new Thread(
+                                                        () -> {
 
-                                        dialog.dispose();
+                                                                try {
 
-                                        // ------------------------------------------------
-                                        // Success message
-                                        // ------------------------------------------------
+                                                                        UserApiService.UserResponse updatedUser = UserApiService
+                                                                                        .updateCurrentUser(
+                                                                                                        firstName,
+                                                                                                        lastName);
 
-                                        JOptionPane.showMessageDialog(
-                                                        this,
-                                                        "Your profile has been updated successfully.",
-                                                        "Profile Updated",
-                                                        JOptionPane.INFORMATION_MESSAGE);
+                                                                        fullName = ((updatedUser.getFirstName() == null)
+                                                                                        ? ""
+                                                                                        : updatedUser.getFirstName())
+                                                                                        + " "
+                                                                                        + ((updatedUser.getLastName() == null)
+                                                                                                        ? ""
+                                                                                                        : updatedUser.getLastName());
+
+                                                                        fullName = fullName.trim();
+
+                                                                        email = updatedUser.getEmail();
+
+                                                                        userId = updatedUser.getFirebaseUid();
+
+                                                                        userRole = normalizeRole(
+                                                                                        updatedUser.getRole());
+
+                                                                        /*
+                                                                         * Phone and address are not yet
+                                                                         * persisted by the backend.
+                                                                         *
+                                                                         * Keep them locally for this
+                                                                         * application session only.
+                                                                         */
+                                                                        phone = newPhone;
+
+                                                                        address = newAddress;
+
+                                                                        SwingUtilities.invokeLater(
+                                                                                        () -> {
+
+                                                                                                refreshProfile();
+
+                                                                                                dialog.dispose();
+
+                                                                                                JOptionPane.showMessageDialog(
+                                                                                                                this,
+                                                                                                                "Your profile has been updated successfully.",
+                                                                                                                "Profile Updated",
+                                                                                                                JOptionPane.INFORMATION_MESSAGE);
+                                                                                        });
+
+                                                                } catch (Exception exception) {
+
+                                                                        SwingUtilities.invokeLater(
+                                                                                        () -> {
+
+                                                                                                saveButton.setEnabled(
+                                                                                                                true);
+
+                                                                                                JOptionPane.showMessageDialog(
+                                                                                                                dialog,
+                                                                                                                "Unable to update your profile.\n\n"
+                                                                                                                                + exception.getMessage(),
+                                                                                                                "Profile Update Failed",
+                                                                                                                JOptionPane.ERROR_MESSAGE);
+                                                                                        });
+                                                                }
+                                                        });
+
+                                        updateThread.setDaemon(true);
+                                        updateThread.start();
                                 });
 
                 buttons.add(
@@ -1316,18 +1475,18 @@ public class ProfileScreen extends JPanel {
                                         }
 
                                         /*
-                                         * Mock behavior.
+                                         * Password persistence is intentionally
+                                         * not implemented yet.
                                          *
-                                         * Actual password verification and persistence
-                                         * will be handled by Firebase Authentication.
+                                         * Firebase password update will be
+                                         * implemented in a later authentication
+                                         * integration step.
                                          */
 
-                                        dialog.dispose();
-
                                         JOptionPane.showMessageDialog(
-                                                        this,
-                                                        "Your password has been updated successfully.",
-                                                        "Password Updated",
+                                                        dialog,
+                                                        "Password update is not connected yet.",
+                                                        "Coming Soon",
                                                         JOptionPane.INFORMATION_MESSAGE);
                                 });
 
@@ -1385,12 +1544,23 @@ public class ProfileScreen extends JPanel {
 
                 String information = "BUSSIN ACCOUNT INFORMATION\n"
                                 + "--------------------------\n"
-                                + "Name: " + fullName + "\n"
-                                + "Email: " + email + "\n"
-                                + "User ID: " + userId + "\n"
-                                + "Role: " + getRoleDisplay() + "\n"
-                                + "Status: " + accountStatus + "\n"
-                                + "Member Since: " + memberSince;
+                                + "Name: "
+                                + fullName
+                                + "\n"
+                                + "Email: "
+                                + email
+                                + "\n"
+                                + "User ID: "
+                                + userId
+                                + "\n"
+                                + "Role: "
+                                + getRoleDisplay()
+                                + "\n"
+                                + "Status: "
+                                + accountStatus
+                                + "\n"
+                                + "Member Since: "
+                                + memberSince;
 
                 Toolkit.getDefaultToolkit()
                                 .getSystemClipboard()
@@ -1419,6 +1589,10 @@ public class ProfileScreen extends JPanel {
 
                         case "EMPLOYEE" ->
                                 "Employee";
+
+                        case "COMMUTER",
+                                        "USER" ->
+                                "Commuter";
 
                         default ->
                                 "Commuter";
@@ -1469,7 +1643,7 @@ public class ProfileScreen extends JPanel {
                 if (role == null
                                 || role.isBlank()) {
 
-                        return "USER";
+                        return "COMMUTER";
                 }
 
                 String normalized = role.trim()
@@ -1479,11 +1653,12 @@ public class ProfileScreen extends JPanel {
 
                         case "ADMIN",
                                         "EMPLOYEE",
+                                        "COMMUTER",
                                         "USER" ->
                                 normalized;
 
                         default ->
-                                "USER";
+                                "COMMUTER";
                 };
         }
 }
