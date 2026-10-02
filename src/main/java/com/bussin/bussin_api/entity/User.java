@@ -60,9 +60,17 @@ public class User {
     public User() {
     }
 
+    // ============================================================
+    // ID
+    // ============================================================
+
     public Long getId() {
         return id;
     }
+
+    // ============================================================
+    // FIREBASE UID
+    // ============================================================
 
     public String getFirebaseUid() {
         return firebaseUid;
@@ -72,6 +80,10 @@ public class User {
         this.firebaseUid = firebaseUid;
     }
 
+    // ============================================================
+    // EMAIL
+    // ============================================================
+
     public String getEmail() {
         return email;
     }
@@ -79,6 +91,10 @@ public class User {
     public void setEmail(String email) {
         this.email = email;
     }
+
+    // ============================================================
+    // FIRST NAME
+    // ============================================================
 
     public String getFirstName() {
         return firstName;
@@ -88,6 +104,10 @@ public class User {
         this.firstName = firstName;
     }
 
+    // ============================================================
+    // MIDDLE NAME
+    // ============================================================
+
     public String getMiddleName() {
         return middleName;
     }
@@ -95,6 +115,10 @@ public class User {
     public void setMiddleName(String middleName) {
         this.middleName = middleName;
     }
+
+    // ============================================================
+    // LAST NAME
+    // ============================================================
 
     public String getLastName() {
         return lastName;
@@ -104,6 +128,10 @@ public class User {
         this.lastName = lastName;
     }
 
+    // ============================================================
+    // GENDER
+    // ============================================================
+
     public String getGender() {
         return gender;
     }
@@ -111,6 +139,10 @@ public class User {
     public void setGender(String gender) {
         this.gender = gender;
     }
+
+    // ============================================================
+    // AGE
+    // ============================================================
 
     public Integer getAge() {
         return age;
@@ -120,6 +152,10 @@ public class User {
         this.age = age;
     }
 
+    // ============================================================
+    // DATE OF BIRTH
+    // ============================================================
+
     public LocalDate getDateOfBirth() {
         return dateOfBirth;
     }
@@ -127,6 +163,10 @@ public class User {
     public void setDateOfBirth(LocalDate dateOfBirth) {
         this.dateOfBirth = dateOfBirth;
     }
+
+    // ============================================================
+    // CONTACT NUMBER
+    // ============================================================
 
     public String getContactNumber() {
         return contactNumber;
@@ -136,6 +176,10 @@ public class User {
         this.contactNumber = contactNumber;
     }
 
+    // ============================================================
+    // ROLE
+    // ============================================================
+
     public Role getRole() {
         return role;
     }
@@ -144,6 +188,10 @@ public class User {
         this.role = role;
     }
 
+    // ============================================================
+    // CREATED AT
+    // ============================================================
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -151,6 +199,10 @@ public class User {
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+
+    // ============================================================
+    // UPDATED AT
+    // ============================================================
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
