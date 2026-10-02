@@ -84,6 +84,46 @@ public class SecurityConfig {
                                                                 "/api/buses/**")
                                                 .hasAnyRole("ADMIN", "EMPLOYEE")
 
+                                                // Route management.
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/routes/**")
+                                                .hasRole("ADMIN")
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/routes/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/routes/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                                                .requestMatchers(
+                                                                "/api/routes/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE", "COMMUTER")
+
+                                                // Trip management.
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/trips/**")
+                                                .hasRole("ADMIN")
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/trips/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/trips/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                                                .requestMatchers(
+                                                                "/api/trips/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE", "COMMUTER")
+
                                                 // All remaining API endpoints require authentication.
                                                 .anyRequest().authenticated())
 

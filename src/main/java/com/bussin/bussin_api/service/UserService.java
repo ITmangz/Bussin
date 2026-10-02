@@ -13,6 +13,7 @@ import com.bussin.bussin_api.dto.UpdateUserRoleRequest;
 import com.bussin.bussin_api.dto.UserResponse;
 import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.entity.User;
+import com.bussin.bussin_api.exception.ConflictException;
 import com.bussin.bussin_api.repository.UserRepository;
 import com.google.firebase.auth.FirebaseToken;
 
@@ -69,7 +70,7 @@ public class UserService {
 
             if (adminCount <= 1) {
 
-                throw new IllegalArgumentException(
+                throw new ConflictException(
                         "Cannot remove the last administrator");
             }
         }
