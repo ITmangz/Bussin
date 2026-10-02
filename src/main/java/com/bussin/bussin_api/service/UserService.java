@@ -20,210 +20,250 @@ import com.google.firebase.auth.FirebaseToken;
 @Service
 public class UserService {
 
-    private final UserRepository userRepository;
+        private final UserRepository userRepository;
 
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-
-    // ============================================================
-    // GET ALL USERS
-    // ============================================================
-
-    public List<UserResponse> getAllUsers() {
-
-        return userRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    // ============================================================
-    // UPDATE USER ROLE
-    // ADMIN ONLY
-    // ============================================================
-
-    public UserResponse updateUserRole(
-            Long userId,
-            UpdateUserRoleRequest request) {
-
-        User user = userRepository
-                .findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "User not found"));
-
-        Role currentRole = user.getRole();
-
-        Role newRole = request.getRole();
-
-        // --------------------------------------------------------
-        // Prevent removing the last administrator.
-        // --------------------------------------------------------
-
-        if (currentRole == Role.ADMIN &&
-                newRole != Role.ADMIN) {
-
-            long adminCount = userRepository.findAll()
-                    .stream()
-                    .filter(existingUser -> existingUser.getRole() == Role.ADMIN)
-                    .count();
-
-            if (adminCount <= 1) {
-
-                throw new ConflictException(
-                        "Cannot remove the last administrator");
-            }
+        public UserService(UserRepository userRepository) {
+                this.userRepository = userRepository;
         }
 
-        user.setRole(newRole);
+        // ============================================================
+        // GET ALL USERS
+        // ============================================================
 
-        user.setUpdatedAt(
-                LocalDateTime.now());
+        public List<UserResponse> getAllUsers() {
 
-        User updatedUser = userRepository.save(user);
-
-        return toResponse(updatedUser);
-    }
-
-    // ============================================================
-    // GET CURRENT USER
-    // ============================================================
-
-    public UserResponse getCurrentUser() {
-
-        FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
-
-        String firebaseUid = firebaseToken.getUid();
-
-        User user = userRepository
-                .findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "BUSSIN user profile not found"));
-
-        return toResponse(user);
-    }
-
-    // ============================================================
-    // CREATE USER
-    // ============================================================
-
-    public UserResponse createUser(
-            CreateUserRequest request) {
-
-        FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
-
-        String firebaseUid = firebaseToken.getUid();
-
-        String email = firebaseToken.getEmail();
-
-        validateUserDoesNotExist(firebaseUid);
-
-        User user = new User();
-
-        user.setFirebaseUid(firebaseUid);
-        user.setEmail(email);
-
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-
-        // Every newly registered user starts as a commuter.
-        user.setRole(Role.COMMUTER);
-
-        LocalDateTime now = LocalDateTime.now();
-
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
-
-        User savedUser = userRepository.save(user);
-
-        return toResponse(savedUser);
-    }
-
-    // ============================================================
-    // UPDATE CURRENT USER
-    // ============================================================
-
-    public UserResponse updateCurrentUser(
-            UpdateUserRequest request) {
-
-        FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
-
-        String firebaseUid = firebaseToken.getUid();
-
-        User user = userRepository
-                .findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "BUSSIN user profile not found"));
-
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-
-        user.setUpdatedAt(
-                LocalDateTime.now());
-
-        User updatedUser = userRepository.save(user);
-
-        return toResponse(updatedUser);
-    }
-
-    // ============================================================
-    // GET AUTHENTICATED FIREBASE USER
-    // ============================================================
-
-    private FirebaseToken getAuthenticatedFirebaseToken() {
-
-        Authentication authentication = SecurityContextHolder
-                .getContext()
-                .getAuthentication();
-
-        if (authentication == null ||
-                !authentication.isAuthenticated()) {
-
-            throw new IllegalArgumentException(
-                    "User is not authenticated");
+                return userRepository.findAll()
+                                .stream()
+                                .map(this::toResponse)
+                                .toList();
         }
 
-        Object principal = authentication.getPrincipal();
+        // ============================================================
+        // UPDATE USER ROLE
+        // ADMIN ONLY
+        // ============================================================
 
-        if (!(principal instanceof FirebaseToken firebaseToken)) {
+        public UserResponse updateUserRole(
+                        Long userId,
+                        UpdateUserRoleRequest request) {
 
-            throw new IllegalArgumentException(
-                    "Invalid Firebase authentication");
+                User user = userRepository
+                                .findById(userId)
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "User not found"));
+
+                Role currentRole = user.getRole();
+
+                Role newRole = request.getRole();
+
+                if (currentRole == Role.ADMIN &&
+                                newRole != Role.ADMIN) {
+
+                        long adminCount = userRepository.findAll()
+                                        .stream()
+                                        .filter(existingUser -> existingUser.getRole() == Role.ADMIN)
+                                        .count();
+
+                        if (adminCount <= 1) {
+
+                                throw new ConflictException(
+                                                "Cannot remove the last administrator");
+                        }
+                }
+
+                user.setRole(newRole);
+
+                user.setUpdatedAt(
+                                LocalDateTime.now());
+
+                User updatedUser = userRepository.save(user);
+
+                return toResponse(updatedUser);
         }
 
-        return firebaseToken;
-    }
+        // ============================================================
+        // GET CURRENT USER
+        // ============================================================
 
-    // ============================================================
-    // CHECK IF USER ALREADY EXISTS
-    // ============================================================
+        public UserResponse getCurrentUser() {
 
-    private void validateUserDoesNotExist(
-            String firebaseUid) {
+                FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
 
-        if (userRepository
-                .findByFirebaseUid(firebaseUid)
-                .isPresent()) {
+                String firebaseUid = firebaseToken.getUid();
 
-            throw new IllegalArgumentException(
-                    "A user with this Firebase UID already exists");
+                User user = userRepository
+                                .findByFirebaseUid(firebaseUid)
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "BUSSIN user profile not found"));
+
+                return toResponse(user);
         }
-    }
 
-    // ============================================================
-    // ENTITY → RESPONSE DTO
-    // ============================================================
+        // ============================================================
+        // CREATE USER
+        // ============================================================
 
-    private UserResponse toResponse(User user) {
+        public UserResponse createUser(
+                        CreateUserRequest request) {
 
-        return new UserResponse(
-                user.getId(),
-                user.getFirebaseUid(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getRole().name(),
-                user.getCreatedAt(),
-                user.getUpdatedAt());
-    }
+                System.out.println("========================================");
+                System.out.println("DEBUG: createUser() WAS CALLED");
+                System.out.println("DEBUG: firstName = [" + request.getFirstName() + "]");
+                System.out.println("DEBUG: middleName = [" + request.getMiddleName() + "]");
+                System.out.println("DEBUG: lastName = [" + request.getLastName() + "]");
+                System.out.println("========================================");
+
+                FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
+
+                String firebaseUid = firebaseToken.getUid();
+
+                String email = firebaseToken.getEmail();
+
+                validateUserDoesNotExist(firebaseUid);
+
+                User user = new User();
+
+                user.setFirebaseUid(firebaseUid);
+                user.setEmail(email);
+
+                user.setFirstName(
+                                request.getFirstName());
+
+                user.setMiddleName(
+                                request.getMiddleName());
+
+                user.setLastName(
+                                request.getLastName());
+
+                user.setGender(
+                                request.getGender());
+
+                user.setAge(
+                                request.getAge());
+
+                user.setDateOfBirth(
+                                request.getDateOfBirth());
+
+                user.setContactNumber(
+                                request.getContactNumber());
+
+                user.setRole(
+                                Role.COMMUTER);
+
+                LocalDateTime now = LocalDateTime.now();
+
+                user.setCreatedAt(now);
+                user.setUpdatedAt(now);
+
+                System.out.println(
+                                "DEBUG: middleName before save = ["
+                                                + user.getMiddleName()
+                                                + "]");
+
+                User savedUser = userRepository.save(user);
+
+                System.out.println(
+                                "DEBUG: middleName after save = ["
+                                                + savedUser.getMiddleName()
+                                                + "]");
+
+                return toResponse(savedUser);
+        }
+
+        // ============================================================
+        // UPDATE CURRENT USER
+        // ============================================================
+
+        public UserResponse updateCurrentUser(
+                        UpdateUserRequest request) {
+
+                FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
+
+                String firebaseUid = firebaseToken.getUid();
+
+                User user = userRepository
+                                .findByFirebaseUid(firebaseUid)
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "BUSSIN user profile not found"));
+
+                user.setFirstName(
+                                request.getFirstName());
+
+                user.setLastName(
+                                request.getLastName());
+
+                user.setUpdatedAt(
+                                LocalDateTime.now());
+
+                User updatedUser = userRepository.save(user);
+
+                return toResponse(updatedUser);
+        }
+
+        // ============================================================
+        // GET AUTHENTICATED FIREBASE USER
+        // ============================================================
+
+        private FirebaseToken getAuthenticatedFirebaseToken() {
+
+                Authentication authentication = SecurityContextHolder
+                                .getContext()
+                                .getAuthentication();
+
+                if (authentication == null ||
+                                !authentication.isAuthenticated()) {
+
+                        throw new IllegalArgumentException(
+                                        "User is not authenticated");
+                }
+
+                Object principal = authentication.getPrincipal();
+
+                if (!(principal instanceof FirebaseToken firebaseToken)) {
+
+                        throw new IllegalArgumentException(
+                                        "Invalid Firebase authentication");
+                }
+
+                return firebaseToken;
+        }
+
+        // ============================================================
+        // CHECK IF USER ALREADY EXISTS
+        // ============================================================
+
+        private void validateUserDoesNotExist(
+                        String firebaseUid) {
+
+                if (userRepository
+                                .findByFirebaseUid(firebaseUid)
+                                .isPresent()) {
+
+                        throw new IllegalArgumentException(
+                                        "A user with this Firebase UID already exists");
+                }
+        }
+
+        // ============================================================
+        // ENTITY → RESPONSE DTO
+        // ============================================================
+
+        private UserResponse toResponse(
+                        User user) {
+
+                return new UserResponse(
+                                user.getId(),
+                                user.getFirebaseUid(),
+                                user.getEmail(),
+                                user.getFirstName(),
+                                user.getMiddleName(),
+                                user.getLastName(),
+                                user.getGender(),
+                                user.getAge(),
+                                user.getDateOfBirth(),
+                                user.getContactNumber(),
+                                user.getRole().name(),
+                                user.getCreatedAt(),
+                                user.getUpdatedAt());
+        }
 }
