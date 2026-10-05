@@ -14,12 +14,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "bookings", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_booking_trip_seat", columnNames = { "trip_id", "seat_number" }),
-})
+@Table(name = "bookings")
 public class Booking {
 
     @OneToMany(mappedBy = "booking", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
