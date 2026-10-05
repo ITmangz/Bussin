@@ -342,8 +342,8 @@ public class AiChatController {
                         bookingRequest.setTripId(
                                         draft.tripId);
 
-                        bookingRequest.setSeatNumber(
-                                        draft.seatNumber);
+                        bookingRequest.setSeatNumbers(
+                                        java.util.List.of(draft.seatNumber));
 
                         bookingRequest.setPassengerName(
                                         draft.passengerName);
