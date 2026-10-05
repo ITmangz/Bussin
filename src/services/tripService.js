@@ -39,3 +39,20 @@ export async function getRouteById(routeId) {
 
     return response.data;
 }
+
+export async function createTrip(tripData) {
+    const response = await apiClient.post("/trips", tripData);
+    return response.data;
+}
+
+export async function updateTrip(tripId, tripData) {
+    const response = await apiClient.put(
+        `/trips/${tripId}`,
+        tripData
+    );
+    return response.data;
+}
+
+export async function deleteTrip(tripId) {
+    await apiClient.delete(`/trips/${tripId}`);
+}
