@@ -26,6 +26,8 @@ public class CreateUserRequest {
 
     private String contactNumber;
 
+    private String address;
+
     public String getFirstName() {
         return firstName;
     }
@@ -80,5 +82,13 @@ public class CreateUserRequest {
 
     public void setContactNumber(String contactNumber) {
         this.contactNumber = contactNumber;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 }

@@ -1,5 +1,6 @@
 package com.bussin.bussin_api.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class RouteResponse {
@@ -8,6 +9,9 @@ public class RouteResponse {
     private String routeIdentifier;
     private String origin;
     private String destination;
+    private BigDecimal distanceKm;
+    private Integer durationMinutes;
+    private BigDecimal baseFare;
     private String description;
     private boolean active;
     private LocalDateTime createdAt;
@@ -18,15 +22,20 @@ public class RouteResponse {
             String routeIdentifier,
             String origin,
             String destination,
+            BigDecimal distanceKm,
+            Integer durationMinutes,
+            BigDecimal baseFare,
             String description,
             boolean active,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
-
         this.id = id;
         this.routeIdentifier = routeIdentifier;
         this.origin = origin;
         this.destination = destination;
+        this.distanceKm = distanceKm;
+        this.durationMinutes = durationMinutes;
+        this.baseFare = baseFare;
         this.description = description;
         this.active = active;
         this.createdAt = createdAt;
@@ -47,6 +56,18 @@ public class RouteResponse {
 
     public String getDestination() {
         return destination;
+    }
+
+    public BigDecimal getDistanceKm() {
+        return distanceKm;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public BigDecimal getBaseFare() {
+        return baseFare;
     }
 
     public String getDescription() {

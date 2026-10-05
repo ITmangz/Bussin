@@ -1,5 +1,6 @@
 package com.bussin.bussin_api.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -25,6 +26,15 @@ public class Route {
 
     @Column(nullable = false, length = 100)
     private String destination;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal distanceKm;
+
+    @Column
+    private Integer durationMinutes;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal baseFare;
 
     @Column(length = 255)
     private String description;
@@ -67,6 +77,30 @@ public class Route {
 
     public void setDestination(String destination) {
         this.destination = destination;
+    }
+
+    public BigDecimal getDistanceKm() {
+        return distanceKm;
+    }
+
+    public void setDistanceKm(BigDecimal distanceKm) {
+        this.distanceKm = distanceKm;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public BigDecimal getBaseFare() {
+        return baseFare;
+    }
+
+    public void setBaseFare(BigDecimal baseFare) {
+        this.baseFare = baseFare;
     }
 
     public String getDescription() {

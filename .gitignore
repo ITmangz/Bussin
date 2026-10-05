@@ -34,3 +34,6 @@ build/
 
 # Secrets
 /secrets/
+
+# Application secrets
+/src/main/resources/secrets/

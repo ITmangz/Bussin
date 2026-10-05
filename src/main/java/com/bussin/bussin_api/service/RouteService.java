@@ -1,11 +1,5 @@
 package com.bussin.bussin_api.service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-
 import com.bussin.bussin_api.dto.CreateRouteRequest;
 import com.bussin.bussin_api.dto.RouteResponse;
 import com.bussin.bussin_api.dto.UpdateRouteRequest;
@@ -13,6 +7,11 @@ import com.bussin.bussin_api.entity.Route;
 import com.bussin.bussin_api.exception.ConflictException;
 import com.bussin.bussin_api.exception.ResourceNotFoundException;
 import com.bussin.bussin_api.repository.RouteRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class RouteService {
@@ -23,149 +22,98 @@ public class RouteService {
         this.routeRepository = routeRepository;
     }
 
-    // ============================================================
-    // GET ALL ROUTES (optionally only active)
-    // ============================================================
-
     public List<RouteResponse> getAllRoutes(Boolean activeOnly) {
-
-        List<Route> routes;
-
-        if (Boolean.TRUE.equals(activeOnly)) {
-            routes = routeRepository.findByActiveTrueOrderByRouteIdentifierAsc();
-        } else {
-            routes = routeRepository.findAllByOrderByRouteIdentifierAsc();
-        }
+        List<Route> routes = activeOnly != null && activeOnly
+                ? routeRepository.findByActiveTrue()
+                : routeRepository.findAll();
 
         return routes.stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    // ============================================================
-    // GET ROUTE BY ID
-    // ============================================================
-
     public RouteResponse getRoute(Long routeId) {
-
         return toResponse(findRoute(routeId));
     }
 
-    // ============================================================
-    // CREATE ROUTE
-    // ============================================================
-
+    @Transactional
     public RouteResponse createRoute(CreateRouteRequest request) {
-
-        String routeIdentifier = normalizeIdentifier(request.getRouteIdentifier());
-
-        if (routeRepository.existsByRouteIdentifier(routeIdentifier)) {
-            throw new ConflictException(
-                    "A route with this identifier already exists");
-        }
-
         Route route = new Route();
 
-        route.setRouteIdentifier(routeIdentifier);
+        route.setRouteIdentifier(normalizeIdentifier(request.getRouteIdentifier()));
         route.setOrigin(request.getOrigin().trim());
         route.setDestination(request.getDestination().trim());
-        route.setDescription(
-                request.getDescription() != null
-                        ? request.getDescription().trim()
-                        : null);
+        route.setDistanceKm(request.getDistanceKm());
+        route.setDurationMinutes(request.getDurationMinutes());
+        route.setBaseFare(request.getBaseFare());
+        route.setDescription(normalizeDescription(request.getDescription()));
         route.setActive(true);
 
         LocalDateTime now = LocalDateTime.now();
-
         route.setCreatedAt(now);
         route.setUpdatedAt(now);
 
         return toResponse(saveOrConflict(route));
     }
 
-    // ============================================================
-    // UPDATE ROUTE
-    // ============================================================
-
-    public RouteResponse updateRoute(
-            Long routeId,
-            UpdateRouteRequest request) {
-
+    @Transactional
+    public RouteResponse updateRoute(Long routeId, UpdateRouteRequest request) {
         Route route = findRoute(routeId);
 
-        String routeIdentifier = normalizeIdentifier(request.getRouteIdentifier());
-
-        if (routeRepository.existsByRouteIdentifierAndIdNot(
-                routeIdentifier, routeId)) {
-
-            throw new ConflictException(
-                    "A route with this identifier already exists");
-        }
-
-        route.setRouteIdentifier(routeIdentifier);
+        route.setRouteIdentifier(normalizeIdentifier(request.getRouteIdentifier()));
         route.setOrigin(request.getOrigin().trim());
         route.setDestination(request.getDestination().trim());
-        route.setDescription(
-                request.getDescription() != null
-                        ? request.getDescription().trim()
-                        : null);
+        route.setDistanceKm(request.getDistanceKm());
+        route.setDurationMinutes(request.getDurationMinutes());
+        route.setBaseFare(request.getBaseFare());
+        route.setDescription(normalizeDescription(request.getDescription()));
+        route.setActive(request.isActive());
         route.setUpdatedAt(LocalDateTime.now());
 
         return toResponse(saveOrConflict(route));
     }
 
-    // ============================================================
-    // DELETE ROUTE
-    // ============================================================
-
+    @Transactional
     public void deleteRoute(Long routeId) {
-
         Route route = findRoute(routeId);
-
-        try {
-            routeRepository.delete(route);
-            routeRepository.flush();
-        } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException(
-                    "Route cannot be deleted because it is referenced by other records");
-        }
+        routeRepository.delete(route);
     }
 
-    // ============================================================
-    // HELPERS
-    // ============================================================
-
     private Route findRoute(Long routeId) {
-
-        return routeRepository
-                .findById(routeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Route not found"));
+        return routeRepository.findById(routeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Route not found: " + routeId));
     }
 
     private Route saveOrConflict(Route route) {
-
         try {
-            return routeRepository.saveAndFlush(route);
-        } catch (DataIntegrityViolationException exception) {
+            return routeRepository.save(route);
+        } catch (org.springframework.dao.DataIntegrityViolationException exception) {
             throw new ConflictException(
-                    "A route with this identifier already exists");
+                    "Route identifier already exists: " + route.getRouteIdentifier());
         }
     }
 
     private String normalizeIdentifier(String identifier) {
+        return identifier.trim().toUpperCase();
+    }
 
-        return identifier.trim().replaceAll("\\s+", " ")
-                .toUpperCase();
+    private String normalizeDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return null;
+        }
+
+        return description.trim();
     }
 
     private RouteResponse toResponse(Route route) {
-
         return new RouteResponse(
                 route.getId(),
                 route.getRouteIdentifier(),
                 route.getOrigin(),
                 route.getDestination(),
+                route.getDistanceKm(),
+                route.getDurationMinutes(),
+                route.getBaseFare(),
                 route.getDescription(),
                 route.isActive(),
                 route.getCreatedAt(),

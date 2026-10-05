@@ -17,6 +17,7 @@ public class UserResponse {
     private Integer age;
     private LocalDate dateOfBirth;
     private String contactNumber;
+    private String address;
 
     private String role;
 
@@ -34,6 +35,7 @@ public class UserResponse {
             Integer age,
             LocalDate dateOfBirth,
             String contactNumber,
+            String address,
             String role,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
@@ -50,6 +52,7 @@ public class UserResponse {
         this.age = age;
         this.dateOfBirth = dateOfBirth;
         this.contactNumber = contactNumber;
+        this.address = address;
 
         this.role = role;
 
@@ -95,6 +98,10 @@ public class UserResponse {
 
     public String getContactNumber() {
         return contactNumber;
+    }
+
+    public String getAddress() {
+        return address;
     }
 
     public String getRole() {

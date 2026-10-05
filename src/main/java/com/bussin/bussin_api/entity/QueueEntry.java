@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,7 +17,10 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = "queue_entries", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "trip_id"})
+        @UniqueConstraint(name = "uk_queue_trip_commuter", columnNames = {
+                "trip_id",
+                "commuter_id"
+        })
 })
 public class QueueEntry {
 
@@ -24,23 +28,27 @@ public class QueueEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @ManyToOne(optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "commuter_id", nullable = false)
+    private User commuter;
+
     @Column(nullable = false)
-    private Integer position;
+    private Integer queueNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private QueueStatus status;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime joinedAt;
+
+    private LocalDateTime calledAt;
+
+    private LocalDateTime boardedAt;
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
@@ -52,14 +60,6 @@ public class QueueEntry {
         return id;
     }
 
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
     public Trip getTrip() {
         return trip;
     }
@@ -68,12 +68,20 @@ public class QueueEntry {
         this.trip = trip;
     }
 
-    public Integer getPosition() {
-        return position;
+    public User getCommuter() {
+        return commuter;
     }
 
-    public void setPosition(Integer position) {
-        this.position = position;
+    public void setCommuter(User commuter) {
+        this.commuter = commuter;
+    }
+
+    public Integer getQueueNumber() {
+        return queueNumber;
+    }
+
+    public void setQueueNumber(Integer queueNumber) {
+        this.queueNumber = queueNumber;
     }
 
     public QueueStatus getStatus() {
@@ -84,12 +92,28 @@ public class QueueEntry {
         this.status = status;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public LocalDateTime getJoinedAt() {
+        return joinedAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    public void setJoinedAt(LocalDateTime joinedAt) {
+        this.joinedAt = joinedAt;
+    }
+
+    public LocalDateTime getCalledAt() {
+        return calledAt;
+    }
+
+    public void setCalledAt(LocalDateTime calledAt) {
+        this.calledAt = calledAt;
+    }
+
+    public LocalDateTime getBoardedAt() {
+        return boardedAt;
+    }
+
+    public void setBoardedAt(LocalDateTime boardedAt) {
+        this.boardedAt = boardedAt;
     }
 
     public LocalDateTime getUpdatedAt() {

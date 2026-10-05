@@ -20,6 +20,9 @@ import com.bussin.bussin_api.repository.BusRepository;
 import com.bussin.bussin_api.repository.RouteRepository;
 import com.bussin.bussin_api.repository.TripRepository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Service
 public class TripService {
 
@@ -226,12 +229,47 @@ public class TripService {
                 trip.getId(),
                 trip.getBus().getId(),
                 trip.getBus().getPlateNumber(),
+                trip.getBus().getCapacity(),
                 trip.getRoute().getId(),
                 trip.getRoute().getRouteIdentifier(),
                 trip.getScheduledDeparture(),
                 trip.getScheduledArrival(),
-                trip.getStatus().name(),
+                trip.getStatus(),
                 trip.getCreatedAt(),
                 trip.getUpdatedAt());
+
+    }
+
+    public List<TripResponse> searchTrips(
+            String origin,
+            String destination,
+            LocalDateTime from,
+            LocalDateTime to) {
+
+        List<Route> routes = routeRepository
+                .findByOriginIgnoreCaseAndDestinationIgnoreCaseAndActiveTrue(
+                        origin,
+                        destination);
+
+        if (routes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> routeIds = routes.stream()
+                .map(Route::getId)
+                .toList();
+
+        List<Trip> trips = tripRepository
+                .findByRouteIdInAndStatusInAndScheduledDepartureBetweenOrderByScheduledDepartureAsc(
+                        routeIds,
+                        List.of(
+                                TripStatus.SCHEDULED,
+                                TripStatus.BOARDING),
+                        from,
+                        to);
+
+        return trips.stream()
+                .map(this::toResponse)
+                .toList();
     }
 }

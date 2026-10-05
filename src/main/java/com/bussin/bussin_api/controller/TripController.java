@@ -78,4 +78,18 @@ public class TripController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/search")
+    public List<TripResponse> searchTrips(
+            @RequestParam String origin,
+            @RequestParam String destination,
+            @RequestParam LocalDateTime from,
+            @RequestParam LocalDateTime to) {
+
+        return tripService.searchTrips(
+                origin,
+                destination,
+                from,
+                to);
+    }
 }

@@ -37,4 +37,15 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
                         LocalDateTime after);
 
         List<Trip> findAllByOrderByScheduledDepartureDesc();
+
+        List<Trip> findByRouteIdInAndScheduledDepartureBetweenOrderByScheduledDepartureAsc(
+                        List<Long> routeIds,
+                        LocalDateTime start,
+                        LocalDateTime end);
+
+        List<Trip> findByRouteIdInAndStatusInAndScheduledDepartureBetweenOrderByScheduledDepartureAsc(
+                        List<Long> routeIds,
+                        List<TripStatus> statuses,
+                        LocalDateTime start,
+                        LocalDateTime end);
 }

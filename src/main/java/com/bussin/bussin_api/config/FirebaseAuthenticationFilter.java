@@ -22,115 +22,121 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class FirebaseAuthenticationFilter
-        extends OncePerRequestFilter {
+                extends OncePerRequestFilter {
 
-    private final FirebaseAuthService firebaseAuthService;
-    private final UserRepository userRepository;
+        private final FirebaseAuthService firebaseAuthService;
+        private final UserRepository userRepository;
 
-    public FirebaseAuthenticationFilter(
-            FirebaseAuthService firebaseAuthService,
-            UserRepository userRepository) {
+        public FirebaseAuthenticationFilter(
+                        FirebaseAuthService firebaseAuthService,
+                        UserRepository userRepository) {
 
-        this.firebaseAuthService = firebaseAuthService;
-        this.userRepository = userRepository;
-    }
-
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain)
-            throws ServletException, IOException {
-
-        String authorizationHeader = request.getHeader("Authorization");
-
-        // --------------------------------------------------------
-        // No Firebase token
-        // --------------------------------------------------------
-
-        if (authorizationHeader == null ||
-                !authorizationHeader.startsWith("Bearer ")) {
-
-            filterChain.doFilter(request, response);
-            return;
+                this.firebaseAuthService = firebaseAuthService;
+                this.userRepository = userRepository;
         }
 
-        String idToken = authorizationHeader.substring(7);
+        @Override
+        protected void doFilterInternal(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        FilterChain filterChain)
+                        throws ServletException, IOException {
 
-        try {
+                String authorizationHeader = request.getHeader("Authorization");
 
-            // ----------------------------------------------------
-            // Verify Firebase token
-            // ----------------------------------------------------
+                // --------------------------------------------------------
+                // No Firebase token
+                // --------------------------------------------------------
 
-            FirebaseToken firebaseToken = firebaseAuthService.verifyIdToken(idToken);
+                if (authorizationHeader == null ||
+                                !authorizationHeader.startsWith("Bearer ")) {
 
-            String firebaseUid = firebaseToken.getUid();
+                        filterChain.doFilter(request, response);
+                        return;
+                }
 
-            // ----------------------------------------------------
-            // Find BUSSIN user
-            // ----------------------------------------------------
+                String idToken = authorizationHeader.substring(7);
 
-            Optional<User> userOptional = userRepository.findByFirebaseUid(firebaseUid);
+                try {
 
-            /*
-             * A Firebase account may exist before a BUSSIN
-             * application profile has been created.
-             *
-             * This is allowed because POST /api/users is used
-             * to create the BUSSIN profile.
-             */
-            if (userOptional.isEmpty()) {
+                        // ----------------------------------------------------
+                        // Verify Firebase token
+                        // ----------------------------------------------------
 
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        firebaseToken,
-                        null,
-                        List.of());
+                        FirebaseToken firebaseToken = firebaseAuthService.verifyIdToken(idToken);
 
-                SecurityContextHolder
-                        .getContext()
-                        .setAuthentication(authentication);
+                        String firebaseUid = firebaseToken.getUid();
+
+                        // ----------------------------------------------------
+                        // Find BUSSIN user
+                        // ----------------------------------------------------
+
+                        Optional<User> userOptional = userRepository.findByFirebaseUid(firebaseUid);
+
+                        /*
+                         * A Firebase account may exist before a BUSSIN
+                         * application profile has been created.
+                         *
+                         * This is allowed because POST /api/users is used
+                         * to create the BUSSIN profile.
+                         */
+                        if (userOptional.isEmpty()) {
+
+                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                                firebaseToken,
+                                                null,
+                                                List.of());
+
+                                SecurityContextHolder
+                                                .getContext()
+                                                .setAuthentication(authentication);
+
+                                filterChain.doFilter(request, response);
+                                return;
+                        }
+
+                        // ----------------------------------------------------
+                        // BUSSIN user exists
+                        // ----------------------------------------------------
+
+                        User user = userOptional.get();
+
+                        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
+                                        "ROLE_" + user.getRole().name());
+
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                        firebaseToken,
+                                        null,
+                                        List.of(authority));
+
+                        SecurityContextHolder
+                                        .getContext()
+                                        .setAuthentication(authentication);
+
+                } catch (Exception exception) {
+
+                        exception.printStackTrace();
+
+                        response.setStatus(
+                                        HttpServletResponse.SC_UNAUTHORIZED);
+
+                        response.setContentType("application/json");
+
+                        response.getWriter().write(
+                                        """
+                                                        {
+                                                            "status": 401,
+                                                            "message": "%s"
+                                                        }
+                                                        """.formatted(
+                                                        exception.getMessage() == null
+                                                                        ? "Unknown authentication error"
+                                                                        : exception.getMessage()
+                                                                                        .replace("\"", "\\\"")));
+
+                        return;
+                }
 
                 filterChain.doFilter(request, response);
-                return;
-            }
-
-            // ----------------------------------------------------
-            // BUSSIN user exists
-            // ----------------------------------------------------
-
-            User user = userOptional.get();
-
-            SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
-                    "ROLE_" + user.getRole().name());
-
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    firebaseToken,
-                    null,
-                    List.of(authority));
-
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(authentication);
-
-        } catch (Exception exception) {
-
-            response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED);
-
-            response.setContentType("application/json");
-
-            response.getWriter().write(
-                    """
-                            {
-                                "status": 401,
-                                "message": "Invalid authentication token"
-                            }
-                            """);
-
-            return;
         }
-
-        filterChain.doFilter(request, response);
-    }
 }

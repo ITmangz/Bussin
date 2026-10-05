@@ -1,0 +1,245 @@
+package com.bussin.bussin_api.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.bussin.bussin_api.entity.QueueEntry;
+import com.bussin.bussin_api.entity.QueueStatus;
+import com.bussin.bussin_api.entity.Role;
+import com.bussin.bussin_api.entity.Trip;
+import com.bussin.bussin_api.entity.TripStatus;
+import com.bussin.bussin_api.entity.User;
+import com.bussin.bussin_api.exception.ConflictException;
+import com.bussin.bussin_api.exception.ResourceNotFoundException;
+import com.bussin.bussin_api.repository.QueueEntryRepository;
+import com.bussin.bussin_api.repository.TripRepository;
+import com.bussin.bussin_api.repository.UserRepository;
+
+@Service
+public class QueueService {
+
+    private final QueueEntryRepository queueEntryRepository;
+    private final TripRepository tripRepository;
+    private final UserRepository userRepository;
+
+    public QueueService(
+            QueueEntryRepository queueEntryRepository,
+            TripRepository tripRepository,
+            UserRepository userRepository) {
+
+        this.queueEntryRepository = queueEntryRepository;
+        this.tripRepository = tripRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional
+    public QueueEntry joinQueue(
+            Long tripId,
+            String firebaseUid) {
+
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Trip not found with ID: " + tripId));
+
+        User commuter = userRepository
+                .findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User profile not found"));
+
+        if (commuter.getRole() != Role.COMMUTER) {
+            throw new ConflictException(
+                    "Only commuters can join a queue");
+        }
+
+        validateJoinableTrip(trip);
+
+        if (queueEntryRepository
+                .existsByTripIdAndCommuterId(
+                        tripId,
+                        commuter.getId())) {
+
+            throw new ConflictException(
+                    "You have already joined this trip's queue");
+        }
+
+        int nextQueueNumber = getNextQueueNumber(tripId);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        QueueEntry entry = new QueueEntry();
+
+        entry.setTrip(trip);
+        entry.setCommuter(commuter);
+        entry.setQueueNumber(nextQueueNumber);
+        entry.setStatus(QueueStatus.WAITING);
+        entry.setJoinedAt(now);
+        entry.setUpdatedAt(now);
+
+        return queueEntryRepository.save(entry);
+    }
+
+    @Transactional(readOnly = true)
+    public List<QueueEntry> getTripQueue(
+            Long tripId) {
+
+        if (!tripRepository.existsById(tripId)) {
+            throw new ResourceNotFoundException(
+                    "Trip not found with ID: " + tripId);
+        }
+
+        return queueEntryRepository
+                .findByTripIdOrderByQueueNumberAsc(
+                        tripId);
+    }
+
+    @Transactional(readOnly = true)
+    public QueueEntry getQueueEntry(
+            Long queueEntryId) {
+
+        return queueEntryRepository
+                .findById(queueEntryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Queue entry not found with ID: "
+                                + queueEntryId));
+    }
+
+    @Transactional(readOnly = true)
+    public QueueEntry getMyQueueEntry(
+            Long tripId,
+            String firebaseUid) {
+
+        User commuter = getUserByFirebaseUid(
+                firebaseUid);
+
+        return queueEntryRepository
+                .findByTripIdAndCommuterId(
+                        tripId,
+                        commuter.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "You are not in this trip's queue"));
+    }
+
+    @Transactional
+    public QueueEntry cancelQueueEntry(
+            Long queueEntryId,
+            String firebaseUid) {
+
+        QueueEntry entry = getQueueEntry(queueEntryId);
+
+        User commuter = getUserByFirebaseUid(firebaseUid);
+
+        if (!entry.getCommuter()
+                .getId()
+                .equals(commuter.getId())) {
+
+            throw new ConflictException(
+                    "You can only cancel your own queue entry");
+        }
+
+        if (entry.getStatus() == QueueStatus.BOARDED) {
+            throw new ConflictException(
+                    "A boarded queue entry cannot be cancelled");
+        }
+
+        if (entry.getStatus() == QueueStatus.CANCELLED) {
+            throw new ConflictException(
+                    "Queue entry is already cancelled");
+        }
+
+        entry.setStatus(
+                QueueStatus.CANCELLED);
+
+        entry.setUpdatedAt(
+                LocalDateTime.now());
+
+        return queueEntryRepository.save(entry);
+    }
+
+    @Transactional
+    public QueueEntry updateQueueStatus(
+            Long queueEntryId,
+            QueueStatus newStatus) {
+
+        QueueEntry entry = getQueueEntry(queueEntryId);
+
+        QueueStatus currentStatus = entry.getStatus();
+
+        if (!isValidTransition(
+                currentStatus,
+                newStatus)) {
+
+            throw new ConflictException(
+                    "Invalid queue status transition from "
+                            + currentStatus
+                            + " to "
+                            + newStatus);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        entry.setStatus(newStatus);
+        entry.setUpdatedAt(now);
+
+        if (newStatus == QueueStatus.CALLED) {
+            entry.setCalledAt(now);
+        }
+
+        if (newStatus == QueueStatus.BOARDED) {
+            entry.setBoardedAt(now);
+        }
+
+        return queueEntryRepository.save(entry);
+    }
+
+    private void validateJoinableTrip(
+            Trip trip) {
+
+        TripStatus status = trip.getStatus();
+
+        if (status != TripStatus.SCHEDULED
+                && status != TripStatus.BOARDING) {
+
+            throw new ConflictException(
+                    "This trip is not accepting queue entries");
+        }
+    }
+
+    private int getNextQueueNumber(
+            Long tripId) {
+
+        return queueEntryRepository
+                .findTopByTripIdOrderByQueueNumberDesc(
+                        tripId)
+                .map(entry -> entry.getQueueNumber() + 1)
+                .orElse(1);
+    }
+
+    private User getUserByFirebaseUid(
+            String firebaseUid) {
+
+        return userRepository
+                .findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User profile not found"));
+    }
+
+    private boolean isValidTransition(
+            QueueStatus current,
+            QueueStatus next) {
+
+        if (current == QueueStatus.WAITING) {
+            return next == QueueStatus.CALLED
+                    || next == QueueStatus.CANCELLED;
+        }
+
+        if (current == QueueStatus.CALLED) {
+            return next == QueueStatus.BOARDED
+                    || next == QueueStatus.CANCELLED;
+        }
+
+        return false;
+    }
+}

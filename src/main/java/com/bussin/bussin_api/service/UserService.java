@@ -116,11 +116,13 @@ public class UserService {
                 System.out.println("age           = [" + request.getAge() + "]");
                 System.out.println("dateOfBirth   = [" + request.getDateOfBirth() + "]");
                 System.out.println("contactNumber = [" + request.getContactNumber() + "]");
+                System.out.println("address       = [" + request.getAddress() + "]");
                 System.out.println("========================================");
 
                 FirebaseToken firebaseToken = getAuthenticatedFirebaseToken();
 
                 String firebaseUid = firebaseToken.getUid();
+
                 String email = firebaseToken.getEmail();
 
                 validateUserDoesNotExist(firebaseUid);
@@ -130,15 +132,32 @@ public class UserService {
                 user.setFirebaseUid(firebaseUid);
                 user.setEmail(email);
 
-                user.setFirstName(request.getFirstName());
-                user.setMiddleName(request.getMiddleName());
-                user.setLastName(request.getLastName());
-                user.setGender(request.getGender());
-                user.setAge(request.getAge());
-                user.setDateOfBirth(request.getDateOfBirth());
-                user.setContactNumber(request.getContactNumber());
+                user.setFirstName(
+                                request.getFirstName());
 
-                user.setRole(Role.COMMUTER);
+                user.setMiddleName(
+                                request.getMiddleName());
+
+                user.setLastName(
+                                request.getLastName());
+
+                user.setGender(
+                                request.getGender());
+
+                user.setAge(
+                                request.getAge());
+
+                user.setDateOfBirth(
+                                request.getDateOfBirth());
+
+                user.setContactNumber(
+                                request.getContactNumber());
+
+                user.setAddress(
+                                request.getAddress());
+
+                user.setRole(
+                                Role.COMMUTER);
 
                 LocalDateTime now = LocalDateTime.now();
 
@@ -153,6 +172,7 @@ public class UserService {
                 System.out.println("age           = [" + user.getAge() + "]");
                 System.out.println("dateOfBirth   = [" + user.getDateOfBirth() + "]");
                 System.out.println("contactNumber = [" + user.getContactNumber() + "]");
+                System.out.println("address       = [" + user.getAddress() + "]");
                 System.out.println("========================================");
 
                 User savedUser = userRepository.save(user);
@@ -165,6 +185,7 @@ public class UserService {
                 System.out.println("age           = [" + savedUser.getAge() + "]");
                 System.out.println("dateOfBirth   = [" + savedUser.getDateOfBirth() + "]");
                 System.out.println("contactNumber = [" + savedUser.getContactNumber() + "]");
+                System.out.println("address       = [" + savedUser.getAddress() + "]");
                 System.out.println("========================================");
 
                 return toResponse(savedUser);
@@ -189,8 +210,17 @@ public class UserService {
                 user.setFirstName(
                                 request.getFirstName());
 
+                user.setMiddleName(
+                                request.getMiddleName());
+
                 user.setLastName(
                                 request.getLastName());
+
+                user.setContactNumber(
+                                request.getContactNumber());
+
+                user.setAddress(
+                                request.getAddress());
 
                 user.setUpdatedAt(
                                 LocalDateTime.now());
@@ -262,6 +292,7 @@ public class UserService {
                                 user.getAge(),
                                 user.getDateOfBirth(),
                                 user.getContactNumber(),
+                                user.getAddress(),
                                 user.getRole().name(),
                                 user.getCreatedAt(),
                                 user.getUpdatedAt());

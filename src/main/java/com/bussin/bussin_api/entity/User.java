@@ -47,6 +47,9 @@ public class User {
     @Column(name = "contact_number")
     private String contactNumber;
 
+    @Column(name = "address", length = 255)
+    private String address;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private Role role;
@@ -174,6 +177,18 @@ public class User {
 
     public void setContactNumber(String contactNumber) {
         this.contactNumber = contactNumber;
+    }
+
+    // ============================================================
+    // ADDRESS
+    // ============================================================
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     // ============================================================

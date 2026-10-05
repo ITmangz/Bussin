@@ -1,6 +1,7 @@
 package com.bussin.bussin_api.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -8,11 +9,11 @@ import com.bussin.bussin_api.entity.Route;
 
 public interface RouteRepository extends JpaRepository<Route, Long> {
 
-    boolean existsByRouteIdentifier(String routeIdentifier);
+    Optional<Route> findByRouteIdentifier(String routeIdentifier);
 
-    boolean existsByRouteIdentifierAndIdNot(String routeIdentifier, Long id);
+    List<Route> findByActiveTrue();
 
-    List<Route> findByActiveTrueOrderByRouteIdentifierAsc();
-
-    List<Route> findAllByOrderByRouteIdentifierAsc();
+    List<Route> findByOriginIgnoreCaseAndDestinationIgnoreCaseAndActiveTrue(
+            String origin,
+            String destination);
 }

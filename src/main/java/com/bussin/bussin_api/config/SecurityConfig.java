@@ -1,5 +1,7 @@
 package com.bussin.bussin_api.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -8,6 +10,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
@@ -34,47 +39,64 @@ public class SecurityConfig {
                         HttpSecurity http) throws Exception {
 
                 http
-
-                                // Firebase handles authentication.
                                 .csrf(csrf -> csrf.disable())
 
-                                // No server-side sessions.
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                                 .sessionManagement(session -> session.sessionCreationPolicy(
                                                 SessionCreationPolicy.STATELESS))
 
-                                // Disable Spring Security's default authentication methods.
                                 .formLogin(formLogin -> formLogin.disable())
 
                                 .httpBasic(httpBasic -> httpBasic.disable())
 
                                 .logout(logout -> logout.disable())
 
-                                // Endpoint authorization.
                                 .authorizeHttpRequests(auth -> auth
 
-                                                // Public endpoint.
-                                                .requestMatchers(
-                                                                "/api/health")
+                                                // ------------------------------------------------
+                                                // CORS preflight
+                                                // ------------------------------------------------
+
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**")
                                                 .permitAll()
 
-                                                // Firebase-authenticated users can create
-                                                // their BUSSIN profile.
+                                                // ------------------------------------------------
+                                                // Public
+                                                // ------------------------------------------------
+
+                                                .requestMatchers("/api/health")
+                                                .permitAll()
+
+                                                // ------------------------------------------------
+                                                // User registration
+                                                // ------------------------------------------------
+
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/users")
                                                 .authenticated()
 
-                                                // Any authenticated BUSSIN user.
+                                                // ------------------------------------------------
+                                                // Current user
+                                                // ------------------------------------------------
+
                                                 .requestMatchers(
                                                                 "/api/users/me")
                                                 .authenticated()
 
-                                                // ADMIN only.
+                                                // ------------------------------------------------
+                                                // Admin user management
+                                                // ------------------------------------------------
+
                                                 .requestMatchers(
                                                                 "/api/users/**")
                                                 .hasRole("ADMIN")
 
-                                                // Bus management.
+                                                // ------------------------------------------------
+                                                // Buses
+                                                // ------------------------------------------------
+
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,
                                                                 "/api/buses/**")
@@ -84,7 +106,10 @@ public class SecurityConfig {
                                                                 "/api/buses/**")
                                                 .hasAnyRole("ADMIN", "EMPLOYEE")
 
-                                                // Route management.
+                                                // ------------------------------------------------
+                                                // Routes
+                                                // ------------------------------------------------
+
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,
                                                                 "/api/routes/**")
@@ -102,9 +127,15 @@ public class SecurityConfig {
 
                                                 .requestMatchers(
                                                                 "/api/routes/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE", "COMMUTER")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE",
+                                                                "COMMUTER")
 
-                                                // Trip management.
+                                                // ------------------------------------------------
+                                                // Trips
+                                                // ------------------------------------------------
+
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,
                                                                 "/api/trips/**")
@@ -122,17 +153,88 @@ public class SecurityConfig {
 
                                                 .requestMatchers(
                                                                 "/api/trips/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE", "COMMUTER")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE",
+                                                                "COMMUTER")
 
-                                                // All remaining API endpoints require authentication.
-                                                .anyRequest().authenticated())
+                                                // ------------------------------------------------
+                                                // Queue
+                                                // ------------------------------------------------
 
-                                // Our Firebase authentication filter runs before
-                                // Spring Security's username/password authentication filter.
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/queue")
+                                                .hasRole("COMMUTER")
+
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/api/queue/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/queue/**")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE",
+                                                                "COMMUTER")
+
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/api/queue/**")
+                                                .hasRole("COMMUTER")
+
+                                                // ------------------------------------------------
+                                                // AI
+                                                // ------------------------------------------------
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/ai/chat")
+                                                .hasRole("COMMUTER")
+
+                                                // ------------------------------------------------
+                                                // Everything else
+                                                // ------------------------------------------------
+
+                                                .anyRequest()
+                                                .authenticated())
+
                                 .addFilterBefore(
                                                 firebaseAuthenticationFilter,
                                                 UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();
+        }
+
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+
+                CorsConfiguration configuration = new CorsConfiguration();
+
+                configuration.setAllowedOrigins(List.of(
+                                "http://localhost:5173"));
+
+                configuration.setAllowedMethods(List.of(
+                                "GET",
+                                "POST",
+                                "PUT",
+                                "DELETE",
+                                "OPTIONS"));
+
+                configuration.setAllowedHeaders(List.of(
+                                "Authorization",
+                                "Content-Type"));
+
+                configuration.setAllowCredentials(true);
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+                source.registerCorsConfiguration(
+                                "/**",
+                                configuration);
+
+                return source;
         }
 }
