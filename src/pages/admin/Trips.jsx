@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Edit3, Plus, Search, Trash2, X } from "lucide-react";
 import { getAllBuses } from "../../services/busService";
+import { getAllRoutes } from "../../services/routeService";
 import { createTrip, deleteTrip, getAllTrips, updateTrip } from "../../services/tripService";
 import "./Trips.css";
 
@@ -28,7 +29,7 @@ function toInputDateTime(value) {
 }
 
 function Trips() {
-  const [trips,setTrips]=useState([]), [buses,setBuses]=useState([]), [loading,setLoading]=useState(true);
+  const [trips,setTrips]=useState([]), [buses,setBuses]=useState([]), [routes,setRoutes]=useState([]), [loading,setLoading]=useState(true);
   const [error,setError]=useState(""), [search,setSearch]=useState(""), [statusFilter,setStatusFilter]=useState("");
   const [modalOpen,setModalOpen]=useState(false), [editingTrip,setEditingTrip]=useState(null);
   const [form,setForm]=useState(EMPTY_FORM), [formError,setFormError]=useState(""), [saving,setSaving]=useState(false), [deletingId,setDeletingId]=useState(null);
@@ -37,8 +38,8 @@ function Trips() {
     async function loadData() {
       try {
         setLoading(true); setError("");
-        const [tripData,busData]=await Promise.all([getAllTrips(),getAllBuses()]);
-        setTrips(Array.isArray(tripData)?tripData:[]); setBuses(Array.isArray(busData)?busData:[]);
+        const [tripData,busData,routeData]=await Promise.all([getAllTrips(),getAllBuses(),getAllRoutes(true)]);
+        setTrips(Array.isArray(tripData)?tripData:[]); setBuses(Array.isArray(busData)?busData:[]); setRoutes(Array.isArray(routeData)?routeData:[]);
       } catch(err) {
         console.error("Failed to load trips:",err);
         setError(err.response?.data?.message||"Unable to load trips from the BUSSIN server.");
@@ -55,7 +56,7 @@ function Trips() {
     });
   },[trips,search,statusFilter]);
 
-  function openCreateModal(){ setEditingTrip(null); setForm({...EMPTY_FORM,busId:buses[0]?.id?String(buses[0].id):""}); setFormError(""); setModalOpen(true); }
+  function openCreateModal(){ setEditingTrip(null); setForm({...EMPTY_FORM,busId:buses[0]?.id?String(buses[0].id):"",routeId:routes[0]?.id?String(routes[0].id):""}); setFormError(""); setModalOpen(true); }
   function openEditModal(trip){ setEditingTrip(trip); setForm({busId:String(trip.busId??""),routeId:String(trip.routeId??""),scheduledDeparture:toInputDateTime(trip.scheduledDeparture),scheduledArrival:toInputDateTime(trip.scheduledArrival),status:trip.status||"SCHEDULED"}); setFormError(""); setModalOpen(true); }
   function closeModal(){ if(saving)return; setModalOpen(false); setEditingTrip(null); setForm(EMPTY_FORM); setFormError(""); }
   function handleChange(e){ setForm(c=>({...c,[e.target.name]:e.target.value})); setFormError(""); }
@@ -106,7 +107,7 @@ function Trips() {
       <div className="trip-modal-header"><div><h2 id="trip-modal-title">{editingTrip?"Edit Trip":"Add Trip"}</h2><p>Configure the bus, route, schedule, and status.</p></div><button type="button" className="trip-modal-close" onClick={closeModal} disabled={saving} aria-label="Close"><X size={18}/></button></div>
       <form className="trip-form" onSubmit={handleSubmit}><div className="trip-form-grid">
         <div className="trip-form-field"><label htmlFor="trip-bus">Bus</label><select id="trip-bus" name="busId" value={form.busId} onChange={handleChange} required><option value="">Select bus</option>{buses.map(bus=><option key={bus.id} value={bus.id}>{bus.plateNumber} — {bus.model||"Bus"} ({bus.capacity} seats)</option>)}</select></div>
-        <div className="trip-form-field"><label htmlFor="trip-route-id">Route ID</label><input id="trip-route-id" name="routeId" type="number" min="1" step="1" value={form.routeId} onChange={handleChange} placeholder="e.g. 1" required/><small>The current backend has no Route CRUD endpoint, so an existing route ID is entered directly.</small></div>
+        <div className="trip-form-field"><label htmlFor="trip-route-id">Route</label><select id="trip-route-id" name="routeId" value={form.routeId} onChange={handleChange} required><option value="">Select route</option>{routes.map(route=><option key={route.id} value={route.id}>{route.routeIdentifier} — {route.origin} → {route.destination}</option>)}</select><small>Only active routes are available for new trip assignments.</small></div>
         <div className="trip-form-field"><label htmlFor="trip-departure">Scheduled departure</label><input id="trip-departure" name="scheduledDeparture" type="datetime-local" value={form.scheduledDeparture} onChange={handleChange} required/></div>
         <div className="trip-form-field"><label htmlFor="trip-arrival">Scheduled arrival</label><input id="trip-arrival" name="scheduledArrival" type="datetime-local" value={form.scheduledArrival} onChange={handleChange} required/></div>
         <div className="trip-form-field full"><label htmlFor="trip-status">Status</label><select id="trip-status" name="status" value={form.status} onChange={handleChange}>{STATUS_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
