@@ -1,6 +1,7 @@
 package com.bussin.bussin_api.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +30,8 @@ import com.google.firebase.auth.FirebaseToken;
 @Service
 public class BookingService {
 
+        private static final int SEATS_PER_ROW = 6;
+
         private final BookingRepository bookingRepository;
         private final TripRepository tripRepository;
         private final UserRepository userRepository;
@@ -49,7 +52,8 @@ public class BookingService {
                 String firebaseUid = getAuthenticatedFirebaseUid();
 
                 User commuter = userRepository.findByFirebaseUid(firebaseUid)
-                                .orElseThrow(() -> new ResourceNotFoundException("BUSSIN user profile not found."));
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "BUSSIN user profile not found."));
 
                 if (commuter.getRole() != Role.COMMUTER) {
                         throw new ConflictException(
@@ -138,12 +142,16 @@ public class BookingService {
                                 BookingStatus.PENDING,
                                 BookingStatus.CONFIRMED);
 
-                List<String> availableSeats = new java.util.ArrayList<>();
+                List<String> availableSeats = new ArrayList<>();
 
                 for (int position = 1; position <= capacity; position++) {
-                        int row = ((position - 1) / 4) + 1;
-                        int seatIndex = (position - 1) % 4;
-                        String seatNumber = row + String.valueOf((char) ('A' + seatIndex));
+
+                        int row = ((position - 1) / SEATS_PER_ROW) + 1;
+
+                        int seatIndex = (position - 1) % SEATS_PER_ROW;
+
+                        String seatNumber = row
+                                        + String.valueOf((char) ('A' + seatIndex));
 
                         boolean occupied = bookingRepository
                                         .existsByTripIdAndSeatNumberAndStatusIn(
@@ -199,7 +207,8 @@ public class BookingService {
                 String firebaseUid = getAuthenticatedFirebaseUid();
 
                 User commuter = userRepository.findByFirebaseUid(firebaseUid)
-                                .orElseThrow(() -> new ResourceNotFoundException("BUSSIN user profile not found."));
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "BUSSIN user profile not found."));
 
                 Booking booking = bookingRepository
                                 .findByIdAndCommuterId(bookingId, commuter.getId())
@@ -215,7 +224,8 @@ public class BookingService {
                 String firebaseUid = getAuthenticatedFirebaseUid();
 
                 User commuter = userRepository.findByFirebaseUid(firebaseUid)
-                                .orElseThrow(() -> new ResourceNotFoundException("BUSSIN user profile not found."));
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "BUSSIN user profile not found."));
 
                 Booking booking = bookingRepository
                                 .findByIdAndCommuterId(bookingId, commuter.getId())
@@ -270,12 +280,14 @@ public class BookingService {
                                         "Invalid seat number: " + seatNumber);
                 }
 
-                if (letterIndex < 0 || letterIndex > 3) {
+                if (letterIndex < 0 || letterIndex >= SEATS_PER_ROW) {
                         throw new ConflictException(
                                         "Invalid seat number: " + seatNumber);
                 }
 
-                int seatIndex = ((rowNumber - 1) * 4) + letterIndex + 1;
+                int seatIndex = ((rowNumber - 1) * SEATS_PER_ROW)
+                                + letterIndex
+                                + 1;
 
                 if (seatIndex > bus.getCapacity()) {
                         throw new ConflictException(
@@ -308,6 +320,8 @@ public class BookingService {
                         case 'B' -> 1;
                         case 'C' -> 2;
                         case 'D' -> 3;
+                        case 'E' -> 4;
+                        case 'F' -> 5;
                         default -> -1;
                 };
         }

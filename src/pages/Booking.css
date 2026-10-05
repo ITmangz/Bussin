@@ -188,15 +188,20 @@
   font-size: 11px;
 }
 
+/* =========================================================
+   SEAT MAP
+   ========================================================= */
+
 .seat-layout {
-  max-width: 440px;
+  width: 100%;
+  max-width: 620px;
   margin: 0 auto;
 }
 
 .seat-driver {
   width: 90px;
   padding: 8px;
-  margin: 0 0 16px auto;
+  margin: 0 0 18px auto;
   border-radius: var(--radius-md);
   background: var(--bussin-dark);
   color: var(--bussin-white);
@@ -206,14 +211,48 @@
   letter-spacing: 0.08em;
 }
 
-.seat-grid {
+.seat-column-labels {
   display: grid;
-  grid-template-columns: repeat(4, minmax(48px, 1fr));
-  gap: 9px;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr))
+    32px
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 7px;
+  padding: 0 1px;
+}
+
+.seat-column-labels span {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.seat-column-labels .seat-aisle-label {
+  display: block;
+}
+
+.seat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.seat-row {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr))
+    32px
+    repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
 }
 
 .seat-button {
-  min-height: 48px;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
   border: 1px solid var(--bussin-border);
   border-radius: var(--radius-md);
   background: var(--bussin-light);
@@ -221,11 +260,17 @@
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .seat-button.available:hover {
   border-color: var(--bussin-red);
   color: var(--bussin-red);
+  transform: translateY(-1px);
 }
 
 .seat-button.selected {
@@ -240,12 +285,16 @@
   text-decoration: line-through;
 }
 
+.seat-aisle {
+  min-width: 0;
+}
+
 .seat-legend {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 15px;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 
 .seat-legend span {
@@ -275,6 +324,10 @@
   background: var(--bussin-border-dark);
 }
 
+/* =========================================================
+   BOOKING ACTIONS
+   ========================================================= */
+
 .booking-panel-actions {
   display: flex;
   justify-content: flex-end;
@@ -283,6 +336,10 @@
   padding-top: 17px;
   border-top: 1px solid var(--bussin-border);
 }
+
+/* =========================================================
+   PASSENGER FORM
+   ========================================================= */
 
 .booking-form {
   display: grid;
@@ -331,6 +388,10 @@
   color: var(--text-primary);
   font-size: 11px;
 }
+
+/* =========================================================
+   REVIEW
+   ========================================================= */
 
 .booking-review {
   display: grid;
@@ -382,6 +443,10 @@
   line-height: 1.6;
 }
 
+/* =========================================================
+   FARE SIDEBAR
+   ========================================================= */
+
 .booking-side {
   align-self: start;
 }
@@ -405,6 +470,10 @@
   font-size: 9px;
   line-height: 1.5;
 }
+
+/* =========================================================
+   SUCCESS
+   ========================================================= */
 
 .booking-success {
   max-width: 720px;
@@ -495,6 +564,10 @@
   margin-top: 22px;
 }
 
+/* =========================================================
+   EMPTY
+   ========================================================= */
+
 .booking-empty {
   padding: 55px 25px;
   text-align: center;
@@ -511,7 +584,11 @@
   font-size: 11px;
 }
 
-@media (max-width: 900px) {
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1100px) {
   .booking-layout {
     grid-template-columns: 1fr;
   }
@@ -527,13 +604,40 @@
   }
 
   .booking-fare-card small {
-    max-width: 220px;
+    max-width: 260px;
   }
 }
 
-@media (max-width: 650px) {
+@media (max-width: 700px) {
   .booking-panel {
     padding: 15px;
+  }
+
+  .seat-layout {
+    max-width: 100%;
+  }
+
+  .seat-column-labels,
+  .seat-row {
+    grid-template-columns:
+      repeat(3, minmax(36px, 1fr))
+      18px
+      repeat(3, minmax(36px, 1fr));
+    gap: 5px;
+  }
+
+  .seat-button {
+    min-height: 44px;
+    font-size: 10px;
+  }
+
+  .seat-rows {
+    gap: 6px;
+  }
+
+  .seat-driver {
+    width: 75px;
+    margin-bottom: 14px;
   }
 
   .booking-form,
@@ -559,5 +663,39 @@
   .booking-success {
     margin: 20px auto;
     padding: 25px 16px;
+  }
+}
+
+@media (max-width: 430px) {
+  .booking-header h1 {
+    font-size: 21px;
+  }
+
+  .seat-column-labels,
+  .seat-row {
+    grid-template-columns:
+      repeat(3, minmax(30px, 1fr))
+      12px
+      repeat(3, minmax(30px, 1fr));
+    gap: 4px;
+  }
+
+  .seat-button {
+    min-height: 40px;
+    border-radius: 6px;
+    font-size: 9px;
+  }
+
+  .seat-column-labels span {
+    font-size: 8px;
+  }
+
+  .booking-fare-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .booking-fare-card small {
+    max-width: none;
   }
 }

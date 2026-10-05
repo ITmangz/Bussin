@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import AppLayout from "../components/layout/AppLayout";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
+import RoleRoute from "../components/auth/RoleRoute";
 
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -14,31 +15,8 @@ import Trips from "../pages/Trips";
 import Profile from "../pages/Profile";
 import Booking from "../pages/Booking";
 
-function ProtectedLayout() {
-  return (
-    <ProtectedRoute>
-      <AppLayout>
-        <Routes>
-          <Route path="/dashboard" element={<Dashboard />} />
-
-          <Route path="/ai-booking" element={<AIBooking />} />
-
-          <Route path="/bookings" element={<MyBookings />} />
-
-          <Route path="/queue" element={<Queue />} />
-
-          <Route path="/trips" element={<Trips />} />
-
-          <Route path="/booking" element={<Booking />} />
-
-          <Route path="/profile" element={<Profile />} />
-
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import EmployeeDashboard from "../pages/employee/EmployeeDashboard";
 
 function AppRoutes() {
   return (
@@ -47,7 +25,61 @@ function AppRoutes() {
 
       <Route path="/register" element={<Register />} />
 
-      <Route path="/*" element={<ProtectedLayout />} />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedRoute>
+            <RoleRoute allowedRoles={["ADMIN"]}>
+              <AppLayout>
+                <AdminDashboard />
+              </AppLayout>
+            </RoleRoute>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/employee/dashboard"
+        element={
+          <ProtectedRoute>
+            <RoleRoute allowedRoles={["EMPLOYEE"]}>
+              <AppLayout>
+                <EmployeeDashboard />
+              </AppLayout>
+            </RoleRoute>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Routes>
+                <Route path="/dashboard" element={<Dashboard />} />
+
+                <Route path="/ai-booking" element={<AIBooking />} />
+
+                <Route path="/bookings" element={<MyBookings />} />
+
+                <Route path="/queue" element={<Queue />} />
+
+                <Route path="/trips" element={<Trips />} />
+
+                <Route path="/booking" element={<Booking />} />
+
+                <Route path="/profile" element={<Profile />} />
+
+                <Route
+                  path="*"
+                  element={<Navigate to="/dashboard" replace />}
+                />
+              </Routes>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

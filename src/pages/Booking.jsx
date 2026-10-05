@@ -15,11 +15,10 @@ import {
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  createBooking,
-  getAvailableSeats,
-} from "../services/bookingService";
+import { createBooking, getAvailableSeats } from "../services/bookingService";
 import "./Booking.css";
+
+const SEATS_PER_ROW = 6;
 
 function formatDateTime(value) {
   if (!value) {
@@ -34,6 +33,30 @@ function formatDateTime(value) {
   });
 }
 
+function generateSeatRows(capacity) {
+  const seats = [];
+  const totalSeats = Number(capacity || 0);
+
+  for (let position = 1; position <= totalSeats; position += 1) {
+    const row = Math.floor((position - 1) / SEATS_PER_ROW) + 1;
+    const seatIndex = (position - 1) % SEATS_PER_ROW;
+
+    seats.push({
+      row,
+      seat: `${row}${String.fromCharCode("A".charCodeAt(0) + seatIndex)}`,
+      side: seatIndex < 3 ? "left" : "right",
+    });
+  }
+
+  const rows = [];
+
+  for (let index = 0; index < seats.length; index += SEATS_PER_ROW) {
+    rows.push(seats.slice(index, index + SEATS_PER_ROW));
+  }
+
+  return rows;
+}
+
 function Booking() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,13 +67,9 @@ function Booking() {
   const [step, setStep] = useState(1);
   const [availableSeats, setAvailableSeats] = useState([]);
   const [selectedSeat, setSelectedSeat] = useState("");
-  const [passengerName, setPassengerName] = useState(
-    user?.displayName || "",
-  );
+  const [passengerName, setPassengerName] = useState(user?.displayName || "");
   const [passengerPhone, setPassengerPhone] = useState("");
-  const [passengerEmail, setPassengerEmail] = useState(
-    user?.email || "",
-  );
+  const [passengerEmail, setPassengerEmail] = useState(user?.email || "");
   const [loadingSeats, setLoadingSeats] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -71,9 +90,9 @@ function Booking() {
         setAvailableSeats(Array.isArray(seats) ? seats : []);
       } catch (err) {
         console.error("Failed to load seats:", err);
+
         setError(
-          err.response?.data?.message ||
-            "Unable to load seat availability.",
+          err.response?.data?.message || "Unable to load seat availability.",
         );
       } finally {
         setLoadingSeats(false);
@@ -83,20 +102,8 @@ function Booking() {
     loadSeats();
   }, [trip?.id]);
 
-  const allSeats = useMemo(() => {
-    const capacity = Number(trip?.capacity || 0);
-    const seats = [];
-
-    for (let position = 1; position <= capacity; position += 1) {
-      const row = Math.floor((position - 1) / 4) + 1;
-      const letter = String.fromCharCode(
-        "A".charCodeAt(0) + ((position - 1) % 4),
-      );
-
-      seats.push(`${row}${letter}`);
-    }
-
-    return seats;
+  const seatRows = useMemo(() => {
+    return generateSeatRows(trip?.capacity);
   }, [trip?.capacity]);
 
   if (!trip) {
@@ -106,9 +113,7 @@ function Booking() {
           <h2>No trip selected</h2>
           <p>Select a trip before starting a booking.</p>
 
-          <AppButton onClick={() => navigate("/trips")}>
-            Browse Trips
-          </AppButton>
+          <AppButton onClick={() => navigate("/trips")}>Browse Trips</AppButton>
         </AppCard>
       </section>
     );
@@ -188,8 +193,8 @@ function Booking() {
           <h1>Your trip is booked.</h1>
 
           <p>
-            Your booking has been created successfully. Payment remains
-            unpaid until a payment is completed.
+            Your booking has been created successfully. Payment remains unpaid
+            until a payment is completed.
           </p>
 
           <div className="booking-reference">
@@ -283,6 +288,7 @@ function Booking() {
 
             <div>
               <span>{trip.routeIdentifier || "Selected Trip"}</span>
+
               <strong>
                 {trip.origin} → {trip.destination}
               </strong>
@@ -315,41 +321,102 @@ function Booking() {
               </div>
 
               {loadingSeats ? (
-                <div className="booking-loading">Loading seat availability...</div>
+                <div className="booking-loading">
+                  Loading seat availability...
+                </div>
               ) : (
                 <div className="seat-layout">
                   <div className="seat-driver">DRIVER</div>
 
-                  <div className="seat-grid">
-                    {allSeats.map((seat) => {
-                      const available = availableSeats.includes(seat);
+                  <div className="seat-column-labels">
+                    <span>A</span>
+                    <span>B</span>
+                    <span>C</span>
+                    <span className="seat-aisle-label" />
+                    <span>D</span>
+                    <span>E</span>
+                    <span>F</span>
+                  </div>
+
+                  <div className="seat-rows">
+                    {seatRows.map((rowSeats) => {
+                      const rowNumber = rowSeats[0]?.row;
+
+                      const leftSeats = rowSeats.slice(0, 3);
+                      const rightSeats = rowSeats.slice(3, 6);
 
                       return (
-                        <button
-                          key={seat}
-                          type="button"
-                          className={`seat-button ${available ? "available" : "occupied"} ${selectedSeat === seat ? "selected" : ""}`}
-                          disabled={!available}
-                          onClick={() => {
-                            setSelectedSeat(seat);
-                            setError("");
-                          }}
-                        >
-                          {seat}
-                        </button>
+                        <div className="seat-row" key={rowNumber}>
+                          {leftSeats.map((seat) => {
+                            const available = availableSeats.includes(
+                              seat.seat,
+                            );
+
+                            return (
+                              <button
+                                key={seat.seat}
+                                type="button"
+                                className={`seat-button ${
+                                  available ? "available" : "occupied"
+                                } ${
+                                  selectedSeat === seat.seat ? "selected" : ""
+                                }`}
+                                disabled={!available}
+                                onClick={() => {
+                                  setSelectedSeat(seat.seat);
+                                  setError("");
+                                }}
+                              >
+                                {seat.seat}
+                              </button>
+                            );
+                          })}
+
+                          <div className="seat-aisle" />
+
+                          {rightSeats.map((seat) => {
+                            const available = availableSeats.includes(
+                              seat.seat,
+                            );
+
+                            return (
+                              <button
+                                key={seat.seat}
+                                type="button"
+                                className={`seat-button ${
+                                  available ? "available" : "occupied"
+                                } ${
+                                  selectedSeat === seat.seat ? "selected" : ""
+                                }`}
+                                disabled={!available}
+                                onClick={() => {
+                                  setSelectedSeat(seat.seat);
+                                  setError("");
+                                }}
+                              >
+                                {seat.seat}
+                              </button>
+                            );
+                          })}
+                        </div>
                       );
                     })}
                   </div>
 
                   <div className="seat-legend">
                     <span>
-                      <i className="available" /> Available
+                      <i className="available" />
+                      Available
                     </span>
+
                     <span>
-                      <i className="selected" /> Selected
+                      <i className="selected" />
+                      Selected
                     </span>
+
                     <span>
-                      <i className="occupied" /> Occupied
+                      <i className="occupied" />
+                      Occupied
                     </span>
                   </div>
                 </div>
@@ -376,8 +443,10 @@ function Booking() {
               <div className="booking-form">
                 <label>
                   <span>Passenger Name</span>
+
                   <div className="booking-input">
                     <User size={15} />
+
                     <input
                       value={passengerName}
                       onChange={(event) => setPassengerName(event.target.value)}
@@ -388,11 +457,15 @@ function Booking() {
 
                 <label>
                   <span>Phone Number</span>
+
                   <div className="booking-input">
                     <Phone size={15} />
+
                     <input
                       value={passengerPhone}
-                      onChange={(event) => setPassengerPhone(event.target.value)}
+                      onChange={(event) =>
+                        setPassengerPhone(event.target.value)
+                      }
                       placeholder="09XXXXXXXXX"
                     />
                   </div>
@@ -400,12 +473,16 @@ function Booking() {
 
                 <label>
                   <span>Email Address</span>
+
                   <div className="booking-input">
                     <Mail size={15} />
+
                     <input
                       type="email"
                       value={passengerEmail}
-                      onChange={(event) => setPassengerEmail(event.target.value)}
+                      onChange={(event) =>
+                        setPassengerEmail(event.target.value)
+                      }
                       placeholder="you@example.com"
                     />
                   </div>
@@ -437,6 +514,7 @@ function Booking() {
               <div className="booking-review">
                 <div>
                   <span>Route</span>
+
                   <strong>
                     {trip.origin} → {trip.destination}
                   </strong>
@@ -444,32 +522,38 @@ function Booking() {
 
                 <div>
                   <span>Departure</span>
+
                   <strong>{formatDateTime(trip.scheduledDeparture)}</strong>
                 </div>
 
                 <div>
                   <span>Bus</span>
+
                   <strong>{trip.busNumber || "N/A"}</strong>
                 </div>
 
                 <div>
                   <span>Seat</span>
+
                   <strong>{selectedSeat}</strong>
                 </div>
 
                 <div>
                   <span>Passenger</span>
+
                   <strong>{passengerName}</strong>
                 </div>
 
                 <div>
                   <span>Contact</span>
+
                   <strong>{passengerPhone}</strong>
                 </div>
               </div>
 
               <div className="booking-total">
                 <span>Fare</span>
+
                 <strong>
                   ₱
                   {Number(trip.fare || 0).toLocaleString("en-PH", {
@@ -490,6 +574,7 @@ function Booking() {
 
                 <AppButton onClick={submitBooking} disabled={submitting}>
                   {submitting ? "Creating Booking..." : "Confirm Booking"}
+
                   {!submitting && <CheckCircle2 size={15} />}
                 </AppButton>
               </div>
