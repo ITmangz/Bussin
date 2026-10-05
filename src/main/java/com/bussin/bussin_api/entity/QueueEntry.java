@@ -36,6 +36,9 @@ public class QueueEntry {
     @JoinColumn(name = "commuter_id", nullable = false)
     private User commuter;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @Column(nullable = false)
     private Integer queueNumber;
 
@@ -76,6 +79,14 @@ public class QueueEntry {
 
     public User getCommuter() {
         return commuter;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public void setCommuter(User commuter) {
