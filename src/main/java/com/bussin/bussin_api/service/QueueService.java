@@ -40,6 +40,8 @@ public class QueueService {
             Trip trip,
             User commuter) {
 
+        validateJoinableTrip(trip);
+
         QueueEntry existing = queueEntryRepository
                 .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
                 .orElse(null);
