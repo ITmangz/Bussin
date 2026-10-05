@@ -10,7 +10,7 @@ import {
 
 import AppButton from "../components/ui/AppButton";
 import { sendAIMessage } from "../services/aiService";
-import "./AIBooking.css";
+import "./AiBooking.css";
 
 const initialMessages = [
   {
