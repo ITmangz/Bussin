@@ -5,6 +5,8 @@ import { Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../../components/auth/AuthLayout";
 import { loginWithEmail, loginWithGoogle } from "../../services/authService";
 
+import { getCurrentUserProfile } from "../../services/userService";
+
 import "./Login.css";
 
 function Login() {
@@ -18,6 +20,30 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function navigateByRole(profile) {
+    console.log("BUSSIN LOGIN PROFILE:", profile);
+    console.log("BUSSIN LOGIN ROLE:", profile?.role);
+
+    switch (profile?.role) {
+      case "ADMIN":
+        navigate("/admin/dashboard");
+        break;
+
+      case "EMPLOYEE":
+        navigate("/employee/dashboard");
+        break;
+
+      case "COMMUTER":
+        navigate("/dashboard");
+        break;
+
+      default:
+        console.error("Unknown BUSSIN user role:", profile?.role);
+
+        setError("Your account does not have a valid BUSSIN role.");
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -27,7 +53,9 @@ function Login() {
     try {
       await loginWithEmail(email, password);
 
-      navigate("/dashboard");
+      const profile = await getCurrentUserProfile();
+
+      navigateByRole(profile);
     } catch (error) {
       console.error(error);
 
@@ -63,7 +91,9 @@ function Login() {
     try {
       await loginWithGoogle();
 
-      navigate("/dashboard");
+      const profile = await getCurrentUserProfile();
+
+      navigateByRole(profile);
     } catch (error) {
       console.error(error);
 

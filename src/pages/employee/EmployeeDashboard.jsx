@@ -3,13 +3,27 @@ import { useAuth } from "../../contexts/AuthContext";
 function EmployeeDashboard() {
   const { profile } = useAuth();
 
+  const displayName = profile?.firstName || profile?.displayName || "Employee";
+
   return (
     <div>
-      <h1>Employee Dashboard</h1>
+      <div className="admin-page-header">
+        <h1 className="admin-page-title">Employee Dashboard</h1>
 
-      <p>Welcome, {profile?.firstName || profile?.email || "Employee"}.</p>
+        <p className="admin-page-description">
+          Welcome back, {displayName}. Manage your assigned trips and passenger
+          operations.
+        </p>
+      </div>
 
-      <p>This is the BUSSIN employee operations portal.</p>
+      <div className="admin-dashboard-panel">
+        <h2 className="admin-panel-title">Operations Overview</h2>
+
+        <p className="admin-panel-description">
+          Your assigned trips, bookings, queue, and boarding information will
+          appear here.
+        </p>
+      </div>
     </div>
   );
 }
