@@ -163,6 +163,14 @@ public class QueueService {
             Long queueEntryId,
             QueueStatus newStatus) {
 
+        User staff = getAuthenticatedUser();
+
+        if (staff.getRole() != Role.ADMIN
+                && staff.getRole() != Role.EMPLOYEE) {
+            throw new ConflictException(
+                    "Administrator or employee access is required");
+        }
+
         QueueEntry entry = getQueueEntry(queueEntryId);
 
         QueueStatus currentStatus = entry.getStatus();
@@ -215,6 +223,19 @@ public class QueueService {
                         tripId)
                 .map(entry -> entry.getQueueNumber() + 1)
                 .orElse(1);
+    }
+
+    private User getAuthenticatedUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ConflictException("Authenticated Firebase user is required");
+        }
+
+        return getUserByFirebaseUid(authentication.getName());
     }
 
     private User getUserByFirebaseUid(
