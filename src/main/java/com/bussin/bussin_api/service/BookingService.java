@@ -7,7 +7,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -107,19 +106,13 @@ public class BookingService {
         for (String seatNumber : seatNumbers) {
             validateSeatNumber(seatNumber, trip.getBus());
 
-            boolean parentSeatBooked = bookingRepository
-                    .existsByTripIdAndSeatNumberAndStatusIn(
-                            trip.getId(),
-                            seatNumber,
-                            activeStatuses);
-
             boolean childSeatBooked = bookingSeatRepository
                     .existsActiveBookingSeat(
                             trip.getId(),
                             seatNumber,
                             activeStatuses);
 
-            if (parentSeatBooked || childSeatBooked) {
+            if (childSeatBooked) {
                 throw new ConflictException(
                         "Seat " + seatNumber + " is already booked.");
             }
@@ -163,18 +156,13 @@ public class BookingService {
             booking.addBookingSeat(bookingSeat);
         }
 
-        try {
-            Booking savedBooking = bookingRepository.saveAndFlush(booking);
+        Booking savedBooking = bookingRepository.saveAndFlush(booking);
 
-            QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(
-                    trip,
-                    commuter);
+        QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(
+                trip,
+                commuter);
 
-            return BookingResponse.from(savedBooking, queueEntry);
-        } catch (DataIntegrityViolationException ex) {
-            throw new ConflictException(
-                    "One or more selected seats were just booked by another commuter. Please refresh the seat map and try again.");
-        }
+        return BookingResponse.from(savedBooking, queueEntry);
     }
 
     @Transactional(readOnly = true)
@@ -202,19 +190,13 @@ public class BookingService {
             String seatNumber = row
                     + String.valueOf((char) ('A' + seatIndex));
 
-            boolean parentOccupied = bookingRepository
-                    .existsByTripIdAndSeatNumberAndStatusIn(
-                            tripId,
-                            seatNumber,
-                            activeStatuses);
-
             boolean childOccupied = bookingSeatRepository
                     .existsActiveBookingSeat(
                             tripId,
                             seatNumber,
                             activeStatuses);
 
-            if (!parentOccupied && !childOccupied) {
+            if (!childOccupied) {
                 availableSeats.add(seatNumber);
             }
         }
