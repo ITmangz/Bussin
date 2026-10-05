@@ -1,5 +1,6 @@
 package com.bussin.bussin_api.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.context.annotation.Bean;
@@ -220,8 +221,16 @@ public class SecurityConfig {
 
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                configuration.setAllowedOrigins(List.of(
-                                "http://localhost:5173"));
+                String configuredOrigins = System.getenv().getOrDefault(
+                                "CORS_ALLOWED_ORIGINS",
+                                "http://localhost:5173");
+
+                List<String> allowedOrigins = Arrays.stream(configuredOrigins.split(","))
+                                .map(String::trim)
+                                .filter(origin -> !origin.isBlank())
+                                .toList();
+
+                configuration.setAllowedOrigins(allowedOrigins);
 
                 configuration.setAllowedMethods(List.of(
                                 "GET",
