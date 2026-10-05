@@ -24,6 +24,7 @@ import AdminTrips from "../pages/admin/Trips";
 import AdminRoutes from "../pages/admin/Routes";
 import AdminBookings from "../pages/admin/Bookings";
 import EmployeeDashboard from "../pages/employee/EmployeeDashboard";
+import OperationsQueue from "../pages/OperationsQueue";
 
 console.log("BUSSIN AppRoutes LOADED");
 
@@ -170,10 +171,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["ADMIN"]}>
               <AdminLayout>
-                <AdminPlaceholder
-                  title="Queue"
-                  description="Monitor passenger queues and boarding operations."
-                />
+                <OperationsQueue title="Queue" description="Monitor passenger queues and manage boarding operations." />
               </AdminLayout>
             </RoleRoute>
           </ProtectedRoute>
@@ -312,10 +310,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["EMPLOYEE"]}>
               <EmployeeLayout>
-                <EmployeePlaceholder
-                  title="Queue"
-                  description="Monitor passenger queues for your assigned trips."
-                />
+                <OperationsQueue title="Queue" description="Monitor passenger queues for your assigned trips." />
               </EmployeeLayout>
             </RoleRoute>
           </ProtectedRoute>
