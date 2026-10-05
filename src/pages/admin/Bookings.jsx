@@ -50,7 +50,7 @@ function Bookings() {
       const text = [
         b.bookingReference, b.passengerName, b.passengerEmail,
         b.commuterName, b.commuterEmail, b.routeIdentifier,
-        b.origin, b.destination, b.busPlateNumber, b.seatNumber,
+        b.origin, b.destination, b.busPlateNumber, b.seatNumber, ...(b.seatNumbers || []),
       ].filter(Boolean).join(" ").toLowerCase();
       return (!q || text.includes(q)) && (!status || b.status === status);
     });
@@ -87,8 +87,8 @@ function Bookings() {
       <div className="admin-dashboard-panel bookings-table-card">
         {loading ? <div className="bookings-empty"><CalendarClock size={25}/><h3>Loading bookings</h3><p>Getting booking records from the server.</p></div> :
         filtered.length === 0 ? <div className="bookings-empty"><Ticket size={25}/><h3>{bookings.length ? "No bookings found" : "No bookings yet"}</h3><p>{bookings.length ? "Try another search or status filter." : "Bookings created by commuters will appear here."}</p></div> :
-        <div className="bookings-table-wrap"><table className="bookings-table"><thead><tr><th>Reference</th><th>Passenger</th><th>Route</th><th>Trip</th><th>Seat</th><th>Fare</th><th>Booking</th><th>Payment</th><th>Action</th></tr></thead><tbody>
-          {filtered.map((b)=><tr key={b.id}><td><strong>{b.bookingReference}</strong><small>#{b.id}</small></td><td><strong>{b.passengerName}</strong><small>{b.passengerEmail}</small></td><td><span>{b.origin} → {b.destination}</span><small>{b.routeIdentifier || "Route"}</small></td><td><strong>#{b.tripId}</strong><small>{formatDateTime(b.scheduledDeparture)}</small></td><td>{b.seatNumber}</td><td>{money(b.fare)}</td><td><span className={"booking-status "+String(b.status).toLowerCase()}>{b.status}</span></td><td><span className={"payment-status "+String(b.paymentStatus).toLowerCase()}>{b.paymentStatus}</span></td><td><button type="button" className="booking-view-button" onClick={()=>setSelected(b)}><Eye size={15}/> Details</button></td></tr>)}
+        <div className="bookings-table-wrap"><table className="bookings-table"><thead><tr><th>Reference</th><th>Passenger</th><th>Route</th><th>Trip</th><th>Seats</th><th>Fare</th><th>Booking</th><th>Payment</th><th>Action</th></tr></thead><tbody>
+          {filtered.map((b)=><tr key={b.id}><td><strong>{b.bookingReference}</strong><small>#{b.id}</small></td><td><strong>{b.passengerName}</strong><small>{b.passengerEmail}</small></td><td><span>{b.origin} → {b.destination}</span><small>{b.routeIdentifier || "Route"}</small></td><td><strong>#{b.tripId}</strong><small>{formatDateTime(b.scheduledDeparture)}</small></td><td>{(b.seatNumbers || [b.seatNumber]).filter(Boolean).join(", ")}</td><td>{money(b.fare)}</td><td><span className={"booking-status "+String(b.status).toLowerCase()}>{b.status}</span></td><td><span className={"payment-status "+String(b.paymentStatus).toLowerCase()}>{b.paymentStatus}</span></td><td><button type="button" className="booking-view-button" onClick={()=>setSelected(b)}><Eye size={15}/> Details</button></td></tr>)}
         </tbody></table></div>}
         {!loading && filtered.length > 0 && <div className="bookings-count">Showing {filtered.length} of {bookings.length} bookings</div>}
       </div>
@@ -102,7 +102,7 @@ function Bookings() {
               <div><span>Email</span><strong>{selected.passengerEmail}</strong></div><div><span>Commuter</span><strong>{selected.commuterName}</strong></div>
               <div><span>Trip</span><strong>#{selected.tripId}</strong></div><div><span>Bus</span><strong>{selected.busPlateNumber}</strong></div>
               <div><span>Departure</span><strong>{formatDateTime(selected.scheduledDeparture)}</strong></div><div><span>Arrival</span><strong>{formatDateTime(selected.scheduledArrival)}</strong></div>
-              <div><span>Seat</span><strong>{selected.seatNumber}</strong></div><div><span>Fare</span><strong>{money(selected.fare)}</strong></div>
+              <div><span>Seats</span><strong>{(selected.seatNumbers || [selected.seatNumber]).filter(Boolean).join(", ")}</strong></div><div><span>Queue</span><strong>{selected.queueNumber ? `#${selected.queueNumber} · ${selected.queueStatus || "WAITING"}` : "—"}</strong></div><div><span>Fare</span><strong>{money(selected.fare)}</strong></div>
               <div><span>Payment</span><strong>{selected.paymentStatus}</strong></div><div><span>Created</span><strong>{formatDateTime(selected.createdAt)}</strong></div>
             </div>
             <label className="booking-status-control">Booking status<select value={selected.status} disabled={saving || selected.status === "COMPLETED"} onChange={(e)=>changeStatus(e.target.value)}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></label>
