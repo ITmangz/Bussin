@@ -21,3 +21,20 @@ export async function cancelMyBooking(bookingId) {
 
     return response.data;
 }
+
+export async function getAvailableSeats(tripId) {
+    const response = await apiClient.get(
+        `/bookings/trip/${tripId}/seats`
+    );
+
+    return response.data;
+}
+
+export async function createBooking(bookingData) {
+    const response = await apiClient.post(
+        "/bookings",
+        bookingData
+    );
+
+    return response.data;
+}
