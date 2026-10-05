@@ -14,7 +14,7 @@ public class CreateBookingRequest {
     private Long tripId;
 
     @NotEmpty
-    @Size(min = 1, max = 20)
+    @Size(min = 1, max = 60)
     private List<@NotBlank String> seatNumbers;
 
     @NotBlank
