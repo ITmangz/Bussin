@@ -165,7 +165,7 @@ public class BookingService {
         }
 
         try {
-            Booking savedBooking = bookingRepository.save(booking);
+            Booking savedBooking = bookingRepository.saveAndFlush(booking);
 
             QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(
                     trip,
