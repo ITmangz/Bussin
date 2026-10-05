@@ -74,7 +74,15 @@ function MyBookings() {
 
       busNumber: booking.busPlateNumber || "N/A",
 
+      seats:
+        Array.isArray(booking.seatNumbers) && booking.seatNumbers.length > 0
+          ? booking.seatNumbers
+          : [booking.seatNumber].filter(Boolean),
+
       seat: booking.seatNumber || "N/A",
+
+      queueNumber: booking.queueNumber,
+      queueStatus: booking.queueStatus || "",
 
       fare: Number(booking.fare || 0),
 
@@ -418,7 +426,7 @@ function MyBookings() {
                   <div>
                     <Ticket size={14} />
 
-                    <span>Seat {booking.seat}</span>
+                    <span>Seats {booking.seats.join(", ") || "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -445,6 +453,13 @@ function MyBookings() {
 
                   <strong>₱{formatFare(booking.fare)}</strong>
                 </div>
+
+                {booking.queueNumber && (
+                  <div className="booking-queue">
+                    <span>Queue</span>
+                    <strong>#{booking.queueNumber} · {booking.queueStatus || "WAITING"}</strong>
+                  </div>
+                )}
 
                 <AppButton
                   variant="secondary"
@@ -542,9 +557,9 @@ function MyBookings() {
                 </div>
 
                 <div>
-                  <span>Seat</span>
+                  <span>Seats</span>
 
-                  <strong>{selectedBooking.seat}</strong>
+                  <strong>{selectedBooking.seats.join(", ") || "N/A"}</strong>
                 </div>
 
                 <div>
@@ -557,6 +572,22 @@ function MyBookings() {
                   <span>Contact</span>
 
                   <strong>{selectedBooking.contact}</strong>
+                </div>
+              </div>
+
+              <div className="modal-queue">
+                <div>
+                  <span>Queue</span>
+                  <strong>
+                    {selectedBooking.queueNumber
+                      ? `#${selectedBooking.queueNumber}`
+                      : "Not assigned"}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Queue Status</span>
+                  <strong>{selectedBooking.queueStatus || "N/A"}</strong>
                 </div>
               </div>
 
