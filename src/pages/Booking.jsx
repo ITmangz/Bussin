@@ -33,6 +33,12 @@ function formatDateTime(value) {
   });
 }
 
+function formatFare(value) {
+  return Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+  });
+}
+
 function generateSeatRows(capacity) {
   const seats = [];
   const totalSeats = Number(capacity || 0);
@@ -44,7 +50,6 @@ function generateSeatRows(capacity) {
     seats.push({
       row,
       seat: `${row}${String.fromCharCode("A".charCodeAt(0) + seatIndex)}`,
-      side: seatIndex < 3 ? "left" : "right",
     });
   }
 
@@ -66,7 +71,8 @@ function Booking() {
 
   const [step, setStep] = useState(1);
   const [availableSeats, setAvailableSeats] = useState([]);
-  const [selectedSeat, setSelectedSeat] = useState("");
+  const [seatCount, setSeatCount] = useState(1);
+  const [selectedSeats, setSelectedSeats] = useState([]);
   const [passengerName, setPassengerName] = useState(user?.displayName || "");
   const [passengerPhone, setPassengerPhone] = useState("");
   const [passengerEmail, setPassengerEmail] = useState(user?.email || "");
@@ -86,8 +92,11 @@ function Booking() {
         setError("");
 
         const seats = await getAvailableSeats(trip.id);
+        const nextAvailableSeats = Array.isArray(seats) ? seats : [];
 
-        setAvailableSeats(Array.isArray(seats) ? seats : []);
+        setAvailableSeats(nextAvailableSeats);
+        setSelectedSeats([]);
+        setSeatCount(nextAvailableSeats.length > 0 ? 1 : 0);
       } catch (err) {
         console.error("Failed to load seats:", err);
 
@@ -105,6 +114,10 @@ function Booking() {
   const seatRows = useMemo(() => {
     return generateSeatRows(trip?.capacity);
   }, [trip?.capacity]);
+
+  const maxSeatCount = availableSeats.length;
+  const totalFare =
+    Number(trip?.fare || 0) * Number(selectedSeats.length || seatCount || 0);
 
   if (!trip) {
     return (
@@ -129,9 +142,47 @@ function Booking() {
     setStep((current) => current - 1);
   }
 
+  function handleSeatCountChange(event) {
+    const nextCount = Number(event.target.value);
+
+    setSeatCount(nextCount);
+    setSelectedSeats((current) => current.slice(0, nextCount));
+    setError("");
+  }
+
+  function toggleSeat(seatNumber) {
+    if (!availableSeats.includes(seatNumber)) {
+      return;
+    }
+
+    setSelectedSeats((current) => {
+      if (current.includes(seatNumber)) {
+        setError("");
+        return current.filter((seat) => seat !== seatNumber);
+      }
+
+      if (current.length >= seatCount) {
+        setError(`You selected ${seatCount} seat${seatCount === 1 ? "" : "s"}. Deselect a seat before choosing another.`);
+        return current;
+      }
+
+      setError("");
+      return [...current, seatNumber].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      );
+    });
+  }
+
   function continueFromSeat() {
-    if (!selectedSeat) {
-      setError("Please select an available seat.");
+    if (seatCount < 1) {
+      setError("There are no available seats for this trip.");
+      return;
+    }
+
+    if (selectedSeats.length !== seatCount) {
+      setError(
+        `Please select exactly ${seatCount} seat${seatCount === 1 ? "" : "s"}.`,
+      );
       return;
     }
 
@@ -160,7 +211,7 @@ function Booking() {
 
       const createdBooking = await createBooking({
         tripId: trip.id,
-        seatNumber: selectedSeat,
+        seatNumbers: selectedSeats,
         passengerName: passengerName.trim(),
         passengerPhone: passengerPhone.trim(),
         passengerEmail: passengerEmail.trim(),
@@ -173,7 +224,7 @@ function Booking() {
       setError(
         err.response?.data?.message ||
           err.response?.data?.error ||
-          "Unable to complete the booking. Please try again.",
+          "Unable to complete the booking. Please refresh the seat map and try again.",
       );
     } finally {
       setSubmitting(false);
@@ -181,6 +232,11 @@ function Booking() {
   }
 
   if (booking) {
+    const bookedSeats =
+      Array.isArray(booking.seatNumbers) && booking.seatNumbers.length > 0
+        ? booking.seatNumbers
+        : [booking.seatNumber].filter(Boolean);
+
     return (
       <section className="booking-page">
         <AppCard className="booking-success">
@@ -193,8 +249,8 @@ function Booking() {
           <h1>Your trip is booked.</h1>
 
           <p>
-            Your booking has been created successfully. Payment remains unpaid
-            until a payment is completed.
+            Your booking and queue entry were created successfully. Payment
+            remains unpaid until a payment is completed.
           </p>
 
           <div className="booking-reference">
@@ -211,8 +267,15 @@ function Booking() {
             </div>
 
             <div>
-              <span>Seat</span>
-              <strong>{booking.seatNumber}</strong>
+              <span>Seats</span>
+              <strong>{bookedSeats.join(", ")}</strong>
+            </div>
+
+            <div>
+              <span>Queue</span>
+              <strong>
+                {booking.queueNumber ? `#${booking.queueNumber}` : "WAITING"}
+              </strong>
             </div>
 
             <div>
@@ -221,13 +284,13 @@ function Booking() {
             </div>
 
             <div>
-              <span>Fare</span>
-              <strong>
-                ₱
-                {Number(booking.fare || 0).toLocaleString("en-PH", {
-                  minimumFractionDigits: 2,
-                })}
-              </strong>
+              <span>Seats Booked</span>
+              <strong>{bookedSeats.length}</strong>
+            </div>
+
+            <div>
+              <span>Total Fare</span>
+              <strong>₱{formatFare(booking.fare)}</strong>
             </div>
           </div>
 
@@ -259,13 +322,13 @@ function Booking() {
           </button>
 
           <h1>Book Your Trip</h1>
-          <p>Complete the booking details for your selected trip.</p>
+          <p>Select your seats, enter passenger details, and confirm.</p>
         </div>
       </header>
 
       <div className="booking-stepper">
         {[
-          ["1", "Seat"],
+          ["1", "Seats"],
           ["2", "Passenger"],
           ["3", "Review"],
         ].map(([number, label]) => (
@@ -313,16 +376,45 @@ function Booking() {
             <AppCard className="booking-panel">
               <div className="booking-panel-header">
                 <div>
-                  <h2>Select a Seat</h2>
-                  <p>Choose an available seat for this trip.</p>
+                  <h2>How many seats?</h2>
+                  <p>Choose the number of seats you want to book, then select them below.</p>
                 </div>
 
                 <span>{availableSeats.length} available</span>
               </div>
 
+              <div className="seat-count-control">
+                <label htmlFor="seat-count">Seats to book</label>
+
+                <select
+                  id="seat-count"
+                  value={seatCount}
+                  onChange={handleSeatCountChange}
+                  disabled={loadingSeats || maxSeatCount === 0}
+                >
+                  {Array.from(
+                    { length: Math.max(maxSeatCount, 1) },
+                    (_, index) => index + 1,
+                  ).map((count) => (
+                    <option key={count} value={count}>
+                      {count} seat{count === 1 ? "" : "s"}
+                    </option>
+                  ))}
+                </select>
+
+                <strong>
+                  {selectedSeats.length} / {seatCount || 0} selected
+                </strong>
+              </div>
+
               {loadingSeats ? (
                 <div className="booking-loading">
                   Loading seat availability...
+                </div>
+              ) : maxSeatCount === 0 ? (
+                <div className="booking-no-seats">
+                  <h3>No seats available</h3>
+                  <p>All seats on this trip have already been booked.</p>
                 </div>
               ) : (
                 <div className="seat-layout">
@@ -341,63 +433,32 @@ function Booking() {
                   <div className="seat-rows">
                     {seatRows.map((rowSeats) => {
                       const rowNumber = rowSeats[0]?.row;
-
                       const leftSeats = rowSeats.slice(0, 3);
                       const rightSeats = rowSeats.slice(3, 6);
 
+                      const renderSeat = (seat) => {
+                        const available = availableSeats.includes(seat.seat);
+                        const selected = selectedSeats.includes(seat.seat);
+
+                        return (
+                          <button
+                            key={seat.seat}
+                            type="button"
+                            className={`seat-button ${available ? "available" : "occupied"} ${selected ? "selected" : ""}`}
+                            disabled={!available}
+                            aria-label={`${seat.seat} ${available ? selected ? "selected" : "available" : "occupied"}`}
+                            onClick={() => toggleSeat(seat.seat)}
+                          >
+                            {seat.seat}
+                          </button>
+                        );
+                      };
+
                       return (
                         <div className="seat-row" key={rowNumber}>
-                          {leftSeats.map((seat) => {
-                            const available = availableSeats.includes(
-                              seat.seat,
-                            );
-
-                            return (
-                              <button
-                                key={seat.seat}
-                                type="button"
-                                className={`seat-button ${
-                                  available ? "available" : "occupied"
-                                } ${
-                                  selectedSeat === seat.seat ? "selected" : ""
-                                }`}
-                                disabled={!available}
-                                onClick={() => {
-                                  setSelectedSeat(seat.seat);
-                                  setError("");
-                                }}
-                              >
-                                {seat.seat}
-                              </button>
-                            );
-                          })}
-
+                          {leftSeats.map(renderSeat)}
                           <div className="seat-aisle" />
-
-                          {rightSeats.map((seat) => {
-                            const available = availableSeats.includes(
-                              seat.seat,
-                            );
-
-                            return (
-                              <button
-                                key={seat.seat}
-                                type="button"
-                                className={`seat-button ${
-                                  available ? "available" : "occupied"
-                                } ${
-                                  selectedSeat === seat.seat ? "selected" : ""
-                                }`}
-                                disabled={!available}
-                                onClick={() => {
-                                  setSelectedSeat(seat.seat);
-                                  setError("");
-                                }}
-                              >
-                                {seat.seat}
-                              </button>
-                            );
-                          })}
+                          {rightSeats.map(renderSeat)}
                         </div>
                       );
                     })}
@@ -423,7 +484,10 @@ function Booking() {
               )}
 
               <div className="booking-panel-actions">
-                <AppButton onClick={continueFromSeat}>
+                <AppButton
+                  onClick={continueFromSeat}
+                  disabled={loadingSeats || maxSeatCount === 0}
+                >
                   Continue
                   <ArrowRight size={15} />
                 </AppButton>
@@ -514,7 +578,6 @@ function Booking() {
               <div className="booking-review">
                 <div>
                   <span>Route</span>
-
                   <strong>
                     {trip.origin} → {trip.destination}
                   </strong>
@@ -522,49 +585,42 @@ function Booking() {
 
                 <div>
                   <span>Departure</span>
-
                   <strong>{formatDateTime(trip.scheduledDeparture)}</strong>
                 </div>
 
                 <div>
                   <span>Bus</span>
-
                   <strong>{trip.busNumber || "N/A"}</strong>
                 </div>
 
                 <div>
-                  <span>Seat</span>
-
-                  <strong>{selectedSeat}</strong>
+                  <span>Selected Seats</span>
+                  <strong>{selectedSeats.join(", ")}</strong>
                 </div>
 
                 <div>
                   <span>Passenger</span>
-
                   <strong>{passengerName}</strong>
                 </div>
 
                 <div>
                   <span>Contact</span>
-
                   <strong>{passengerPhone}</strong>
                 </div>
               </div>
 
               <div className="booking-total">
-                <span>Fare</span>
+                <div>
+                  <span>{selectedSeats.length} seat{selectedSeats.length === 1 ? "" : "s"}</span>
+                  <small>₱{formatFare(trip.fare)} per seat</small>
+                </div>
 
-                <strong>
-                  ₱
-                  {Number(trip.fare || 0).toLocaleString("en-PH", {
-                    minimumFractionDigits: 2,
-                  })}
-                </strong>
+                <strong>₱{formatFare(totalFare)}</strong>
               </div>
 
               <p className="booking-payment-note">
-                This step creates the booking with the server. Payment is
-                currently recorded as unpaid.
+                Confirming creates the booking and automatically assigns your
+                queue number. Payment is currently recorded as unpaid.
               </p>
 
               <div className="booking-panel-actions">
@@ -584,16 +640,17 @@ function Booking() {
 
         <aside className="booking-side">
           <AppCard className="booking-fare-card">
-            <span>Trip Fare</span>
+            <span>Booking Total</span>
 
             <strong>
-              ₱
-              {Number(trip.fare || 0).toLocaleString("en-PH", {
-                minimumFractionDigits: 2,
-              })}
+              ₱{formatFare(step === 3 ? totalFare : Number(trip.fare || 0) * seatCount)}
             </strong>
 
-            <small>Final fare is calculated by the BUSSIN server.</small>
+            <small>
+              {step === 1
+                ? `${seatCount || 0} seat${seatCount === 1 ? "" : "s"} selected for booking`
+                : "Final fare is calculated by the BUSSIN server."}
+            </small>
           </AppCard>
         </aside>
       </div>
