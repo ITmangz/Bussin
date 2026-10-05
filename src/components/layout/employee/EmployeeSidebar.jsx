@@ -1,13 +1,28 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+
+import { logoutUser } from "../../../services/authService";
 import {
   LayoutDashboard,
   Route,
   Ticket,
   ListOrdered,
   UserCheck,
+  LogOut,
 } from "lucide-react";
 
 function EmployeeSidebar({ mobileOpen, onClose }) {
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    try {
+      await logoutUser();
+      onClose();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  }
+
   const links = [
     {
       label: "Dashboard",
@@ -74,6 +89,19 @@ function EmployeeSidebar({ mobileOpen, onClose }) {
             );
           })}
         </nav>
+
+        <div className="employee-sidebar-footer">
+          <button
+            type="button"
+            className="employee-sidebar-logout"
+            onClick={handleLogout}
+          >
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
+
+          <div className="employee-sidebar-version">BUSSIN v1.0.0</div>
+        </div>
       </aside>
     </>
   );
