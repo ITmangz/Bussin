@@ -171,7 +171,7 @@ function Trips() {
   }
 
   function handleBookTrip(trip) {
-    navigate("/ai-booking", {
+    navigate("/booking", {
       state: {
         trip,
       },
