@@ -27,7 +27,7 @@ const initialMessages = [
 
 const suggestedPrompts = [
   "I want to book a trip",
-  "Find trips from Bacoor to Cebu",
+  "Find available trips",
   "Show my bookings",
 ];
 
