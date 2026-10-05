@@ -22,7 +22,6 @@ import com.bussin.bussin_api.entity.BookingStatus;
 import com.bussin.bussin_api.entity.Bus;
 import com.bussin.bussin_api.entity.PaymentStatus;
 import com.bussin.bussin_api.entity.QueueEntry;
-import com.bussin.bussin_api.entity.QueueStatus;
 import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.entity.Trip;
 import com.bussin.bussin_api.entity.TripStatus;
