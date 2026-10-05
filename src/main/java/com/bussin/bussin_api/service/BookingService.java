@@ -168,6 +168,46 @@ public class BookingService {
         }
 
         @Transactional(readOnly = true)
+        public List<BookingResponse> getAllBookings() {
+                requireStaffAccess();
+
+                return bookingRepository.findAll()
+                                .stream()
+                                .map(BookingResponse::from)
+                                .toList();
+        }
+
+        @Transactional(readOnly = true)
+        public BookingResponse getBookingForStaff(Long bookingId) {
+                requireStaffAccess();
+
+                Booking booking = bookingRepository.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Booking not found: " + bookingId));
+
+                return BookingResponse.from(booking);
+        }
+
+        @Transactional
+        public BookingResponse updateBookingStatus(Long bookingId, com.bussin.bussin_api.dto.UpdateBookingStatusRequest request) {
+                requireAdminAccess();
+
+                Booking booking = bookingRepository.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Booking not found: " + bookingId));
+
+                if (booking.getStatus() == BookingStatus.COMPLETED
+                                && request.getStatus() != BookingStatus.COMPLETED) {
+                        throw new ConflictException("Completed bookings cannot be reopened.");
+                }
+
+                booking.setStatus(request.getStatus());
+                booking.setUpdatedAt(LocalDateTime.now());
+
+                return BookingResponse.from(bookingRepository.save(booking));
+        }
+
+        @Transactional(readOnly = true)
         public List<BookingResponse> getMyBookings() {
 
                 String firebaseUid = getAuthenticatedFirebaseUid();
@@ -248,6 +288,30 @@ public class BookingService {
                 Booking savedBooking = bookingRepository.save(booking);
 
                 return BookingResponse.from(savedBooking);
+        }
+
+        private void requireStaffAccess() {
+                User user = getAuthenticatedUser();
+
+                if (user.getRole() != Role.ADMIN && user.getRole() != Role.EMPLOYEE) {
+                        throw new ConflictException("Administrator or employee access is required.");
+                }
+        }
+
+        private void requireAdminAccess() {
+                User user = getAuthenticatedUser();
+
+                if (user.getRole() != Role.ADMIN) {
+                        throw new ConflictException("Administrator access is required.");
+                }
+        }
+
+        private User getAuthenticatedUser() {
+                String firebaseUid = getAuthenticatedFirebaseUid();
+
+                return userRepository.findByFirebaseUid(firebaseUid)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "BUSSIN user profile not found."));
         }
 
         private void validateTrip(Trip trip) {
