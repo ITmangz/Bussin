@@ -73,7 +73,7 @@ public class BookingService {
                     "Only commuter accounts can create bookings.");
         }
 
-        Trip trip = tripRepository.findByIdForUpdate(request.getTripId())
+        Trip trip = tripRepository.findById(request.getTripId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Trip not found: " + request.getTripId()));
 
