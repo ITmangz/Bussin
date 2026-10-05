@@ -1,4 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+
+import { logoutUser } from "../../../services/authService";
 import {
   LayoutDashboard,
   Bus,
@@ -10,10 +12,23 @@ import {
   UserCog,
   BarChart3,
   Settings,
+  LogOut,
   X,
 } from "lucide-react";
 
 function AdminSidebar({ mobileOpen, onClose }) {
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    try {
+      await logoutUser();
+      onClose();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  }
+
   const navigation = [
     {
       label: "Dashboard",
@@ -142,6 +157,19 @@ function AdminSidebar({ mobileOpen, onClose }) {
             {renderLinks(system)}
           </div>
         </nav>
+
+        <div className="admin-sidebar-footer">
+          <button
+            type="button"
+            className="admin-sidebar-logout"
+            onClick={handleLogout}
+          >
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
+
+          <div className="admin-sidebar-version">BUSSIN v1.0.0</div>
+        </div>
       </aside>
     </>
   );
