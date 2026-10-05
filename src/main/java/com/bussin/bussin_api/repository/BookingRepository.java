@@ -27,7 +27,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             Long tripId,
             List<BookingStatus> statuses);
 
-    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);\n\n    long countByStatus(BookingStatus status);\n\n    boolean existsByTripIdAndSeatNumberAndStatusIn(
+    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    long countByStatus(BookingStatus status);
+
+    boolean existsByTripIdAndSeatNumberAndStatusIn(
             Long tripId,
             String seatNumber,
             List<BookingStatus> statuses);
