@@ -79,7 +79,7 @@ public class QueueService {
             Long tripId,
             String firebaseUid) {
 
-        Trip trip = tripRepository.findByIdForUpdate(tripId)
+        Trip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Trip not found with ID: " + tripId));
 
