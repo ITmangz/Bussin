@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+
+import jakarta.persistence.LockModeType;
 
 import com.bussin.bussin_api.entity.Bus;
 import com.bussin.bussin_api.entity.Route;
@@ -11,6 +14,9 @@ import com.bussin.bussin_api.entity.Trip;
 import com.bussin.bussin_api.entity.TripStatus;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
+
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        java.util.Optional<Trip> findByIdForUpdate(Long id);
 
         List<Trip> findByBusOrderByScheduledDepartureDesc(Bus bus);
 
