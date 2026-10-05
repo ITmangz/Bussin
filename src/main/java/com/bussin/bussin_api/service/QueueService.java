@@ -147,6 +147,47 @@ public class QueueService {
     }
 
     @Transactional
+    public void cancelQueueEntryForBooking(Trip trip, User commuter) {
+
+        QueueEntry entry = queueEntryRepository
+                .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
+                .orElse(null);
+
+        if (entry == null || entry.getStatus() == QueueStatus.CANCELLED) {
+            return;
+        }
+
+        if (entry.getStatus() == QueueStatus.BOARDED) {
+            return;
+        }
+
+        entry.setStatus(QueueStatus.CANCELLED);
+        entry.setUpdatedAt(LocalDateTime.now());
+        queueEntryRepository.save(entry);
+    }
+
+    @Transactional
+    public void completeQueueEntryForBooking(Trip trip, User commuter) {
+
+        QueueEntry entry = queueEntryRepository
+                .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
+                .orElse(null);
+
+        if (entry == null || entry.getStatus() == QueueStatus.BOARDED) {
+            return;
+        }
+
+        if (entry.getStatus() == QueueStatus.WAITING
+                || entry.getStatus() == QueueStatus.CALLED) {
+            LocalDateTime now = LocalDateTime.now();
+            entry.setStatus(QueueStatus.BOARDED);
+            entry.setBoardedAt(now);
+            entry.setUpdatedAt(now);
+            queueEntryRepository.save(entry);
+        }
+    }
+
+    @Transactional
     public QueueEntry cancelQueueEntry(
             Long queueEntryId,
             String firebaseUid) {
