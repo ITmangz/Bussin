@@ -39,6 +39,9 @@ public class QueueEntry {
     @Column(nullable = false)
     private Integer queueNumber;
 
+    @Column(name = "position", nullable = false)
+    private Integer position;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private QueueStatus status;
@@ -85,6 +88,14 @@ public class QueueEntry {
 
     public void setQueueNumber(Integer queueNumber) {
         this.queueNumber = queueNumber;
+    }
+
+    public Integer getPosition() {
+        return position;
+    }
+
+    public void setPosition(Integer position) {
+        this.position = position;
     }
 
     public QueueStatus getStatus() {
