@@ -131,6 +131,13 @@ public class QueueService {
     }
 
     @Transactional(readOnly = true)
+    public QueueEntry findQueueEntry(Long tripId, Long commuterId) {
+        return queueEntryRepository
+                .findByTripIdAndCommuterId(tripId, commuterId)
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public QueueEntry getMyQueueEntry(
             Long tripId,
             String firebaseUid) {
