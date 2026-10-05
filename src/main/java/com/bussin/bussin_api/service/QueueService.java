@@ -36,6 +36,43 @@ public class QueueService {
     }
 
     @Transactional
+    public QueueEntry ensureQueueEntryForBooking(
+            Trip trip,
+            User commuter) {
+
+        QueueEntry existing = queueEntryRepository
+                .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
+                .orElse(null);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (existing != null) {
+            if (existing.getStatus() != QueueStatus.CANCELLED) {
+                return existing;
+            }
+
+            existing.setQueueNumber(getNextQueueNumber(trip.getId()));
+            existing.setStatus(QueueStatus.WAITING);
+            existing.setJoinedAt(now);
+            existing.setCalledAt(null);
+            existing.setBoardedAt(null);
+            existing.setUpdatedAt(now);
+
+            return queueEntryRepository.save(existing);
+        }
+
+        QueueEntry entry = new QueueEntry();
+        entry.setTrip(trip);
+        entry.setCommuter(commuter);
+        entry.setQueueNumber(getNextQueueNumber(trip.getId()));
+        entry.setStatus(QueueStatus.WAITING);
+        entry.setJoinedAt(now);
+        entry.setUpdatedAt(now);
+
+        return queueEntryRepository.save(entry);
+    }
+
+    @Transactional
     public QueueEntry joinQueue(
             Long tripId,
             String firebaseUid) {
@@ -65,20 +102,7 @@ public class QueueService {
                     "You have already joined this trip's queue");
         }
 
-        int nextQueueNumber = getNextQueueNumber(tripId);
-
-        LocalDateTime now = LocalDateTime.now();
-
-        QueueEntry entry = new QueueEntry();
-
-        entry.setTrip(trip);
-        entry.setCommuter(commuter);
-        entry.setQueueNumber(nextQueueNumber);
-        entry.setStatus(QueueStatus.WAITING);
-        entry.setJoinedAt(now);
-        entry.setUpdatedAt(now);
-
-        return queueEntryRepository.save(entry);
+        return ensureQueueEntryForBooking(trip, commuter);
     }
 
     @Transactional(readOnly = true)
