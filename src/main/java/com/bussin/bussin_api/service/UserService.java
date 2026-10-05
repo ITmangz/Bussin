@@ -39,6 +39,42 @@ public class UserService {
         }
 
         // ============================================================
+        // GET EMPLOYEES
+        // ADMIN ONLY
+        // ============================================================
+
+        public List<UserResponse> getEmployees() {
+                return userRepository.findAll()
+                                .stream()
+                                .filter(user -> user.getRole() == Role.EMPLOYEE)
+                                .map(this::toResponse)
+                                .toList();
+        }
+
+        // ============================================================
+        // UPDATE MANAGED USER
+        // ADMIN ONLY
+        // ============================================================
+
+        public UserResponse updateManagedUser(
+                        Long userId,
+                        UpdateUserRequest request) {
+
+                User user = userRepository
+                                .findById(userId)
+                                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+                user.setFirstName(request.getFirstName());
+                user.setMiddleName(request.getMiddleName());
+                user.setLastName(request.getLastName());
+                user.setContactNumber(request.getContactNumber());
+                user.setAddress(request.getAddress());
+                user.setUpdatedAt(LocalDateTime.now());
+
+                return toResponse(userRepository.save(user));
+        }
+
+        // ============================================================
         // UPDATE USER ROLE
         // ADMIN ONLY
         // ============================================================
