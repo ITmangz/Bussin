@@ -13,7 +13,7 @@ public interface RouteRepository extends JpaRepository<Route, Long> {
 
     List<Route> findByActiveTrue();
 
-    List<Route> findByOriginIgnoreCaseAndDestinationIgnoreCaseAndActiveTrue(
+    long countByActiveTrue();\n\n    List<Route> findByOriginIgnoreCaseAndDestinationIgnoreCaseAndActiveTrue(
             String origin,
             String destination);
 }
