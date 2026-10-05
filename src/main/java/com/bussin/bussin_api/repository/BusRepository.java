@@ -15,5 +15,7 @@ public interface BusRepository extends JpaRepository<Bus, Long> {
 
     List<Bus> findByStatusOrderByPlateNumberAsc(BusStatus status);
 
-    List<Bus> findAllByOrderByPlateNumberAsc();\n\n    long countByStatus(BusStatus status);
+    List<Bus> findAllByOrderByPlateNumberAsc();
+
+    long countByStatus(BusStatus status);
 }
