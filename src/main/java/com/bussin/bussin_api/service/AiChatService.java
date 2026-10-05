@@ -14,13 +14,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class AiChatService {
 
-  @Value("${openrouter.api-key}")
+  @Value("${OPENROUTER_API_KEY}")
   private String apiKey;
 
-  @Value("${openrouter.base-url}")
+  @Value("${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}")
   private String baseUrl;
 
-  @Value("${openrouter.model}")
+  @Value("${OPENROUTER_MODEL}")
   private String model;
 
   private final HttpClient httpClient = HttpClient.newBuilder()
