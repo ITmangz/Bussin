@@ -1,8 +1,23 @@
 import { Bell, Menu, Search } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 import "./Topbar.css";
 
 function Topbar({ onMenuClick }) {
+  const { user } = useAuth();
+
+  const displayName =
+    user?.displayName?.trim() ||
+    user?.email?.split("@")[0] ||
+    "Commuter";
+
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
   return (
     <header className="topbar">
       <button
@@ -16,7 +31,6 @@ function Topbar({ onMenuClick }) {
 
       <div className="topbar-search">
         <Search size={18} />
-
         <input type="search" placeholder="Search..." aria-label="Search" />
       </div>
 
@@ -27,17 +41,15 @@ function Topbar({ onMenuClick }) {
           aria-label="Notifications"
         >
           <Bell size={19} />
-
-          <span className="notification-dot" />
         </button>
 
         <div className="topbar-divider" />
 
         <div className="topbar-user">
-          <div className="topbar-avatar">A</div>
+          <div className="topbar-avatar">{initials || "U"}</div>
 
           <div className="topbar-user-info">
-            <strong>Antonio</strong>
+            <strong>{displayName}</strong>
             <span>Commuter</span>
           </div>
         </div>
