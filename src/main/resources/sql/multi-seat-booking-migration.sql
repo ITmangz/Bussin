@@ -33,7 +33,7 @@ BEGIN
               (
                   cls.relname = 'bookings'
                   AND (
-                      SELECT array_agg(att.attname ORDER BY ord.ordinality)
+                      SELECT array_agg(att.attname ORDER BY att.attname)
                       FROM unnest(con.conkey) WITH ORDINALITY AS ord(attnum, ordinality)
                       JOIN pg_attribute att
                         ON att.attrelid = cls.oid
@@ -44,7 +44,7 @@ BEGIN
               (
                   cls.relname = 'booking_seats'
                   AND (
-                      SELECT array_agg(att.attname ORDER BY ord.ordinality)
+                      SELECT array_agg(att.attname ORDER BY att.attname)
                       FROM unnest(con.conkey) WITH ORDINALITY AS ord(attnum, ordinality)
                       JOIN pg_attribute att
                         ON att.attrelid = cls.oid
