@@ -36,6 +36,13 @@ public class BookingController {
         return bookingService.createBooking(request);
     }
 
+    @GetMapping("/trip/{tripId}/seats")
+    public List<String> getAvailableSeats(
+            @PathVariable Long tripId) {
+
+        return bookingService.getAvailableSeats(tripId);
+    }
+
     @GetMapping("/me")
     public List<BookingResponse> getMyBookings() {
         return bookingService.getMyBookings();
