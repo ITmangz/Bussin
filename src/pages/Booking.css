@@ -189,6 +189,69 @@
 }
 
 /* =========================================================
+   SEAT COUNT
+   ========================================================= */
+
+.seat-count-control {
+  display: grid;
+  grid-template-columns: auto 160px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  margin-bottom: 20px;
+  border: 1px solid var(--bussin-border);
+  border-radius: var(--radius-md);
+  background: var(--bussin-light);
+}
+
+.seat-count-control label {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.seat-count-control select {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--bussin-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: var(--bussin-white);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.seat-count-control select:focus {
+  border-color: var(--bussin-red);
+}
+
+.seat-count-control strong {
+  justify-self: end;
+  color: var(--bussin-red);
+  font-size: 10px;
+}
+
+.booking-no-seats {
+  padding: 45px 15px;
+  text-align: center;
+  border: 1px dashed var(--bussin-border-dark);
+  border-radius: var(--radius-md);
+  background: var(--bussin-light);
+}
+
+.booking-no-seats h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.booking-no-seats p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+/* =========================================================
    SEAT MAP
    ========================================================= */
 
@@ -431,6 +494,23 @@
   border-top: 1px solid var(--bussin-border);
 }
 
+.booking-total > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.booking-total > div span {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.booking-total > div small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
 .booking-total strong {
   color: var(--text-primary);
   font-size: 20px;
@@ -609,6 +689,15 @@
 }
 
 @media (max-width: 700px) {
+  .seat-count-control {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .seat-count-control strong {
+    justify-self: start;
+  }
+
   .booking-panel {
     padding: 15px;
   }
