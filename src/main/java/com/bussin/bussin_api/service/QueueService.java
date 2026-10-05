@@ -55,6 +55,7 @@ public class QueueService {
 
             existing.setQueueNumber(getNextQueueNumber(trip.getId()));
             existing.setStatus(QueueStatus.WAITING);
+            existing.setCreatedAt(now);
             existing.setJoinedAt(now);
             existing.setCalledAt(null);
             existing.setBoardedAt(null);
@@ -68,6 +69,7 @@ public class QueueService {
         entry.setCommuter(commuter);
         entry.setQueueNumber(getNextQueueNumber(trip.getId()));
         entry.setStatus(QueueStatus.WAITING);
+        entry.setCreatedAt(now);
         entry.setJoinedAt(now);
         entry.setUpdatedAt(now);
 
