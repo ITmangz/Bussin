@@ -82,9 +82,10 @@ public class BookingService {
                 }
 
                 boolean seatAlreadyBooked = bookingRepository
-                                .existsByTripIdAndSeatNumber(
+                                .existsByTripIdAndSeatNumberAndStatusIn(
                                                 trip.getId(),
-                                                seatNumber);
+                                                seatNumber,
+                                                activeStatuses);
 
                 if (seatAlreadyBooked) {
                         throw new ConflictException(
@@ -120,6 +121,42 @@ public class BookingService {
                 Booking savedBooking = bookingRepository.save(booking);
 
                 return BookingResponse.from(savedBooking);
+        }
+
+        @Transactional(readOnly = true)
+        public List<String> getAvailableSeats(Long tripId) {
+
+                Trip trip = tripRepository.findById(tripId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Trip not found: " + tripId));
+
+                validateTrip(trip);
+
+                int capacity = trip.getBus().getCapacity();
+
+                List<BookingStatus> activeStatuses = List.of(
+                                BookingStatus.PENDING,
+                                BookingStatus.CONFIRMED);
+
+                List<String> availableSeats = new java.util.ArrayList<>();
+
+                for (int position = 1; position <= capacity; position++) {
+                        int row = ((position - 1) / 4) + 1;
+                        int seatIndex = (position - 1) % 4;
+                        String seatNumber = row + String.valueOf((char) ('A' + seatIndex));
+
+                        boolean occupied = bookingRepository
+                                        .existsByTripIdAndSeatNumberAndStatusIn(
+                                                        tripId,
+                                                        seatNumber,
+                                                        activeStatuses);
+
+                        if (!occupied) {
+                                availableSeats.add(seatNumber);
+                        }
+                }
+
+                return availableSeats;
         }
 
         @Transactional(readOnly = true)
