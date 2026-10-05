@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
@@ -16,7 +18,8 @@ import com.bussin.bussin_api.entity.TripStatus;
 public interface TripRepository extends JpaRepository<Trip, Long> {
 
         @Lock(LockModeType.PESSIMISTIC_WRITE)
-        java.util.Optional<Trip> findById(Long id);
+        @Query("SELECT t FROM Trip t WHERE t.id = :id")
+        java.util.Optional<Trip> findByIdForUpdate(@Param("id") Long id);
 
         List<Trip> findByBusOrderByScheduledDepartureDesc(Bus bus);
 
