@@ -30,6 +30,8 @@ public interface QueueEntryRepository
             Long commuterId);
 
     @EntityGraph(attributePaths = {"commuter", "trip"})
-    long countByStatus(QueueStatus status);\n\n    Optional<QueueEntry> findTopByTripIdOrderByQueueNumberDesc(
+    long countByStatus(QueueStatus status);
+
+    Optional<QueueEntry> findTopByTripIdOrderByQueueNumberDesc(
             Long tripId);
 }
