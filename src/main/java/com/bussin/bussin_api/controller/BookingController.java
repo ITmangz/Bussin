@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.bussin.bussin_api.dto.BookingResponse;
 import com.bussin.bussin_api.dto.CreateBookingRequest;
+import com.bussin.bussin_api.dto.UpdateBookingStatusRequest;
 import com.bussin.bussin_api.service.BookingService;
 
 import jakarta.validation.Valid;
@@ -26,6 +27,23 @@ public class BookingController {
 
     public BookingController(BookingService bookingService) {
         this.bookingService = bookingService;
+    }
+
+    @GetMapping("/admin")
+    public List<BookingResponse> getAllBookings() {
+        return bookingService.getAllBookings();
+    }
+
+    @GetMapping("/admin/{bookingId}")
+    public BookingResponse getBookingForStaff(@PathVariable Long bookingId) {
+        return bookingService.getBookingForStaff(bookingId);
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/admin/{bookingId}/status")
+    public BookingResponse updateBookingStatus(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody UpdateBookingStatusRequest request) {
+        return bookingService.updateBookingStatus(bookingId, request);
     }
 
     @PostMapping
