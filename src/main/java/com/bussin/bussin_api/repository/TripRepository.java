@@ -16,7 +16,7 @@ import com.bussin.bussin_api.entity.TripStatus;
 public interface TripRepository extends JpaRepository<Trip, Long> {
 
         @Lock(LockModeType.PESSIMISTIC_WRITE)
-        java.util.Optional<Trip> findByIdForUpdate(Long id);
+        java.util.Optional<Trip> findById(Long id);
 
         List<Trip> findByBusOrderByScheduledDepartureDesc(Bus bus);
 
