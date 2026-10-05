@@ -51,87 +51,39 @@ function Trips() {
        *
        * Fetch the corresponding route for each trip.
        */
-      const enrichedTrips = await Promise.all(
+      const enrichedResults = await Promise.all(
         tripList.map(async (trip) => {
           try {
             const route = await getRouteById(trip.routeId);
 
+            if (!route) {
+              return null;
+            }
+
             return {
               id: trip.id,
-
               origin: route.origin,
               destination: route.destination,
-
               date: formatDate(trip.scheduledDeparture),
-
               time: formatTime(trip.scheduledDeparture),
-
               busNumber: trip.busPlateNumber || "N/A",
-
-              busType: "Bus",
-
               duration: formatDuration(route.durationMinutes),
-
               fare: Number(route.baseFare || 0),
-
-              /*
-               * Backend currently provides bus capacity,
-               * but not the current available-seat count.
-               */
-              availableSeats: trip.busCapacity ?? 0,
-
-              capacity: trip.busCapacity ?? 0,
-
+              capacity: trip.busCapacity ?? null,
               routeId: trip.routeId,
-
               routeIdentifier: trip.routeIdentifier,
-
               scheduledDeparture: trip.scheduledDeparture,
-
               scheduledArrival: trip.scheduledArrival,
-
               status: trip.status,
             };
           } catch (routeError) {
             console.error(`Failed to load route ${trip.routeId}:`, routeError);
-
-            return {
-              id: trip.id,
-
-              origin: "Unknown",
-              destination: "Unknown",
-
-              date: formatDate(trip.scheduledDeparture),
-
-              time: formatTime(trip.scheduledDeparture),
-
-              busNumber: trip.busPlateNumber || "N/A",
-
-              busType: "Bus",
-
-              duration: "N/A",
-
-              fare: 0,
-
-              availableSeats: trip.busCapacity ?? 0,
-
-              capacity: trip.busCapacity ?? 0,
-
-              routeId: trip.routeId,
-
-              routeIdentifier: trip.routeIdentifier,
-
-              scheduledDeparture: trip.scheduledDeparture,
-
-              scheduledArrival: trip.scheduledArrival,
-
-              status: trip.status,
-            };
+            return null;
           }
         }),
       );
 
-      setTrips(enrichedTrips);
+      setTrips(enrichedResults.filter(Boolean));
     } catch (err) {
       console.error("Failed to load trips:", err);
 
@@ -417,7 +369,7 @@ function Trips() {
                   <div className="trip-detail">
                     <Clock3 size={15} />
 
-                    <span>{trip.busType}</span>
+                    <span>{trip.status || "N/A"}</span>
                   </div>
 
                   <div className="trip-detail">
