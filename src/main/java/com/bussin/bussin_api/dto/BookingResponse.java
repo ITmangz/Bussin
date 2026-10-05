@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.BookingStatus;
 import com.bussin.bussin_api.entity.PaymentStatus;
+import com.bussin.bussin_api.entity.QueueEntry;
 
 public class BookingResponse {
 
@@ -32,7 +33,12 @@ public class BookingResponse {
     private String passengerEmail;
 
     private String seatNumber;
+    private List<String> seatNumbers;
+    private Integer seatCount;
     private BigDecimal fare;
+
+    private Integer queueNumber;
+    private String queueStatus;
 
     private BookingStatus status;
     private PaymentStatus paymentStatus;
@@ -44,6 +50,10 @@ public class BookingResponse {
     }
 
     public static BookingResponse from(Booking booking) {
+        return from(booking, null);
+    }
+
+    public static BookingResponse from(Booking booking, QueueEntry queueEntry) {
         BookingResponse response = new BookingResponse();
 
         response.id = booking.getId();
@@ -72,7 +82,22 @@ public class BookingResponse {
         response.passengerEmail = booking.getPassengerEmail();
 
         response.seatNumber = booking.getSeatNumber();
+        response.seatNumbers = booking.getBookingSeats().stream()
+                .map(com.bussin.bussin_api.entity.BookingSeat::getSeatNumber)
+                .sorted()
+                .toList();
+
+        if (response.seatNumbers.isEmpty() && booking.getSeatNumber() != null) {
+            response.seatNumbers = List.of(booking.getSeatNumber());
+        }
+
+        response.seatCount = response.seatNumbers.size();
         response.fare = booking.getFare();
+
+        if (queueEntry != null) {
+            response.queueNumber = queueEntry.getQueueNumber();
+            response.queueStatus = queueEntry.getStatus().name();
+        }
 
         response.status = booking.getStatus();
         response.paymentStatus = booking.getPaymentStatus();
@@ -173,6 +198,22 @@ public class BookingResponse {
 
     public String getSeatNumber() {
         return seatNumber;
+    }
+
+    public List<String> getSeatNumbers() {
+        return seatNumbers;
+    }
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public Integer getQueueNumber() {
+        return queueNumber;
+    }
+
+    public String getQueueStatus() {
+        return queueStatus;
     }
 
     public BigDecimal getFare() {
