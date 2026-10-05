@@ -19,7 +19,6 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(name = "bookings", uniqueConstraints = {
         @UniqueConstraint(name = "uk_booking_trip_seat", columnNames = { "trip_id", "seat_number" }),
-        @UniqueConstraint(name = "uk_booking_commuter_trip", columnNames = { "commuter_id", "trip_id" })
 })
 public class Booking {
 
