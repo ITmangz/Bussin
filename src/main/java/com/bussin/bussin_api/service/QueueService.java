@@ -54,6 +54,7 @@ public class QueueService {
             }
 
             int nextQueueNumber = getNextQueueNumber(trip.getId());
+            existing.setUserId(commuter.getId());
             existing.setQueueNumber(nextQueueNumber);
             existing.setPosition(nextQueueNumber);
             existing.setStatus(QueueStatus.WAITING);
@@ -69,6 +70,7 @@ public class QueueService {
         QueueEntry entry = new QueueEntry();
         entry.setTrip(trip);
         entry.setCommuter(commuter);
+        entry.setUserId(commuter.getId());
         int nextQueueNumber = getNextQueueNumber(trip.getId());
         entry.setQueueNumber(nextQueueNumber);
         entry.setPosition(nextQueueNumber);
