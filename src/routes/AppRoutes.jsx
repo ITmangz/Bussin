@@ -22,6 +22,7 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import Buses from "../pages/admin/Buses";
 import AdminTrips from "../pages/admin/Trips";
 import AdminRoutes from "../pages/admin/Routes";
+import AdminBookings from "../pages/admin/Bookings";
 import EmployeeDashboard from "../pages/employee/EmployeeDashboard";
 
 console.log("BUSSIN AppRoutes LOADED");
@@ -156,10 +157,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["ADMIN"]}>
               <AdminLayout>
-                <AdminPlaceholder
-                  title="Bookings"
-                  description="Monitor and manage commuter bookings."
-                />
+                <AdminBookings />
               </AdminLayout>
             </RoleRoute>
           </ProtectedRoute>
