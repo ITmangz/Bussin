@@ -53,7 +53,9 @@ public class QueueService {
                 return existing;
             }
 
-            existing.setQueueNumber(getNextQueueNumber(trip.getId()));
+            int nextQueueNumber = getNextQueueNumber(trip.getId());
+            existing.setQueueNumber(nextQueueNumber);
+            existing.setPosition(nextQueueNumber);
             existing.setStatus(QueueStatus.WAITING);
             existing.setCreatedAt(now);
             existing.setJoinedAt(now);
@@ -67,7 +69,9 @@ public class QueueService {
         QueueEntry entry = new QueueEntry();
         entry.setTrip(trip);
         entry.setCommuter(commuter);
-        entry.setQueueNumber(getNextQueueNumber(trip.getId()));
+        int nextQueueNumber = getNextQueueNumber(trip.getId());
+        entry.setQueueNumber(nextQueueNumber);
+        entry.setPosition(nextQueueNumber);
         entry.setStatus(QueueStatus.WAITING);
         entry.setCreatedAt(now);
         entry.setJoinedAt(now);
