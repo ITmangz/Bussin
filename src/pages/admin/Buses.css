@@ -1,0 +1,415 @@
+.buses-page {
+  width: 100%;
+}
+
+.buses-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.buses-header-copy h1 {
+  margin: 0;
+  color: #121212;
+  font-size: 27px;
+  font-weight: 750;
+}
+
+.buses-header-copy p {
+  margin: 7px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.buses-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.buses-search {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+
+.buses-search svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.buses-search input,
+.buses-filter {
+  height: 42px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #121212;
+  outline: none;
+  font-size: 13px;
+}
+
+.buses-search input {
+  width: 100%;
+  padding: 0 12px 0 38px;
+  box-sizing: border-box;
+}
+
+.buses-search input:focus,
+.buses-filter:focus {
+  border-color: #990000;
+}
+
+.buses-filter {
+  min-width: 150px;
+  padding: 0 11px;
+}
+
+.buses-table-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.buses-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.buses-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.buses-table th,
+.buses-table td {
+  padding: 15px 18px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.buses-table th {
+  background: #fafafa;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.buses-table td {
+  color: #374151;
+  font-size: 13px;
+}
+
+.buses-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.bus-plate {
+  color: #121212;
+  font-weight: 700;
+}
+
+.bus-model {
+  color: #6b7280;
+}
+
+.bus-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bus-status.active {
+  background: #eaf8ee;
+  color: #16843d;
+}
+
+.bus-status.maintenance {
+  background: #fff7e6;
+  color: #9a6700;
+}
+
+.bus-status.out-of-service {
+  background: #f5f5f5;
+  color: #666666;
+}
+
+.bus-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bus-action {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.bus-action:hover {
+  border-color: #990000;
+  color: #990000;
+}
+
+.bus-action.danger:hover {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.buses-empty {
+  padding: 55px 25px;
+  text-align: center;
+}
+
+.buses-empty h3 {
+  margin: 0 0 7px;
+  color: #121212;
+  font-size: 16px;
+}
+
+.buses-empty p {
+  max-width: 480px;
+  margin: 0 auto;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.buses-error {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid #f1b4b4;
+  border-radius: 9px;
+  background: #fff5f5;
+  color: #a30000;
+  font-size: 12px;
+}
+
+.bus-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.bus-modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.bus-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 21px 22px 16px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.bus-modal-header h2 {
+  margin: 0;
+  color: #121212;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.bus-modal-header p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.bus-modal-close {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.bus-modal-close:hover {
+  background: #e5e7eb;
+  color: #121212;
+}
+
+.bus-form {
+  display: grid;
+  gap: 15px;
+  padding: 20px 22px;
+}
+
+.bus-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.bus-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bus-form-field.full {
+  grid-column: 1 / -1;
+}
+
+.bus-form-field label {
+  color: #374151;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bus-form-field input,
+.bus-form-field select {
+  width: 100%;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  background: #ffffff;
+  color: #121212;
+  font-size: 12px;
+}
+
+.bus-form-field input:focus,
+.bus-form-field select:focus {
+  border-color: #990000;
+}
+
+.bus-form-hint {
+  margin: -3px 0 0;
+  color: #9ca3af;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.bus-form-error {
+  padding: 10px 12px;
+  border: 1px solid #f1b4b4;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #a30000;
+  font-size: 11px;
+}
+
+.bus-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 15px 22px 20px;
+  border-top: 1px solid #eef0f2;
+}
+
+.bus-secondary-button,
+.bus-primary-button {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bus-secondary-button {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+}
+
+.bus-primary-button {
+  border: 1px solid #990000;
+  background: #990000;
+  color: #ffffff;
+}
+
+.bus-primary-button:hover {
+  background: #7d0000;
+}
+
+.bus-primary-button:disabled,
+.bus-secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.buses-count {
+  padding: 0 18px 14px;
+  color: #9ca3af;
+  font-size: 10px;
+}
+
+@media (max-width: 700px) {
+  .buses-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .buses-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .buses-search {
+    max-width: none;
+  }
+
+  .buses-filter {
+    width: 100%;
+  }
+
+  .bus-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bus-form-field.full {
+    grid-column: auto;
+  }
+
+  .bus-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .bus-modal {
+    max-height: 92vh;
+    border-radius: 14px 14px 0 0;
+  }
+}
