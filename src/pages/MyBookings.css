@@ -405,6 +405,24 @@
     color: #ea580c;
 }
 
+.booking-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.booking-queue span,
+.modal-queue span {
+    color: var(--text-muted);
+    font-size: 8px;
+}
+
+.booking-queue strong {
+    color: var(--text-primary);
+    font-size: 9px;
+    font-weight: 800;
+}
+
 .booking-fare {
     display: flex;
     flex-direction: column;
@@ -645,6 +663,31 @@
     color: var(--text-primary);
 
     font-size: 11px;
+}
+
+.modal-queue {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 16px 0;
+    border-top: 1px solid var(--bussin-border);
+    border-bottom: 1px solid var(--bussin-border);
+}
+
+.modal-queue > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modal-queue > div:last-child {
+    align-items: flex-end;
+}
+
+.modal-queue strong {
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 800;
 }
 
 .modal-payment {
