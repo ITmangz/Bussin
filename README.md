@@ -1,46 +1,16 @@
-# BUSSIN: Bus Commuter Queue Management System
+# React + Vite
 
-A Java-based bus commuter queue management system with automated voice announcements, designed to help organize passenger booking, queue management, trip scheduling, and boarding operations.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Project Overview
+Currently, two official plugins are available:
 
-BUSSIN is a self-service bus commuter queue management system developed as a final project for the Bachelor of Science in Information Technology with Specialization in Mobile and Web Applications.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-The system is designed to provide an organized and efficient way for commuters and transportation personnel to manage bus trips, passenger bookings, boarding queues, payments, and related operations.
+## React Compiler
 
-## Main Features
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-- Passenger trip booking
-- Trip and route management
-- Passenger information management
-- Boarding queue management
-- Seat reservation
-- Payment management
-- Bus and trip scheduling
-- Employee and administrator account management
-- Automated voice announcements
-- Queue status monitoring
-- Booking and queue ticket generation
-- Employee account verification through Gmail verification codes
+## Expanding the ESLint configuration
 
-## Technologies Used
-
-- Java
-- Java Swing
-- MySQL
-- JDBC
-- Git
-- GitHub
-- Visual Studio Code
-
-## Project Structure
-
-```text
-QueueSystem/
-├── docs/
-├── lib/
-├── resources/
-├── src/
-├── tests/
-├── .gitignore
-└── README.md
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

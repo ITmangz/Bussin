@@ -1,0 +1,76 @@
+.app-layout {
+    min-height: 100vh;
+
+    display: flex;
+
+    background: var(--bussin-light);
+}
+
+.app-content {
+    min-width: 0;
+    flex: 1;
+
+    margin-left: var(--sidebar-width);
+}
+
+.app-main {
+    min-height: calc(100vh - var(--topbar-height));
+
+    padding: 28px;
+}
+
+.sidebar-overlay {
+    display: none;
+}
+
+/* =========================
+   Tablet
+========================= */
+
+@media (max-width: 1024px) {
+    .app-content {
+        margin-left: 0;
+    }
+
+    .app-main {
+        padding: 22px;
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+
+        z-index: 90;
+
+        display: block;
+
+        width: 100%;
+        height: 100%;
+
+        padding: 0;
+
+        border: none;
+
+        background: rgba(0, 0, 0, 0.35);
+    }
+}
+
+/* =========================
+   Mobile
+========================= */
+
+@media (max-width: 768px) {
+    .app-main {
+        padding: 18px 14px;
+    }
+}
+
+/* =========================
+   Small Mobile
+========================= */
+
+@media (max-width: 480px) {
+    .app-main {
+        padding: 14px 12px;
+    }
+}

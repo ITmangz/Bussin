@@ -1,0 +1,8 @@
+.app-card {
+    border: 1px solid var(--bussin-border);
+    border-radius: var(--radius-lg);
+
+    background: var(--bussin-white);
+
+    box-shadow: var(--shadow-sm);
+}
