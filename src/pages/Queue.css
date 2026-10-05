@@ -495,6 +495,118 @@
 }
 
 /* =========================
+   Queue List
+========================= */
+
+.queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.queue-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 20px;
+}
+
+.queue-card-main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+.queue-card-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--bussin-light);
+    color: var(--bussin-red);
+}
+
+.queue-card-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.queue-card-content > span {
+    color: var(--text-muted);
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.queue-card-content h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.queue-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.queue-card-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-secondary);
+    font-size: 8px;
+}
+
+.queue-card-position {
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.queue-card-position > span {
+    color: var(--text-muted);
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.queue-card-position > strong {
+    color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 850;
+}
+
+.queue-card-position em {
+    padding: 4px 7px;
+    border-radius: 20px;
+    background: #f0fdf4;
+    color: var(--status-success);
+    font-size: 7px;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.queue-card-position em.called {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.queue-card-position em.boarded {
+    background: #eff6ff;
+    color: var(--status-info);
+}
+
+/* =========================
    Instructions
 ========================= */
 
@@ -564,6 +676,20 @@
 ========================= */
 
 @media (max-width: 768px) {
+    .queue-card {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .queue-card-position {
+        width: 100%;
+        align-items: flex-start;
+        padding-top: 12px;
+        border-top: 1px solid var(--bussin-border);
+    }
+
+
     .queue-header h1 {
         font-size: 21px;
     }
