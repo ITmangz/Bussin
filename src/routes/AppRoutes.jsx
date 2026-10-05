@@ -12,6 +12,7 @@ import MyBookings from "../pages/MyBookings";
 import Queue from "../pages/Queue";
 import Trips from "../pages/Trips";
 import Profile from "../pages/Profile";
+import Booking from "../pages/Booking";
 
 function ProtectedLayout() {
   return (
@@ -27,6 +28,8 @@ function ProtectedLayout() {
           <Route path="/queue" element={<Queue />} />
 
           <Route path="/trips" element={<Trips />} />
+
+          <Route path="/booking" element={<Booking />} />
 
           <Route path="/profile" element={<Profile />} />
 
