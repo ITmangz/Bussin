@@ -77,7 +77,7 @@ public class QueueService {
             Long tripId,
             String firebaseUid) {
 
-        Trip trip = tripRepository.findById(tripId)
+        Trip trip = tripRepository.findByIdForUpdate(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Trip not found with ID: " + tripId));
 
@@ -93,11 +93,13 @@ public class QueueService {
 
         validateJoinableTrip(trip);
 
-        if (queueEntryRepository
-                .existsByTripIdAndCommuterId(
+        QueueEntry existing = queueEntryRepository
+                .findByTripIdAndCommuterId(
                         tripId,
-                        commuter.getId())) {
+                        commuter.getId())
+                .orElse(null);
 
+        if (existing != null && existing.getStatus() != QueueStatus.CANCELLED) {
             throw new ConflictException(
                     "You have already joined this trip's queue");
         }
