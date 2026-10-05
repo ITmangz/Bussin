@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
@@ -21,6 +22,9 @@ import jakarta.persistence.UniqueConstraint;
         @UniqueConstraint(name = "uk_booking_commuter_trip", columnNames = { "commuter_id", "trip_id" })
 })
 public class Booking {
+
+    @OneToMany(mappedBy = "booking", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<BookingSeat> bookingSeats = new java.util.ArrayList<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,6 +71,15 @@ public class Booking {
     private LocalDateTime updatedAt;
 
     public Booking() {
+    }
+
+    public java.util.List<BookingSeat> getBookingSeats() {
+        return bookingSeats;
+    }
+
+    public void addBookingSeat(BookingSeat bookingSeat) {
+        bookingSeats.add(bookingSeat);
+        bookingSeat.setBooking(this);
     }
 
     public Long getId() {
