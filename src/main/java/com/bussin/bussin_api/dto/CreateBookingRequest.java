@@ -1,16 +1,21 @@
 package com.bussin.bussin_api.dto;
 
+import java.util.List;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class CreateBookingRequest {
 
     @NotNull
     private Long tripId;
 
-    @NotBlank
-    private String seatNumber;
+    @NotEmpty
+    @Size(min = 1, max = 20)
+    private List<@NotBlank String> seatNumbers;
 
     @NotBlank
     private String passengerName;
@@ -33,12 +38,12 @@ public class CreateBookingRequest {
         this.tripId = tripId;
     }
 
-    public String getSeatNumber() {
-        return seatNumber;
+    public List<String> getSeatNumbers() {
+        return seatNumbers;
     }
 
-    public void setSeatNumber(String seatNumber) {
-        this.seatNumber = seatNumber;
+    public void setSeatNumbers(List<String> seatNumbers) {
+        this.seatNumbers = seatNumbers;
     }
 
     public String getPassengerName() {
