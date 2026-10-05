@@ -45,7 +45,9 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
         List<Trip> findByScheduledDepartureAfterOrderByScheduledDepartureDesc(
                         LocalDateTime after);
 
-        List<Trip> findAllByOrderByScheduledDepartureDesc();\n\n        long countByScheduledDepartureBetween(LocalDateTime start, LocalDateTime end);
+        List<Trip> findAllByOrderByScheduledDepartureDesc();
+
+        long countByScheduledDepartureBetween(LocalDateTime start, LocalDateTime end);
 
         List<Trip> findByRouteIdInAndScheduledDepartureBetweenOrderByScheduledDepartureAsc(
                         List<Long> routeIds,
