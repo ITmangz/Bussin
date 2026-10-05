@@ -72,6 +72,29 @@ public class UserController {
     }
 
     // ============================================================
+    // GET EMPLOYEES
+    // ADMIN ONLY
+    // ============================================================
+
+    @GetMapping("/employees")
+    public List<UserResponse> getEmployees() {
+        return userService.getEmployees();
+    }
+
+    // ============================================================
+    // UPDATE MANAGED USER
+    // ADMIN ONLY
+    // ============================================================
+
+    @PutMapping("/{userId}")
+    public UserResponse updateManagedUser(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateUserRequest request) {
+
+        return userService.updateManagedUser(userId, request);
+    }
+
+    // ============================================================
     // UPDATE USER ROLE
     // ADMIN ONLY
     // ============================================================
