@@ -43,6 +43,9 @@ public class QueueEntry {
     @Column(nullable = false, length = 20)
     private QueueStatus status;
 
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
@@ -90,6 +93,14 @@ public class QueueEntry {
 
     public void setStatus(QueueStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public LocalDateTime getJoinedAt() {
