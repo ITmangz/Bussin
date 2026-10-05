@@ -13,7 +13,9 @@ public interface RouteRepository extends JpaRepository<Route, Long> {
 
     List<Route> findByActiveTrue();
 
-    long countByActiveTrue();\n\n    List<Route> findByOriginIgnoreCaseAndDestinationIgnoreCaseAndActiveTrue(
+    long countByActiveTrue();
+
+    List<Route> findByOriginIgnoreCaseAndDestinationIgnoreCaseAndActiveTrue(
             String origin,
             String destination);
 }
