@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -156,7 +157,14 @@ public class BookingService {
             booking.addBookingSeat(bookingSeat);
         }
 
-        Booking savedBooking = bookingRepository.saveAndFlush(booking);
+        Booking savedBooking;
+        try {
+            savedBooking = bookingRepository.saveAndFlush(booking);
+        } catch (DataIntegrityViolationException exception) {
+            throw new ConflictException(
+                    "A booking conflicts with an existing booking or seat allocation. "
+                            + "Refresh availability and try again.");
+        }
 
         QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(
                 trip,

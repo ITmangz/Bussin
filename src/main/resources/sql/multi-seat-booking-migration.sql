@@ -8,6 +8,9 @@
 -- That constraint is incompatible with cancellation/rebooking and multi-seat
 -- bookings because the authoritative seat allocation now lives in
 -- booking_seats. Remove both possible legacy trip/seat unique constraints.
+-- Older deployments may also have uk_booking_commuter_trip, which prevents a
+-- commuter from booking the same trip again after a cancelled booking. The
+-- application permits rebooking when no active booking exists, so remove it.
 --
 -- The application now protects active seat allocation transactionally by
 -- locking the trip row and checking active booking_seats.
