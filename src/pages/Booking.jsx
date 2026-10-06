@@ -14,6 +14,7 @@ import {
 
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
+import ETicket from "../components/booking/ETicket";
 import { useAuth } from "../contexts/AuthContext";
 import {
   createBooking,
@@ -239,11 +240,6 @@ function Booking() {
   }
 
   if (booking) {
-    const bookedSeats =
-      Array.isArray(booking.seatNumbers) && booking.seatNumbers.length > 0
-        ? booking.seatNumbers
-        : [booking.seatNumber].filter(Boolean);
-
     return (
       <section className="booking-page">
         <AppCard className="booking-success">
@@ -261,46 +257,7 @@ function Booking() {
               : "Your booking and queue entry were created successfully. Payment remains unpaid until a payment is completed."}
           </p>
 
-          <div className="booking-reference">
-            <span>Booking Reference</span>
-            <strong>{booking.bookingReference}</strong>
-          </div>
-
-          <div className="booking-success-grid">
-            <div>
-              <span>Route</span>
-              <strong>
-                {booking.origin} → {booking.destination}
-              </strong>
-            </div>
-
-            <div>
-              <span>Seats</span>
-              <strong>{bookedSeats.join(", ")}</strong>
-            </div>
-
-            <div>
-              <span>Queue</span>
-              <strong>
-                {booking.queueNumber ? `#${booking.queueNumber}` : "WAITING"}
-              </strong>
-            </div>
-
-            <div>
-              <span>Departure</span>
-              <strong>{formatDateTime(booking.scheduledDeparture)}</strong>
-            </div>
-
-            <div>
-              <span>Seats Booked</span>
-              <strong>{bookedSeats.length}</strong>
-            </div>
-
-            <div>
-              <span>Total Fare</span>
-              <strong>₱{formatFare(booking.fare)}</strong>
-            </div>
-          </div>
+          <ETicket booking={booking} />
 
           <div className="booking-success-actions">
             <AppButton variant="secondary" onClick={() => navigate("/trips")}>

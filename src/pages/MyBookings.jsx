@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
+import ETicket from "../components/booking/ETicket";
 
 import { getMyBookings, cancelMyBooking } from "../services/bookingService";
 
@@ -604,6 +605,26 @@ function MyBookings() {
                   <strong>₱{formatFare(selectedBooking.fare)}</strong>
                 </div>
               </div>
+
+              <ETicket
+                booking={{
+                  bookingReference: selectedBooking.reference,
+                  passengerName: selectedBooking.passenger,
+                  passengerPhone: selectedBooking.contact,
+                  origin: selectedBooking.origin,
+                  destination: selectedBooking.destination,
+                  scheduledDeparture: selectedBooking.scheduledDeparture,
+                  scheduledArrival: selectedBooking.scheduledArrival,
+                  busPlateNumber: selectedBooking.busNumber,
+                  seatNumbers: selectedBooking.seats,
+                  queueNumber: selectedBooking.queueNumber,
+                  queueStatus: selectedBooking.queueStatus,
+                  paymentStatus: selectedBooking.paymentStatus,
+                  status: selectedBooking.bookingStatus,
+                  fare: selectedBooking.fare,
+                }}
+                showPreview={false}
+              />
             </div>
 
             <div className="booking-modal-footer">
