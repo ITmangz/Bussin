@@ -226,7 +226,11 @@ function Routes() {
           <h1>Routes</h1>
           <p>Manage bus routes, distance, duration, and base fares.</p>
         </div>
-        <button type="button" className="route-primary-button" onClick={openCreateModal}>
+        <button
+          type="button"
+          className="route-primary-button"
+          onClick={openCreateModal}
+        >
           <Plus size={15} /> Add Route
         </button>
       </header>
@@ -301,7 +305,9 @@ function Routes() {
                       <td>{route.durationMinutes} min</td>
                       <td>{formatMoney(route.baseFare)}</td>
                       <td>
-                        <span className={`route-status ${route.active ? "active" : "inactive"}`}>
+                        <span
+                          className={`route-status ${route.active ? "active" : "inactive"}`}
+                        >
                           {route.active ? "Active" : "Inactive"}
                         </span>
                       </td>
@@ -348,13 +354,26 @@ function Routes() {
             if (event.target === event.currentTarget) closeModal();
           }}
         >
-          <div className="route-modal" role="dialog" aria-modal="true" aria-labelledby="route-modal-title">
+          <div
+            className="route-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="route-modal-title"
+          >
             <div className="route-modal-header">
               <div>
-                <h2 id="route-modal-title">{editingRoute ? "Edit Route" : "Add Route"}</h2>
+                <h2 id="route-modal-title">
+                  {editingRoute ? "Edit Route" : "Add Route"}
+                </h2>
                 <p>Configure the route information used by BUSSIN trips.</p>
               </div>
-              <button type="button" className="route-modal-close" onClick={closeModal} disabled={saving} aria-label="Close">
+              <button
+                type="button"
+                className="route-modal-close"
+                onClick={closeModal}
+                disabled={saving}
+                aria-label="Close"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -363,35 +382,102 @@ function Routes() {
               <div className="route-form-grid">
                 <div className="route-form-field">
                   <label htmlFor="route-identifier">Route Identifier</label>
-                  <input id="route-identifier" name="routeIdentifier" value={form.routeIdentifier} onChange={handleChange} maxLength={100} placeholder="e.g. BAC-MNL-01" required />
+                  <input
+                    id="route-identifier"
+                    name="routeIdentifier"
+                    value={form.routeIdentifier}
+                    onChange={handleChange}
+                    maxLength={100}
+                    placeholder="e.g. BAC-MNL-01"
+                    required
+                  />
                 </div>
                 <div className="route-form-field">
                   <label htmlFor="route-origin">Origin</label>
-                  <input id="route-origin" name="origin" value={form.origin} onChange={handleChange} maxLength={100} placeholder="e.g. Bacoor" required />
+                  <input
+                    id="route-origin"
+                    name="origin"
+                    value={form.origin}
+                    onChange={handleChange}
+                    maxLength={100}
+                    placeholder="e.g. Bacoor"
+                    required
+                  />
                 </div>
                 <div className="route-form-field">
                   <label htmlFor="route-destination">Destination</label>
-                  <input id="route-destination" name="destination" value={form.destination} onChange={handleChange} maxLength={100} placeholder="e.g. Manila" required />
+                  <input
+                    id="route-destination"
+                    name="destination"
+                    value={form.destination}
+                    onChange={handleChange}
+                    maxLength={100}
+                    placeholder="e.g. Manila"
+                    required
+                  />
                 </div>
                 <div className="route-form-field">
                   <label htmlFor="route-distance">Distance (km)</label>
-                  <input id="route-distance" name="distanceKm" type="number" min="0.01" step="0.01" value={form.distanceKm} onChange={handleChange} placeholder="e.g. 28.50" required />
+                  <input
+                    id="route-distance"
+                    name="distanceKm"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={form.distanceKm}
+                    onChange={handleChange}
+                    placeholder="e.g. 28.50"
+                    required
+                  />
                 </div>
                 <div className="route-form-field">
                   <label htmlFor="route-duration">Duration (minutes)</label>
-                  <input id="route-duration" name="durationMinutes" type="number" min="1" step="1" value={form.durationMinutes} onChange={handleChange} placeholder="e.g. 75" required />
+                  <input
+                    id="route-duration"
+                    name="durationMinutes"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.durationMinutes}
+                    onChange={handleChange}
+                    placeholder="e.g. 75"
+                    required
+                  />
                 </div>
                 <div className="route-form-field">
                   <label htmlFor="route-fare">Base Fare (PHP)</label>
-                  <input id="route-fare" name="baseFare" type="number" min="0.01" step="0.01" value={form.baseFare} onChange={handleChange} placeholder="e.g. 45.00" required />
+                  <input
+                    id="route-fare"
+                    name="baseFare"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={form.baseFare}
+                    onChange={handleChange}
+                    placeholder="e.g. 45.00"
+                    required
+                  />
                 </div>
                 <div className="route-form-field full">
                   <label htmlFor="route-description">Description</label>
-                  <textarea id="route-description" name="description" value={form.description} onChange={handleChange} maxLength={255} rows={3} placeholder="Optional route notes..." />
+                  <textarea
+                    id="route-description"
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    maxLength={255}
+                    rows={3}
+                    placeholder="Optional route notes..."
+                  />
                 </div>
                 {editingRoute && (
                   <label className="route-active-toggle">
-                    <input type="checkbox" name="active" checked={form.active} onChange={handleChange} />
+                    <input
+                      type="checkbox"
+                      name="active"
+                      checked={form.active}
+                      onChange={handleChange}
+                    />
                     <span>Route is active</span>
                   </label>
                 )}
@@ -400,9 +486,24 @@ function Routes() {
               {formError && <div className="route-form-error">{formError}</div>}
 
               <div className="route-modal-actions">
-                <button type="button" className="route-secondary-button" onClick={closeModal} disabled={saving}>Cancel</button>
-                <button type="submit" className="route-primary-button" disabled={saving}>
-                  {saving ? "Saving..." : editingRoute ? "Save Changes" : "Create Route"}
+                <button
+                  type="button"
+                  className="route-secondary-button"
+                  onClick={closeModal}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="route-primary-button"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingRoute
+                      ? "Save Changes"
+                      : "Create Route"}
                 </button>
               </div>
             </form>
