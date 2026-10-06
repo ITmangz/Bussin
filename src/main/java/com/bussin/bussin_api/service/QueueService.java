@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ import com.bussin.bussin_api.exception.ResourceNotFoundException;
 import com.bussin.bussin_api.repository.QueueEntryRepository;
 import com.bussin.bussin_api.repository.TripRepository;
 import com.bussin.bussin_api.repository.UserRepository;
+import com.google.firebase.auth.FirebaseToken;
 
 @Service
 public class QueueService {
@@ -86,18 +89,13 @@ public class QueueService {
     }
 
     @Transactional
-    public QueueEntry joinQueue(
-            Long tripId,
-            String firebaseUid) {
+    public QueueEntry joinQueue(Long tripId) {
 
         Trip trip = tripRepository.findByIdForUpdate(tripId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Trip not found with ID: " + tripId));
 
-        User commuter = userRepository
-                .findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "User profile not found"));
+        User commuter = getAuthenticatedUser();
 
         if (commuter.getRole() != Role.COMMUTER) {
             throw new ConflictException(
@@ -161,12 +159,8 @@ public class QueueService {
     }
 
     @Transactional(readOnly = true)
-    public QueueEntry getMyQueueEntry(
-            Long tripId,
-            String firebaseUid) {
-
-        User commuter = getUserByFirebaseUid(
-                firebaseUid);
+    public QueueEntry getMyQueueEntry(Long tripId) {
+        User commuter = requireCommuterUser();
 
         return queueEntryRepository
                 .findByTripIdAndCommuterId(
@@ -226,14 +220,12 @@ public class QueueService {
     }
 
     @Transactional
-    public QueueEntry cancelQueueEntry(
-            Long queueEntryId,
-            String firebaseUid) {
+    public QueueEntry cancelQueueEntry(Long queueEntryId) {
 
         Trip trip = lockTripForQueueEntry(queueEntryId);
         QueueEntry entry = findQueueEntryById(queueEntryId);
 
-        User commuter = getUserByFirebaseUid(firebaseUid);
+        User commuter = requireCommuterUser();
 
         if (!entry.getCommuter()
                 .getId()
@@ -375,16 +367,22 @@ public class QueueService {
     }
 
     private User getAuthenticatedUser() {
-        org.springframework.security.core.Authentication authentication =
-                org.springframework.security.core.context.SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof FirebaseToken firebaseToken)) {
             throw new ConflictException("Authenticated Firebase user is required");
         }
 
-        return getUserByFirebaseUid(authentication.getName());
+        return getUserByFirebaseUid(firebaseToken.getUid());
+    }
+
+    private User requireCommuterUser() {
+        User commuter = getAuthenticatedUser();
+        if (commuter.getRole() != Role.COMMUTER) {
+            throw new ConflictException("Only commuters can manage their queue entries");
+        }
+        return commuter;
     }
 
     private User requireStaffUser() {

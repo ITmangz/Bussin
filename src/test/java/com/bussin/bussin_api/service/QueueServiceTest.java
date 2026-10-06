@@ -2,6 +2,7 @@ package com.bussin.bussin_api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,20 +10,25 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.bussin.bussin_api.entity.QueueEntry;
 import com.bussin.bussin_api.entity.QueueStatus;
+import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.entity.Trip;
 import com.bussin.bussin_api.entity.TripStatus;
 import com.bussin.bussin_api.entity.User;
 import com.bussin.bussin_api.repository.QueueEntryRepository;
 import com.bussin.bussin_api.repository.TripRepository;
 import com.bussin.bussin_api.repository.UserRepository;
+import com.google.firebase.auth.FirebaseToken;
 
 @ExtendWith(MockitoExtension.class)
 class QueueServiceTest {
@@ -38,6 +44,31 @@ class QueueServiceTest {
 
     @InjectMocks
     private QueueService queueService;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void employeeQueueUsesVerifiedFirebaseUidFromPrincipal() {
+        FirebaseToken token = mock(FirebaseToken.class);
+        when(token.getUid()).thenReturn("employee-firebase-uid");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(token, null, List.of()));
+
+        User employee = mock(User.class);
+        when(employee.getId()).thenReturn(27L);
+        when(employee.getRole()).thenReturn(Role.EMPLOYEE);
+        when(userRepository.findByFirebaseUid("employee-firebase-uid"))
+                .thenReturn(Optional.of(employee));
+        when(queueEntryRepository.findAssignedToEmployee(27L)).thenReturn(List.of());
+
+        assertTrue(queueService.getEmployeeQueue().isEmpty());
+
+        verify(userRepository).findByFirebaseUid("employee-firebase-uid");
+        verify(queueEntryRepository).findAssignedToEmployee(27L);
+    }
 
     @Test
     void cancellationCompactsRemainingQueueNumbers() {

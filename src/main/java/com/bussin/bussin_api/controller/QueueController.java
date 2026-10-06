@@ -3,7 +3,6 @@ package com.bussin.bussin_api.controller;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,13 +35,11 @@ public class QueueController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public QueueResponse joinQueue(
-            @Valid @RequestBody JoinQueueRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody JoinQueueRequest request) {
 
         return QueueResponse.from(
                 queueService.joinQueue(
-                        request.getTripId(),
-                        authentication.getName()));
+                        request.getTripId()));
     }
 
     @GetMapping("/trip/{tripId}")
@@ -75,13 +72,11 @@ public class QueueController {
 
     @GetMapping("/trip/{tripId}/me")
     public QueueResponse getMyQueueEntry(
-            @PathVariable Long tripId,
-            Authentication authentication) {
+            @PathVariable Long tripId) {
 
         return QueueResponse.from(
                 queueService.getMyQueueEntry(
-                        tripId,
-                        authentication.getName()));
+                        tripId));
     }
 
     @PutMapping("/{queueEntryId}/status")
@@ -97,12 +92,10 @@ public class QueueController {
 
     @DeleteMapping("/{queueEntryId}")
     public QueueResponse cancelQueueEntry(
-            @PathVariable Long queueEntryId,
-            Authentication authentication) {
+            @PathVariable Long queueEntryId) {
 
         return QueueResponse.from(
                 queueService.cancelQueueEntry(
-                        queueEntryId,
-                        authentication.getName()));
+                        queueEntryId));
     }
 }

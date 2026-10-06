@@ -24,6 +24,7 @@ import com.bussin.bussin_api.repository.BusRepository;
 import com.bussin.bussin_api.repository.RouteRepository;
 import com.bussin.bussin_api.repository.TripRepository;
 import com.bussin.bussin_api.repository.UserRepository;
+import com.google.firebase.auth.FirebaseToken;
 
 @Service
 public class TripService {
@@ -386,10 +387,11 @@ public class TripService {
 
     private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof FirebaseToken firebaseToken)) {
             throw new ConflictException("Authenticated Firebase user is required.");
         }
-        return userRepository.findByFirebaseUid(authentication.getName())
+        return userRepository.findByFirebaseUid(firebaseToken.getUid())
                 .orElseThrow(() -> new ResourceNotFoundException("BUSSIN user profile not found."));
     }
 }
