@@ -24,6 +24,7 @@ import AdminTrips from "../pages/admin/Trips";
 import AdminRoutes from "../pages/admin/Routes";
 import AdminBookings from "../pages/admin/Bookings";
 import UserManagement from "../pages/admin/UserManagement";
+import AdminReports from "../pages/admin/Reports";
 import EmployeeDashboard from "../pages/employee/EmployeeDashboard";
 import EmployeeTrips from "../pages/employee/EmployeeTrips";
 import EmployeeBookings from "../pages/employee/EmployeeBookings";
@@ -193,10 +194,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["ADMIN"]}>
               <AdminLayout>
-                <AdminPlaceholder
-                  title="Reports"
-                  description="View BUSSIN operational and booking reports."
-                />
+                <AdminReports />
               </AdminLayout>
             </RoleRoute>
           </ProtectedRoute>
