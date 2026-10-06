@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.BookingSeat;
 import com.bussin.bussin_api.entity.BookingStatus;
 import com.bussin.bussin_api.entity.Bus;
+import com.bussin.bussin_api.entity.CancelledBookingArchive;
 import com.bussin.bussin_api.entity.PaymentStatus;
 import com.bussin.bussin_api.entity.QueueEntry;
 import com.bussin.bussin_api.entity.Role;
@@ -31,6 +33,7 @@ import com.bussin.bussin_api.exception.ConflictException;
 import com.bussin.bussin_api.exception.ResourceNotFoundException;
 import com.bussin.bussin_api.repository.BookingRepository;
 import com.bussin.bussin_api.repository.BookingSeatRepository;
+import com.bussin.bussin_api.repository.CancelledBookingArchiveRepository;
 import com.bussin.bussin_api.repository.TripRepository;
 import com.bussin.bussin_api.repository.UserRepository;
 import com.google.firebase.auth.FirebaseToken;
@@ -42,6 +45,7 @@ public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final BookingSeatRepository bookingSeatRepository;
+    private final CancelledBookingArchiveRepository cancelledBookingArchiveRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final QueueService queueService;
@@ -49,12 +53,14 @@ public class BookingService {
     public BookingService(
             BookingRepository bookingRepository,
             BookingSeatRepository bookingSeatRepository,
+            CancelledBookingArchiveRepository cancelledBookingArchiveRepository,
             TripRepository tripRepository,
             UserRepository userRepository,
             QueueService queueService) {
 
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
+        this.cancelledBookingArchiveRepository = cancelledBookingArchiveRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
         this.queueService = queueService;
@@ -220,21 +226,28 @@ public class BookingService {
     public List<BookingResponse> getAllBookings() {
         requireStaffAccess();
 
-        return bookingRepository.findAll()
+        List<BookingResponse> bookings = new ArrayList<>(bookingRepository.findAll()
                 .stream()
                 .map(this::toResponse)
-                .toList();
+                .toList());
+        bookings.addAll(cancelledBookingArchiveRepository.findAll()
+                .stream()
+                .map(BookingResponse::from)
+                .toList());
+        bookings.sort(Comparator.comparing(BookingResponse::getCreatedAt).reversed());
+        return bookings;
     }
 
     @Transactional(readOnly = true)
     public BookingResponse getBookingForStaff(Long bookingId) {
         requireStaffAccess();
 
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Booking not found: " + bookingId));
-
-        return toResponse(booking);
+        return bookingRepository.findById(bookingId)
+                .map(this::toResponse)
+                .orElseGet(() -> cancelledBookingArchiveRepository.findById(bookingId)
+                        .map(BookingResponse::from)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Booking not found: " + bookingId)));
     }
 
     @Transactional
@@ -256,6 +269,10 @@ public class BookingService {
                     "Completed bookings cannot be reopened.");
         }
 
+        if (newStatus == BookingStatus.CANCELLED) {
+            return archiveAndDeleteBooking(booking);
+        }
+
         booking.setStatus(newStatus);
         booking.setUpdatedAt(LocalDateTime.now());
 
@@ -275,11 +292,18 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "BUSSIN user profile not found."));
 
-        return bookingRepository
+        List<BookingResponse> bookings = new ArrayList<>(bookingRepository
                 .findByCommuterIdOrderByCreatedAtDesc(commuter.getId())
                 .stream()
                 .map(this::toResponse)
-                .toList();
+                .toList());
+        bookings.addAll(cancelledBookingArchiveRepository
+                .findByCommuterIdOrderByCreatedAtDesc(commuter.getId())
+                .stream()
+                .map(BookingResponse::from)
+                .toList());
+        bookings.sort(Comparator.comparing(BookingResponse::getCreatedAt).reversed());
+        return bookings;
     }
 
     @Transactional(readOnly = true)
@@ -291,12 +315,13 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "BUSSIN user profile not found."));
 
-        Booking booking = bookingRepository
-                .findByIdAndCommuterId(bookingId, commuter.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Booking not found: " + bookingId));
-
-        return toResponse(booking);
+        return bookingRepository.findByIdAndCommuterId(bookingId, commuter.getId())
+                .map(this::toResponse)
+                .orElseGet(() -> cancelledBookingArchiveRepository
+                        .findByBookingIdAndCommuterId(bookingId, commuter.getId())
+                        .map(BookingResponse::from)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Booking not found: " + bookingId)));
     }
 
     @Transactional
@@ -314,8 +339,7 @@ public class BookingService {
                         "Booking not found: " + bookingId));
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new ConflictException(
-                    "Booking is already cancelled.");
+            return archiveAndDeleteBooking(booking);
         }
 
         if (booking.getStatus() == BookingStatus.COMPLETED) {
@@ -323,16 +347,31 @@ public class BookingService {
                     "Completed bookings cannot be cancelled.");
         }
 
-        booking.setStatus(BookingStatus.CANCELLED);
-        booking.setUpdatedAt(LocalDateTime.now());
+        return archiveAndDeleteBooking(booking);
+    }
 
-        Booking savedBooking = bookingRepository.save(booking);
+    private BookingResponse archiveAndDeleteBooking(Booking booking) {
+        LocalDateTime cancelledAt = LocalDateTime.now();
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setUpdatedAt(cancelledAt);
 
         queueService.cancelQueueEntryForBooking(
-                savedBooking.getTrip(),
-                savedBooking.getCommuter());
+                booking.getTrip(),
+                booking.getCommuter());
+        QueueEntry queueEntry = queueService.findQueueEntry(
+                booking.getTrip().getId(),
+                booking.getCommuter().getId());
 
-        return toResponse(savedBooking);
+        CancelledBookingArchive archive = CancelledBookingArchive.from(
+                booking,
+                queueEntry,
+                cancelledAt);
+        CancelledBookingArchive savedArchive = cancelledBookingArchiveRepository.saveAndFlush(archive);
+
+        bookingRepository.delete(booking);
+        bookingRepository.flush();
+
+        return BookingResponse.from(savedArchive);
     }
 
     private BookingResponse toResponse(Booking booking) {

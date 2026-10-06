@@ -5,12 +5,17 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.bussin.bussin_api.entity.QueueEntry;
 import com.bussin.bussin_api.entity.QueueStatus;
 
 public interface QueueEntryRepository
         extends JpaRepository<QueueEntry, Long> {
+
+    @Query("SELECT queueEntry.trip.id FROM QueueEntry queueEntry WHERE queueEntry.id = :queueEntryId")
+    Optional<Long> findTripIdByQueueEntryId(@Param("queueEntryId") Long queueEntryId);
 
     @EntityGraph(attributePaths = {"commuter", "trip"})
     List<QueueEntry> findByTripIdOrderByQueueNumberAsc(
@@ -32,6 +37,4 @@ public interface QueueEntryRepository
     @EntityGraph(attributePaths = {"commuter", "trip"})
     long countByStatus(QueueStatus status);
 
-    Optional<QueueEntry> findTopByTripIdOrderByQueueNumberDesc(
-            Long tripId);
 }

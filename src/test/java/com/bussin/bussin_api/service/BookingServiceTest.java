@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +17,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,10 +27,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.bussin.bussin_api.dto.CreateBookingRequest;
+import com.bussin.bussin_api.dto.BookingResponse;
 import com.bussin.bussin_api.entity.Booking;
+import com.bussin.bussin_api.entity.BookingSeat;
 import com.bussin.bussin_api.entity.BookingStatus;
 import com.bussin.bussin_api.entity.Bus;
 import com.bussin.bussin_api.entity.BusStatus;
+import com.bussin.bussin_api.entity.CancelledBookingArchive;
+import com.bussin.bussin_api.entity.PaymentStatus;
+import com.bussin.bussin_api.entity.QueueEntry;
+import com.bussin.bussin_api.entity.QueueStatus;
 import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.entity.Route;
 import com.bussin.bussin_api.entity.Trip;
@@ -36,6 +45,7 @@ import com.bussin.bussin_api.entity.User;
 import com.bussin.bussin_api.exception.ConflictException;
 import com.bussin.bussin_api.repository.BookingRepository;
 import com.bussin.bussin_api.repository.BookingSeatRepository;
+import com.bussin.bussin_api.repository.CancelledBookingArchiveRepository;
 import com.bussin.bussin_api.repository.TripRepository;
 import com.bussin.bussin_api.repository.UserRepository;
 import com.google.firebase.auth.FirebaseToken;
@@ -48,6 +58,9 @@ class BookingServiceTest {
 
     @Mock
     private BookingSeatRepository bookingSeatRepository;
+
+    @Mock
+    private CancelledBookingArchiveRepository cancelledBookingArchiveRepository;
 
     @Mock
     private TripRepository tripRepository;
@@ -191,5 +204,89 @@ class BookingServiceTest {
 
         assertEquals(foreignKeyViolation, exception);
         verify(queueService, never()).ensureQueueEntryForBooking(trip, commuter);
+    }
+
+    @Test
+    void cancelMyBookingArchivesHistoryBeforeDeletingActiveRecord() {
+        User commuter = mock(User.class);
+        when(commuter.getId()).thenReturn(18L);
+        when(commuter.getEmail()).thenReturn("commuter@example.com");
+        when(commuter.getFirstName()).thenReturn("Commuter");
+        when(commuter.getLastName()).thenReturn("One");
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(commuter));
+
+        Route route = mock(Route.class);
+        when(route.getRouteIdentifier()).thenReturn("BAC-MARS");
+        when(route.getOrigin()).thenReturn("Bacolod");
+        when(route.getDestination()).thenReturn("Manila");
+
+        Bus bus = mock(Bus.class);
+        when(bus.getId()).thenReturn(7L);
+        when(bus.getPlateNumber()).thenReturn("ABC-1234");
+
+        Trip trip = mock(Trip.class);
+        when(trip.getId()).thenReturn(9L);
+        when(trip.getRoute()).thenReturn(route);
+        when(trip.getBus()).thenReturn(bus);
+
+        BookingSeat bookingSeat = mock(BookingSeat.class);
+        when(bookingSeat.getSeatNumber()).thenReturn("1A");
+
+        Booking booking = mock(Booking.class);
+        when(booking.getId()).thenReturn(41L);
+        when(booking.getStatus()).thenReturn(BookingStatus.CONFIRMED);
+        when(booking.getBookingReference()).thenReturn("BUS-REF-41");
+        when(booking.getCommuter()).thenReturn(commuter);
+        when(booking.getTrip()).thenReturn(trip);
+        when(booking.getPassengerName()).thenReturn("Commuter One");
+        when(booking.getPassengerPhone()).thenReturn("09123456789");
+        when(booking.getPassengerEmail()).thenReturn("commuter@example.com");
+        when(booking.getSeatNumber()).thenReturn("1A");
+        when(booking.getBookingSeats()).thenReturn(List.of(bookingSeat));
+        when(booking.getFare()).thenReturn(new BigDecimal("100.00"));
+        when(booking.getPaymentStatus()).thenReturn(PaymentStatus.PAID);
+        when(booking.getCreatedAt()).thenReturn(java.time.LocalDateTime.parse("2026-10-06T10:00:00"));
+        when(bookingRepository.findByIdAndCommuterId(41L, 18L))
+                .thenReturn(Optional.of(booking));
+
+        QueueEntry queueEntry = mock(QueueEntry.class);
+        when(queueEntry.getQueueNumber()).thenReturn(2);
+        when(queueEntry.getStatus()).thenReturn(QueueStatus.CANCELLED);
+        when(queueService.findQueueEntry(9L, 18L)).thenReturn(queueEntry);
+        when(cancelledBookingArchiveRepository.saveAndFlush(
+                org.mockito.ArgumentMatchers.any(CancelledBookingArchive.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        ArgumentCaptor<CancelledBookingArchive> archivedBooking =
+                ArgumentCaptor.forClass(CancelledBookingArchive.class);
+
+        BookingResponse response = bookingService.cancelMyBooking(41L);
+
+        assertEquals(41L, response.getId());
+        assertEquals("BUS-REF-41", response.getBookingReference());
+        assertEquals(BookingStatus.CANCELLED, response.getStatus());
+        assertEquals(List.of("1A"), response.getSeatNumbers());
+        assertEquals(2, response.getQueueNumber());
+
+        InOrder cancellationOrder = inOrder(
+                queueService,
+                cancelledBookingArchiveRepository,
+                bookingRepository);
+        cancellationOrder.verify(queueService).cancelQueueEntryForBooking(trip, commuter);
+        cancellationOrder.verify(queueService).findQueueEntry(9L, 18L);
+        cancellationOrder.verify(cancelledBookingArchiveRepository).saveAndFlush(
+                archivedBooking.capture());
+        cancellationOrder.verify(bookingRepository).delete(booking);
+        cancellationOrder.verify(bookingRepository).flush();
+
+        when(bookingRepository.findByCommuterIdOrderByCreatedAtDesc(18L))
+                .thenReturn(List.of());
+        when(cancelledBookingArchiveRepository.findByCommuterIdOrderByCreatedAtDesc(18L))
+                .thenReturn(List.of(archivedBooking.getValue()));
+        List<BookingResponse> bookingHistory = bookingService.getMyBookings();
+
+        assertEquals(1, bookingHistory.size());
+        assertEquals(BookingStatus.CANCELLED, bookingHistory.get(0).getStatus());
+        assertEquals(41L, bookingHistory.get(0).getId());
     }
 }

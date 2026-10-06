@@ -13,6 +13,7 @@ import com.bussin.bussin_api.entity.QueueStatus;
 import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.repository.BookingRepository;
 import com.bussin.bussin_api.repository.BusRepository;
+import com.bussin.bussin_api.repository.CancelledBookingArchiveRepository;
 import com.bussin.bussin_api.repository.QueueEntryRepository;
 import com.bussin.bussin_api.repository.RouteRepository;
 import com.bussin.bussin_api.repository.TripRepository;
@@ -26,6 +27,7 @@ public class DashboardService {
     private final RouteRepository routeRepository;
     private final TripRepository tripRepository;
     private final BookingRepository bookingRepository;
+    private final CancelledBookingArchiveRepository cancelledBookingArchiveRepository;
     private final QueueEntryRepository queueEntryRepository;
 
     public DashboardService(
@@ -34,12 +36,14 @@ public class DashboardService {
             RouteRepository routeRepository,
             TripRepository tripRepository,
             BookingRepository bookingRepository,
+            CancelledBookingArchiveRepository cancelledBookingArchiveRepository,
             QueueEntryRepository queueEntryRepository) {
         this.userRepository = userRepository;
         this.busRepository = busRepository;
         this.routeRepository = routeRepository;
         this.tripRepository = tripRepository;
         this.bookingRepository = bookingRepository;
+        this.cancelledBookingArchiveRepository = cancelledBookingArchiveRepository;
         this.queueEntryRepository = queueEntryRepository;
     }
 
@@ -59,11 +63,13 @@ public class DashboardService {
                 routeRepository.countByActiveTrue(),
                 tripRepository.count(),
                 tripRepository.countByScheduledDepartureBetween(start, end),
-                bookingRepository.count(),
-                bookingRepository.countByCreatedAtBetween(start, end),
+                bookingRepository.count() + cancelledBookingArchiveRepository.count(),
+                bookingRepository.countByCreatedAtBetween(start, end)
+                        + cancelledBookingArchiveRepository.countByCreatedAtBetween(start, end),
                 queueEntryRepository.count(),
                 queueEntryRepository.countByStatus(QueueStatus.WAITING),
                 bookingRepository.countByStatus(BookingStatus.CONFIRMED),
-                bookingRepository.countByStatus(BookingStatus.CANCELLED));
+                bookingRepository.countByStatus(BookingStatus.CANCELLED)
+                        + cancelledBookingArchiveRepository.count());
     }
 }

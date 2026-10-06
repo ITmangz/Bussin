@@ -2,10 +2,12 @@ package com.bussin.bussin_api.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.BookingStatus;
+import com.bussin.bussin_api.entity.CancelledBookingArchive;
 import com.bussin.bussin_api.entity.PaymentStatus;
 import com.bussin.bussin_api.entity.QueueEntry;
 
@@ -106,6 +108,37 @@ public class BookingResponse {
         response.createdAt = booking.getCreatedAt();
         response.updatedAt = booking.getUpdatedAt();
 
+        return response;
+    }
+
+    public static BookingResponse from(CancelledBookingArchive archive) {
+        BookingResponse response = new BookingResponse();
+        response.id = archive.getBookingId();
+        response.bookingReference = archive.getBookingReference();
+        response.commuterId = archive.getCommuterId();
+        response.commuterName = archive.getCommuterName();
+        response.commuterEmail = archive.getCommuterEmail();
+        response.tripId = archive.getTripId();
+        response.routeIdentifier = archive.getRouteIdentifier();
+        response.origin = archive.getOrigin();
+        response.destination = archive.getDestination();
+        response.busId = archive.getBusId();
+        response.busPlateNumber = archive.getBusPlateNumber();
+        response.scheduledDeparture = archive.getScheduledDeparture();
+        response.scheduledArrival = archive.getScheduledArrival();
+        response.passengerName = archive.getPassengerName();
+        response.passengerPhone = archive.getPassengerPhone();
+        response.passengerEmail = archive.getPassengerEmail();
+        response.seatNumber = archive.getSeatNumber();
+        response.seatNumbers = new ArrayList<>(archive.getSeatNumbers());
+        response.seatCount = response.seatNumbers.size();
+        response.fare = archive.getFare();
+        response.queueNumber = archive.getQueueNumber();
+        response.queueStatus = archive.getQueueStatus();
+        response.status = BookingStatus.CANCELLED;
+        response.paymentStatus = archive.getPaymentStatus();
+        response.createdAt = archive.getCreatedAt();
+        response.updatedAt = archive.getUpdatedAt();
         return response;
     }
 

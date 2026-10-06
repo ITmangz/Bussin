@@ -1,6 +1,8 @@
 package com.bussin.bussin_api.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class QueueService {
             Trip trip,
             User commuter) {
 
+        trip = lockTripForQueueChange(trip.getId());
         validateJoinableTrip(trip);
 
         QueueEntry existing = queueEntryRepository
@@ -168,11 +171,17 @@ public class QueueService {
     @Transactional
     public void cancelQueueEntryForBooking(Trip trip, User commuter) {
 
+        trip = lockTripForQueueChange(trip.getId());
         QueueEntry entry = queueEntryRepository
                 .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
                 .orElse(null);
 
-        if (entry == null || entry.getStatus() == QueueStatus.CANCELLED) {
+        if (entry == null) {
+            return;
+        }
+
+        if (entry.getStatus() == QueueStatus.CANCELLED) {
+            compactQueueNumbers(trip.getId(), LocalDateTime.now());
             return;
         }
 
@@ -180,9 +189,11 @@ public class QueueService {
             return;
         }
 
+        LocalDateTime now = LocalDateTime.now();
         entry.setStatus(QueueStatus.CANCELLED);
-        entry.setUpdatedAt(LocalDateTime.now());
+        entry.setUpdatedAt(now);
         queueEntryRepository.save(entry);
+        compactQueueNumbers(trip.getId(), now);
     }
 
     @Transactional
@@ -211,6 +222,7 @@ public class QueueService {
             Long queueEntryId,
             String firebaseUid) {
 
+        Trip trip = lockTripForQueueEntry(queueEntryId);
         QueueEntry entry = getQueueEntry(queueEntryId);
 
         User commuter = getUserByFirebaseUid(firebaseUid);
@@ -233,13 +245,13 @@ public class QueueService {
                     "Queue entry is already cancelled");
         }
 
-        entry.setStatus(
-                QueueStatus.CANCELLED);
+        LocalDateTime now = LocalDateTime.now();
+        entry.setStatus(QueueStatus.CANCELLED);
+        entry.setUpdatedAt(now);
 
-        entry.setUpdatedAt(
-                LocalDateTime.now());
-
-        return queueEntryRepository.save(entry);
+        QueueEntry cancelledEntry = queueEntryRepository.save(entry);
+        compactQueueNumbers(trip.getId(), now);
+        return cancelledEntry;
     }
 
     @Transactional
@@ -255,6 +267,7 @@ public class QueueService {
                     "Administrator or employee access is required");
         }
 
+        Trip trip = lockTripForQueueEntry(queueEntryId);
         QueueEntry entry = getQueueEntry(queueEntryId);
 
         QueueStatus currentStatus = entry.getStatus();
@@ -283,7 +296,11 @@ public class QueueService {
             entry.setBoardedAt(now);
         }
 
-        return queueEntryRepository.save(entry);
+        QueueEntry updatedEntry = queueEntryRepository.save(entry);
+        if (newStatus == QueueStatus.CANCELLED) {
+            compactQueueNumbers(trip.getId(), now);
+        }
+        return updatedEntry;
     }
 
     private void validateJoinableTrip(
@@ -303,10 +320,55 @@ public class QueueService {
             Long tripId) {
 
         return queueEntryRepository
-                .findTopByTripIdOrderByQueueNumberDesc(
-                        tripId)
-                .map(entry -> entry.getQueueNumber() + 1)
-                .orElse(1);
+                .findByTripIdOrderByQueueNumberAsc(tripId)
+                .stream()
+                .filter(entry -> entry.getStatus() != QueueStatus.CANCELLED)
+                .mapToInt(QueueEntry::getQueueNumber)
+                .max()
+                .orElse(0) + 1;
+    }
+
+    private Trip lockTripForQueueChange(Long tripId) {
+        return tripRepository.findByIdForUpdate(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Trip not found with ID: " + tripId));
+    }
+
+    private Trip lockTripForQueueEntry(Long queueEntryId) {
+        Long tripId = queueEntryRepository.findTripIdByQueueEntryId(queueEntryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Queue entry not found: " + queueEntryId));
+        return lockTripForQueueChange(tripId);
+    }
+
+    private void compactQueueNumbers(Long tripId, LocalDateTime updatedAt) {
+        List<QueueEntry> entries = new ArrayList<>(
+                queueEntryRepository.findByTripIdOrderByQueueNumberAsc(tripId));
+        entries.sort(Comparator.comparing(QueueEntry::getQueueNumber)
+                .thenComparing(QueueEntry::getJoinedAt)
+                .thenComparing(QueueEntry::getId));
+        List<QueueEntry> renumberedEntries = new ArrayList<>();
+        int nextQueueNumber = 1;
+
+        for (QueueEntry entry : entries) {
+            if (entry.getStatus() == QueueStatus.CANCELLED) {
+                continue;
+            }
+
+            if (entry.getQueueNumber() != nextQueueNumber
+                    || entry.getPosition() != nextQueueNumber) {
+                entry.setQueueNumber(nextQueueNumber);
+                entry.setPosition(nextQueueNumber);
+                entry.setUpdatedAt(updatedAt);
+                renumberedEntries.add(entry);
+            }
+
+            nextQueueNumber++;
+        }
+
+        if (!renumberedEntries.isEmpty()) {
+            queueEntryRepository.saveAll(renumberedEntries);
+        }
     }
 
     private User getAuthenticatedUser() {
