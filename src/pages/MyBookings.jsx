@@ -14,10 +14,33 @@ import { useEffect, useMemo, useState } from "react";
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 import ETicket from "../components/booking/ETicket";
+import EReceipt from "../components/booking/EReceipt";
 
 import { getMyBookings, cancelMyBooking } from "../services/bookingService";
 
 import "./MyBookings.css";
+
+function toDocumentBooking(booking) {
+  if (!booking) return null;
+
+  return {
+    bookingReference: booking.reference,
+    passengerName: booking.passenger,
+    passengerPhone: booking.contact,
+    origin: booking.origin,
+    destination: booking.destination,
+    scheduledDeparture: booking.scheduledDeparture,
+    scheduledArrival: booking.scheduledArrival,
+    busPlateNumber: booking.busNumber,
+    seatNumbers: booking.seats,
+    queueNumber: booking.queueNumber,
+    queueStatus: booking.queueStatus,
+    paymentStatus: booking.paymentStatus,
+    status: booking.bookingStatus,
+    fare: booking.fare,
+    createdAt: booking.createdAt,
+  };
+}
 
 function MyBookings() {
   const [search, setSearch] = useState("");
@@ -30,6 +53,7 @@ function MyBookings() {
   const [error, setError] = useState("");
 
   const [cancelling, setCancelling] = useState(false);
+  const selectedDocumentBooking = toDocumentBooking(selectedBooking);
 
   useEffect(() => {
     loadBookings();
@@ -96,6 +120,7 @@ function MyBookings() {
       contact: booking.passengerPhone || "N/A",
 
       passengerEmail: booking.passengerEmail || "",
+      createdAt: booking.createdAt,
 
       scheduledDeparture: booking.scheduledDeparture,
 
@@ -606,25 +631,8 @@ function MyBookings() {
                 </div>
               </div>
 
-              <ETicket
-                booking={{
-                  bookingReference: selectedBooking.reference,
-                  passengerName: selectedBooking.passenger,
-                  passengerPhone: selectedBooking.contact,
-                  origin: selectedBooking.origin,
-                  destination: selectedBooking.destination,
-                  scheduledDeparture: selectedBooking.scheduledDeparture,
-                  scheduledArrival: selectedBooking.scheduledArrival,
-                  busPlateNumber: selectedBooking.busNumber,
-                  seatNumbers: selectedBooking.seats,
-                  queueNumber: selectedBooking.queueNumber,
-                  queueStatus: selectedBooking.queueStatus,
-                  paymentStatus: selectedBooking.paymentStatus,
-                  status: selectedBooking.bookingStatus,
-                  fare: selectedBooking.fare,
-                }}
-                showPreview={false}
-              />
+              <ETicket booking={selectedDocumentBooking} showPreview={false} />
+              <EReceipt booking={selectedDocumentBooking} showPreview={false} />
             </div>
 
             <div className="booking-modal-footer">

@@ -15,6 +15,7 @@ import {
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 import ETicket from "../components/booking/ETicket";
+import EReceipt from "../components/booking/EReceipt";
 import { useAuth } from "../contexts/AuthContext";
 import {
   createBooking,
@@ -258,6 +259,7 @@ function Booking() {
           </p>
 
           <ETicket booking={booking} />
+          <EReceipt booking={booking} />
 
           <div className="booking-success-actions">
             <AppButton variant="secondary" onClick={() => navigate("/trips")}>

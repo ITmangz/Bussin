@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Eye, Search, Ticket, X } from "lucide-react";
 import { getAllBookings, updateBookingStatus } from "../../services/adminBookingService";
+import ETicket from "../../components/booking/ETicket";
 import "./Bookings.css";
 
 const STATUSES = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"];
@@ -106,6 +107,7 @@ function Bookings() {
               <div><span>Payment</span><strong>{selected.paymentStatus}</strong></div><div><span>Created</span><strong>{formatDateTime(selected.createdAt)}</strong></div>
             </div>
             <label className="booking-status-control">Booking status<select value={selected.status} disabled={saving || selected.status === "COMPLETED"} onChange={(e)=>changeStatus(e.target.value)}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></label>
+            <ETicket booking={selected} showPreview={false} />
           </div>
           <div className="booking-admin-footer"><span className={"booking-status "+String(selected.status).toLowerCase()}>{selected.status}</span><button type="button" className="booking-close-button" onClick={()=>setSelected(null)}>Close</button></div>
         </div>

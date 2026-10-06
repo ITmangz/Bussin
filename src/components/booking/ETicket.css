@@ -3,6 +3,11 @@
   margin: 18px 0;
 }
 
+.e-ticket-compact {
+  width: auto;
+  margin: 0;
+}
+
 .e-ticket-card {
   width: 100%;
   padding: 22px;
@@ -174,6 +179,11 @@
   margin-top: 10px;
 }
 
+.e-ticket-compact .e-ticket-actions {
+  justify-content: flex-start;
+  margin: 0;
+}
+
 .e-ticket-print-only {
   display: none;
 }
@@ -220,12 +230,12 @@
     visibility: hidden !important;
   }
 
-  body.printing-e-ticket .e-ticket-print-target,
-  body.printing-e-ticket .e-ticket-print-target * {
+  body.printing-e-ticket .e-ticket-print-target[data-print-active="true"],
+  body.printing-e-ticket .e-ticket-print-target[data-print-active="true"] * {
     visibility: visible !important;
   }
 
-  body.printing-e-ticket .e-ticket-print-target {
+  body.printing-e-ticket .e-ticket-print-target[data-print-active="true"] {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -236,10 +246,6 @@
     border-color: #bbb !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-  }
-
-  body.printing-e-ticket .e-ticket-print-only {
-    display: block !important;
   }
 
   body.printing-e-ticket .e-ticket-actions {

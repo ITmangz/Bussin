@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, Ticket } from "lucide-react";
 
 import AppCard from "../../components/ui/AppCard";
+import ETicket from "../../components/booking/ETicket";
 import { getEmployeeBookings } from "../../services/adminBookingService";
 import "./EmployeeTrips.css";
 import "./EmployeeBookings.css";
@@ -103,7 +104,7 @@ function EmployeeBookings() {
         ) : (
           <div className="employee-module-table-wrap">
             <table className="employee-module-table employee-bookings-table">
-              <thead><tr><th>Booking</th><th>Passenger</th><th>Trip</th><th>Seats</th><th>Queue</th><th>Departure</th><th>Status</th></tr></thead>
+              <thead><tr><th>Booking</th><th>Passenger</th><th>Trip</th><th>Seats</th><th>Queue</th><th>Departure</th><th>Status</th><th>Ticket</th></tr></thead>
               <tbody>
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id}>
@@ -114,6 +115,7 @@ function EmployeeBookings() {
                     <td>{booking.queueNumber ? `Q${booking.queueNumber} · ${booking.queueStatus || "WAITING"}` : "—"}</td>
                     <td>{formatDate(booking.scheduledDeparture)}</td>
                     <td><span className={`employee-module-status ${String(booking.status || "").toLowerCase()}`}>{booking.status || "Unknown"}</span></td>
+                    <td><ETicket booking={booking} showPreview={false} /></td>
                   </tr>
                 ))}
               </tbody>

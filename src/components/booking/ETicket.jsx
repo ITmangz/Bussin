@@ -1,6 +1,7 @@
 import { Printer } from "lucide-react";
 
 import AppButton from "../ui/AppButton";
+import { printBookingDocument } from "./printBookingDocument";
 import "./ETicket.css";
 
 function formatDateTime(value) {
@@ -23,16 +24,6 @@ function formatFare(value) {
   }).format(Number(value) || 0);
 }
 
-function printTicket() {
-  const body = document.body;
-  const finishPrinting = () => body.classList.remove("printing-e-ticket");
-
-  body.classList.add("printing-e-ticket");
-  window.addEventListener("afterprint", finishPrinting, { once: true });
-  window.print();
-  window.setTimeout(finishPrinting, 120000);
-}
-
 function ETicket({ booking, showPreview = true }) {
   const seats =
     Array.isArray(booking.seatNumbers) && booking.seatNumbers.length > 0
@@ -44,8 +35,11 @@ function ETicket({ booking, showPreview = true }) {
     : "e-ticket-card e-ticket-print-target e-ticket-print-only";
 
   return (
-    <div className={`e-ticket-widget ${showPreview ? "" : "e-ticket-compact"}`}>
-      <article className={className} aria-label="BUSSIN electronic ticket">
+    <div
+      className={`e-ticket-widget ${showPreview ? "" : "e-ticket-compact"}`}
+      data-print-document
+    >
+      <article className={className} data-print-target aria-label="BUSSIN electronic ticket">
         <header className="e-ticket-header">
           <div className="e-ticket-brand">
             <span className="e-ticket-logo">B</span>
@@ -129,7 +123,10 @@ function ETicket({ booking, showPreview = true }) {
       </article>
 
       <div className="e-ticket-actions">
-        <AppButton variant="secondary" onClick={printTicket}>
+        <AppButton
+          variant="secondary"
+          onClick={(event) => printBookingDocument(event, "printing-e-ticket")}
+        >
           <Printer size={15} />
           Print / Save PDF
         </AppButton>
