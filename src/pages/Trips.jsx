@@ -13,7 +13,8 @@ import { useNavigate } from "react-router-dom";
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 
-import { getAllTrips, getRouteById } from "../services/tripService";
+import { getAllRoutes } from "../services/routeService";
+import { getAllTrips } from "../services/tripService";
 
 import "./Trips.css";
 
@@ -41,49 +42,35 @@ function Trips() {
       setError("");
 
       const tripResponse = await getAllTrips();
+      const routeResponse = await getAllRoutes();
 
       const tripList = Array.isArray(tripResponse) ? tripResponse : [];
+      const routeList = Array.isArray(routeResponse) ? routeResponse : [];
+      const routesById = new Map(routeList.map((route) => [route.id, route]));
 
-      /*
-       * TripResponse contains bus + route IDs,
-       * while route information contains origin,
-       * destination, duration and fare.
-       *
-       * Fetch the corresponding route for each trip.
-       */
-      const enrichedResults = await Promise.all(
-        tripList.map(async (trip) => {
-          try {
-            const route = await getRouteById(trip.routeId);
+      setTrips(
+        tripList.map((trip) => {
+          const route = routesById.get(trip.routeId);
+          const routeLabel = trip.routeIdentifier || `Route #${trip.routeId}`;
 
-            if (!route) {
-              return null;
-            }
-
-            return {
-              id: trip.id,
-              origin: route.origin,
-              destination: route.destination,
-              date: formatDate(trip.scheduledDeparture),
-              time: formatTime(trip.scheduledDeparture),
-              busNumber: trip.busPlateNumber || "N/A",
-              duration: formatDuration(route.durationMinutes),
-              fare: Number(route.baseFare || 0),
-              capacity: trip.busCapacity ?? null,
-              routeId: trip.routeId,
-              routeIdentifier: trip.routeIdentifier,
-              scheduledDeparture: trip.scheduledDeparture,
-              scheduledArrival: trip.scheduledArrival,
-              status: trip.status,
-            };
-          } catch (routeError) {
-            console.error(`Failed to load route ${trip.routeId}:`, routeError);
-            return null;
-          }
+          return {
+            id: trip.id,
+            origin: route?.origin || routeLabel,
+            destination: route?.destination || routeLabel,
+            date: formatDate(trip.scheduledDeparture),
+            time: formatTime(trip.scheduledDeparture),
+            busNumber: trip.busPlateNumber || "N/A",
+            duration: formatDuration(route?.durationMinutes),
+            fare: Number(route?.baseFare || 0),
+            capacity: trip.busCapacity ?? null,
+            routeId: trip.routeId,
+            routeIdentifier: trip.routeIdentifier,
+            scheduledDeparture: trip.scheduledDeparture,
+            scheduledArrival: trip.scheduledArrival,
+            status: trip.status,
+          };
         }),
       );
-
-      setTrips(enrichedResults.filter(Boolean));
     } catch (err) {
       console.error("Failed to load trips:", err);
 
