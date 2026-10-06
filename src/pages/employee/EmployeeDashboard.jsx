@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarClock, Route, Ticket, UserCheck } from "lucide-react";
+import { ArrowRight, CalendarClock, RefreshCw, Route, Ticket, UserCheck } from "lucide-react";
 
 import AppCard from "../../components/ui/AppCard";
 import { useAuth } from "../../contexts/AuthContext";
@@ -26,28 +26,42 @@ function EmployeeDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
-        const [tripData, bookingData, queueData] = await Promise.all([
-          getAllTrips(),
-          getEmployeeBookings(),
-          getEmployeeQueue(),
-        ]);
-        setTrips(Array.isArray(tripData) ? tripData : []);
-        setBookings(Array.isArray(bookingData) ? bookingData : []);
-        setQueue(Array.isArray(queueData) ? queueData : []);
-        setCurrentTime(Date.now());
-      } catch (loadError) {
-        console.error("Failed to load employee dashboard:", loadError);
-        setError(loadError.response?.data?.message || "Unable to load your operations overview.");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-    void Promise.resolve().then(loadDashboard);
+    const results = await Promise.allSettled([
+      getAllTrips(),
+      getEmployeeBookings(),
+      getEmployeeQueue(),
+    ]);
+    const failures = [];
+    const sections = [
+      { label: "assigned trips", result: results[0], setData: setTrips },
+      { label: "bookings", result: results[1], setData: setBookings },
+      { label: "queue", result: results[2], setData: setQueue },
+    ];
+
+    sections.forEach(({ label, result, setData }) => {
+      if (result.status === "fulfilled") {
+        setData(Array.isArray(result.value) ? result.value : []);
+      } else {
+        console.error(`Failed to load employee ${label}:`, result.reason);
+        failures.push(
+          result.reason.response?.data?.message
+            || `Unable to load your ${label}.`,
+        );
+      }
+    });
+
+    setCurrentTime(Date.now());
+    setError(failures.join(" "));
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadDashboard);
+  }, [loadDashboard]);
 
   const upcomingTrips = useMemo(() => trips
     .filter((trip) => new Date(trip.scheduledDeparture).getTime() >= currentTime
@@ -65,7 +79,19 @@ function EmployeeDashboard() {
           <h1>Welcome back, {displayName}</h1>
           <p>Your schedule and passenger operations for trips assigned to you.</p>
         </div>
-        <Link className="employee-dashboard-link" to="/employee/trips">View my trips <ArrowRight size={15} /></Link>
+        <div className="employee-dashboard-actions">
+          <button
+            type="button"
+            className="employee-dashboard-refresh"
+            onClick={loadDashboard}
+            disabled={loading}
+            aria-label="Refresh employee dashboard"
+          >
+            <RefreshCw size={15} className={loading ? "employee-dashboard-refreshing" : ""} />
+            Refresh
+          </button>
+          <Link className="employee-dashboard-link" to="/employee/trips">View my trips <ArrowRight size={15} /></Link>
+        </div>
       </header>
 
       {error && <div className="employee-module-error" role="alert">{error}</div>}
