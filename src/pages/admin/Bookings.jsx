@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Eye, Search, Ticket, X } from "lucide-react";
-import { getAllBookings, updateBookingStatus } from "../../services/adminBookingService";
+import {
+  getAllBookings,
+  updateAdminBookingPaymentStatus,
+  updateBookingStatus,
+} from "../../services/adminBookingService";
 import ETicket from "../../components/booking/ETicket";
 import "./Bookings.css";
 
 const STATUSES = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"];
+const PAYMENT_STATUSES = ["UNPAID", "PAID", "REFUNDED"];
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -73,6 +78,18 @@ function Bookings() {
     } finally { setSaving(false); }
   }
 
+  async function changePaymentStatus(nextPaymentStatus) {
+    if (!selected || nextPaymentStatus === selected.paymentStatus) return;
+    try {
+      setSaving(true); setError("");
+      const updated = await updateAdminBookingPaymentStatus(selected.id, nextPaymentStatus);
+      setBookings((current) => current.map((b) => b.id === updated.id ? updated : b));
+      setSelected(updated);
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.error || "Unable to update payment status.");
+    } finally { setSaving(false); }
+  }
+
   return (
     <section className="bookings-admin-page">
       <header className="bookings-admin-header">
@@ -104,9 +121,10 @@ function Bookings() {
               <div><span>Trip</span><strong>#{selected.tripId}</strong></div><div><span>Bus</span><strong>{selected.busPlateNumber}</strong></div>
               <div><span>Departure</span><strong>{formatDateTime(selected.scheduledDeparture)}</strong></div><div><span>Arrival</span><strong>{formatDateTime(selected.scheduledArrival)}</strong></div>
               <div><span>Seats</span><strong>{(selected.seatNumbers || [selected.seatNumber]).filter(Boolean).join(", ")}</strong></div><div><span>Queue</span><strong>{selected.queueNumber ? `#${selected.queueNumber} · ${selected.queueStatus || "WAITING"}` : "—"}</strong></div><div><span>Fare</span><strong>{money(selected.fare)}</strong></div>
-              <div><span>Payment</span><strong>{selected.paymentStatus}</strong></div><div><span>Created</span><strong>{formatDateTime(selected.createdAt)}</strong></div>
+              <div><span>Created</span><strong>{formatDateTime(selected.createdAt)}</strong></div>
             </div>
             <label className="booking-status-control">Booking status<select value={selected.status} disabled={saving || selected.status === "COMPLETED"} onChange={(e)=>changeStatus(e.target.value)}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></label>
+            <label className="booking-status-control">Payment status<select value={selected.paymentStatus || "UNPAID"} disabled={saving} onChange={(e)=>changePaymentStatus(e.target.value)}>{PAYMENT_STATUSES.map((paymentStatus)=><option key={paymentStatus} value={paymentStatus} disabled={paymentStatus === "REFUNDED" && selected.paymentStatus !== "PAID" && selected.paymentStatus !== "REFUNDED"}>{paymentStatus}</option>)}</select></label>
             <ETicket booking={selected} showPreview={false} />
           </div>
           <div className="booking-admin-footer"><span className={"booking-status "+String(selected.status).toLowerCase()}>{selected.status}</span><button type="button" className="booking-close-button" onClick={()=>setSelected(null)}>Close</button></div>

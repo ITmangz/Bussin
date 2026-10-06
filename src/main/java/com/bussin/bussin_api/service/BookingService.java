@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.bussin.bussin_api.dto.BookingResponse;
 import com.bussin.bussin_api.dto.CreateBookingRequest;
+import com.bussin.bussin_api.dto.UpdatePaymentStatusRequest;
 import com.bussin.bussin_api.dto.UpdateBookingStatusRequest;
 import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.BookingSeat;
@@ -331,6 +332,71 @@ public class BookingService {
         syncQueueWithBookingStatus(savedBooking);
 
         return toResponse(savedBooking);
+    }
+
+    @Transactional
+    public BookingResponse updateAdminPaymentStatus(
+            Long bookingId,
+            UpdatePaymentStatusRequest request) {
+        requireAdminAccess();
+        return updatePaymentStatus(bookingId, request.getPaymentStatus(), null);
+    }
+
+    @Transactional
+    public BookingResponse updateEmployeePaymentStatus(
+            Long bookingId,
+            UpdatePaymentStatusRequest request) {
+        User employee = getAuthenticatedUser();
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Employee access is required.");
+        }
+        return updatePaymentStatus(bookingId, request.getPaymentStatus(), employee);
+    }
+
+    private BookingResponse updatePaymentStatus(
+            Long bookingId,
+            PaymentStatus newStatus,
+            User employee) {
+        Booking booking = bookingRepository.findById(bookingId).orElse(null);
+        if (booking != null) {
+            requireAssignedTripAccess(booking.getTrip().getId(), employee);
+            validatePaymentStatusChange(booking.getPaymentStatus(), newStatus);
+            booking.setPaymentStatus(newStatus);
+            booking.setUpdatedAt(LocalDateTime.now());
+            return toResponse(bookingRepository.save(booking));
+        }
+
+        CancelledBookingArchive archive = cancelledBookingArchiveRepository
+                .findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Booking not found: " + bookingId));
+        requireAssignedTripAccess(archive.getTripId(), employee);
+        validatePaymentStatusChange(archive.getPaymentStatus(), newStatus);
+        archive.setPaymentStatus(newStatus);
+        archive.setUpdatedAt(LocalDateTime.now());
+        return BookingResponse.from(cancelledBookingArchiveRepository.save(archive));
+    }
+
+    private void requireAssignedTripAccess(Long tripId, User employee) {
+        if (employee != null
+                && !tripRepository.existsByIdAndEmployeeId(tripId, employee.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only update payment for bookings on trips assigned to you.");
+        }
+    }
+
+    private void validatePaymentStatusChange(
+            PaymentStatus currentStatus,
+            PaymentStatus newStatus) {
+        if (newStatus == PaymentStatus.REFUNDED
+                && currentStatus != PaymentStatus.PAID
+                && currentStatus != PaymentStatus.REFUNDED) {
+            throw new ConflictException(
+                    "Only a paid booking can be marked as refunded.");
+        }
     }
 
     @Transactional(readOnly = true)

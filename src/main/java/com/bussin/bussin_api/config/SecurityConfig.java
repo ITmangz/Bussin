@@ -190,6 +190,11 @@ public class SecurityConfig {
                                                                 "/api/bookings/employee")
                                                 .hasRole("EMPLOYEE")
 
+                                                .requestMatchers(
+                                                                HttpMethod.PATCH,
+                                                                "/api/bookings/employee/*/payment-status")
+                                                .hasRole("EMPLOYEE")
+
                                                 // ------------------------------------------------
                                                 // Queue
                                                 // ------------------------------------------------

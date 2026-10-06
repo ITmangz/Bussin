@@ -22,3 +22,19 @@ export async function updateBookingStatus(bookingId, status) {
   );
   return response.data;
 }
+
+export async function updateAdminBookingPaymentStatus(bookingId, paymentStatus) {
+  const response = await apiClient.patch(
+    `/bookings/admin/${bookingId}/payment-status`,
+    { paymentStatus },
+  );
+  return response.data;
+}
+
+export async function updateEmployeeBookingPaymentStatus(bookingId, paymentStatus) {
+  const response = await apiClient.patch(
+    `/bookings/employee/${bookingId}/payment-status`,
+    { paymentStatus },
+  );
+  return response.data;
+}

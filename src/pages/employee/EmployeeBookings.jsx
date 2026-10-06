@@ -3,7 +3,10 @@ import { RefreshCw, Ticket } from "lucide-react";
 
 import AppCard from "../../components/ui/AppCard";
 import ETicket from "../../components/booking/ETicket";
-import { getEmployeeBookings } from "../../services/adminBookingService";
+import {
+  getEmployeeBookings,
+  updateEmployeeBookingPaymentStatus,
+} from "../../services/adminBookingService";
 import "./EmployeeTrips.css";
 import "./EmployeeBookings.css";
 
@@ -28,6 +31,7 @@ function EmployeeBookings() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [updatingPaymentId, setUpdatingPaymentId] = useState(null);
 
   async function loadBookings() {
     try {
@@ -68,6 +72,20 @@ function EmployeeBookings() {
     loadBookings();
   }
 
+  async function changePaymentStatus(booking, paymentStatus) {
+    if (paymentStatus === booking.paymentStatus) return;
+    try {
+      setError("");
+      setUpdatingPaymentId(booking.id);
+      const updated = await updateEmployeeBookingPaymentStatus(booking.id, paymentStatus);
+      setBookings((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (updateError) {
+      setError(updateError.response?.data?.message || updateError.response?.data?.error || "Unable to update payment status.");
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  }
+
   return (
     <section className="employee-bookings-page">
       <header className="employee-module-header">
@@ -104,7 +122,7 @@ function EmployeeBookings() {
         ) : (
           <div className="employee-module-table-wrap">
             <table className="employee-module-table employee-bookings-table">
-              <thead><tr><th>Booking</th><th>Passenger</th><th>Trip</th><th>Seats</th><th>Queue</th><th>Departure</th><th>Status</th><th>Ticket</th></tr></thead>
+              <thead><tr><th>Booking</th><th>Passenger</th><th>Trip</th><th>Seats</th><th>Queue</th><th>Departure</th><th>Status</th><th>Payment</th><th>Ticket</th></tr></thead>
               <tbody>
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id}>
@@ -115,6 +133,19 @@ function EmployeeBookings() {
                     <td>{booking.queueNumber ? `Q${booking.queueNumber} · ${booking.queueStatus || "WAITING"}` : "—"}</td>
                     <td>{formatDate(booking.scheduledDeparture)}</td>
                     <td><span className={`employee-module-status ${String(booking.status || "").toLowerCase()}`}>{booking.status || "Unknown"}</span></td>
+                    <td>
+                      <select
+                        className="employee-booking-payment-select"
+                        value={booking.paymentStatus || "UNPAID"}
+                        disabled={updatingPaymentId === booking.id}
+                        onChange={(event) => changePaymentStatus(booking, event.target.value)}
+                        aria-label={`Payment status for ${booking.bookingReference || `booking ${booking.id}`}`}
+                      >
+                        <option value="UNPAID">UNPAID</option>
+                        <option value="PAID">PAID</option>
+                        <option value="REFUNDED" disabled={booking.paymentStatus !== "PAID" && booking.paymentStatus !== "REFUNDED"}>REFUNDED</option>
+                      </select>
+                    </td>
                     <td><ETicket booking={booking} showPreview={false} /></td>
                   </tr>
                 ))}

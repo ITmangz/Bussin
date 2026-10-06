@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.bussin.bussin_api.dto.BookingResponse;
 import com.bussin.bussin_api.dto.CreateBookingRequest;
+import com.bussin.bussin_api.dto.UpdatePaymentStatusRequest;
 import com.bussin.bussin_api.dto.UpdateBookingStatusRequest;
 import com.bussin.bussin_api.service.BookingService;
 
@@ -49,6 +50,20 @@ public class BookingController {
             @PathVariable Long bookingId,
             @Valid @RequestBody UpdateBookingStatusRequest request) {
         return bookingService.updateBookingStatus(bookingId, request);
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/admin/{bookingId}/payment-status")
+    public BookingResponse updateAdminPaymentStatus(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody UpdatePaymentStatusRequest request) {
+        return bookingService.updateAdminPaymentStatus(bookingId, request);
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/employee/{bookingId}/payment-status")
+    public BookingResponse updateEmployeePaymentStatus(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody UpdatePaymentStatusRequest request) {
+        return bookingService.updateEmployeePaymentStatus(bookingId, request);
     }
 
     @PostMapping
