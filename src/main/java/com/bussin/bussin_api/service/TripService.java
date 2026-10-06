@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,16 +14,16 @@ import com.bussin.bussin_api.dto.TripResponse;
 import com.bussin.bussin_api.dto.UpdateTripRequest;
 import com.bussin.bussin_api.entity.Bus;
 import com.bussin.bussin_api.entity.Route;
+import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.entity.Trip;
 import com.bussin.bussin_api.entity.TripStatus;
+import com.bussin.bussin_api.entity.User;
 import com.bussin.bussin_api.exception.ConflictException;
 import com.bussin.bussin_api.exception.ResourceNotFoundException;
 import com.bussin.bussin_api.repository.BusRepository;
 import com.bussin.bussin_api.repository.RouteRepository;
 import com.bussin.bussin_api.repository.TripRepository;
-
-import java.time.LocalDateTime;
-import java.util.List;
+import com.bussin.bussin_api.repository.UserRepository;
 
 @Service
 public class TripService {
@@ -29,15 +31,18 @@ public class TripService {
     private final TripRepository tripRepository;
     private final BusRepository busRepository;
     private final RouteRepository routeRepository;
+    private final UserRepository userRepository;
 
     public TripService(
             TripRepository tripRepository,
             BusRepository busRepository,
-            RouteRepository routeRepository) {
+            RouteRepository routeRepository,
+            UserRepository userRepository) {
 
         this.tripRepository = tripRepository;
         this.busRepository = busRepository;
         this.routeRepository = routeRepository;
+        this.userRepository = userRepository;
     }
 
     // ============================================================
@@ -50,9 +55,17 @@ public class TripService {
             LocalDateTime from,
             LocalDateTime to) {
 
+        User actor = getAuthenticatedUser();
         List<Trip> trips;
 
-        if (status != null && routeId != null) {
+        if (actor.getRole() == Role.EMPLOYEE) {
+            trips = filterEmployeeTrips(
+                    tripRepository.findAssignedToEmployee(actor.getId()),
+                    status,
+                    routeId,
+                    from,
+                    to);
+        } else if (status != null && routeId != null) {
             trips = tripRepository
                     .findByRouteIdAndStatusInOrderByScheduledDepartureDesc(
                             routeId, List.of(status));
@@ -77,7 +90,7 @@ public class TripService {
         }
 
         return trips.stream()
-                .map(this::toResponse)
+                .map(trip -> toResponse(trip, actor))
                 .toList();
     }
 
@@ -87,7 +100,8 @@ public class TripService {
 
     public TripResponse getTrip(Long tripId) {
 
-        return toResponse(findTrip(tripId));
+        User actor = getAuthenticatedUser();
+        return toResponse(requireVisibleTrip(findTrip(tripId), actor), actor);
     }
 
     // ============================================================
@@ -99,6 +113,8 @@ public class TripService {
 
         Bus bus = findBus(request.getBusId());
         Route route = findRoute(request.getRouteId());
+        User actor = getAuthenticatedUser();
+        User employee = resolveEmployee(request.getEmployeeId(), actor);
 
         validateSchedule(request);
 
@@ -106,6 +122,7 @@ public class TripService {
 
         trip.setBus(bus);
         trip.setRoute(route);
+        trip.setEmployee(employee);
         trip.setScheduledDeparture(request.getScheduledDeparture());
         trip.setScheduledArrival(request.getScheduledArrival());
         trip.setStatus(
@@ -118,7 +135,7 @@ public class TripService {
         trip.setCreatedAt(now);
         trip.setUpdatedAt(now);
 
-        return toResponse(saveOrConflict(trip));
+        return toResponse(saveOrConflict(trip), actor);
     }
 
     // ============================================================
@@ -131,20 +148,24 @@ public class TripService {
             UpdateTripRequest request) {
 
         Trip trip = findTrip(tripId);
+        User actor = getAuthenticatedUser();
+        requireEmployeeOwnsTrip(actor, trip);
 
         Bus bus = findBus(request.getBusId());
         Route route = findRoute(request.getRouteId());
+        User employee = resolveEmployee(request.getEmployeeId(), actor);
 
         validateSchedule(request);
 
         trip.setBus(bus);
         trip.setRoute(route);
+        trip.setEmployee(employee);
         trip.setScheduledDeparture(request.getScheduledDeparture());
         trip.setScheduledArrival(request.getScheduledArrival());
         trip.setStatus(request.getStatus());
         trip.setUpdatedAt(LocalDateTime.now());
 
-        return toResponse(saveOrConflict(trip));
+        return toResponse(saveOrConflict(trip), actor);
     }
 
     // ============================================================
@@ -223,7 +244,10 @@ public class TripService {
         }
     }
 
-    private TripResponse toResponse(Trip trip) {
+    private TripResponse toResponse(Trip trip, User actor) {
+        boolean canViewAssignments = actor.getRole() == Role.ADMIN
+                || actor.getRole() == Role.EMPLOYEE;
+        User employee = canViewAssignments ? trip.getEmployee() : null;
 
         return new TripResponse(
                 trip.getId(),
@@ -232,6 +256,8 @@ public class TripService {
                 trip.getBus().getCapacity(),
                 trip.getRoute().getId(),
                 trip.getRoute().getRouteIdentifier(),
+                employee == null ? null : employee.getId(),
+                employee == null ? null : buildEmployeeName(employee),
                 trip.getScheduledDeparture(),
                 trip.getScheduledArrival(),
                 trip.getStatus(),
@@ -268,8 +294,102 @@ public class TripService {
                         from,
                         to);
 
-        return trips.stream()
-                .map(this::toResponse)
+        User actor = getAuthenticatedUser();
+        return visibleTrips(trips, actor).stream()
+                .map(trip -> toResponse(trip, actor))
                 .toList();
+    }
+
+    private List<Trip> visibleTrips(List<Trip> trips, User actor) {
+        if (actor.getRole() != Role.EMPLOYEE) {
+            return trips;
+        }
+        return trips.stream()
+                .filter(trip -> trip.getEmployee() != null
+                        && trip.getEmployee().getId().equals(actor.getId()))
+                .toList();
+    }
+
+    private List<Trip> filterEmployeeTrips(
+            List<Trip> trips,
+            TripStatus status,
+            Long routeId,
+            LocalDateTime from,
+            LocalDateTime to) {
+        if (status != null && routeId != null) {
+            return trips.stream()
+                    .filter(trip -> trip.getStatus() == status
+                            && trip.getRoute().getId().equals(routeId))
+                    .toList();
+        }
+        if (status != null) {
+            return trips.stream().filter(trip -> trip.getStatus() == status).toList();
+        }
+        if (routeId != null) {
+            return trips.stream().filter(trip -> trip.getRoute().getId().equals(routeId)).toList();
+        }
+        if (from != null && to != null) {
+            return trips.stream()
+                    .filter(trip -> !trip.getScheduledDeparture().isBefore(from)
+                            && !trip.getScheduledDeparture().isAfter(to))
+                    .toList();
+        }
+        if (from != null) {
+            return trips.stream().filter(trip -> trip.getScheduledDeparture().isAfter(from)).toList();
+        }
+        return trips;
+    }
+
+    private Trip requireVisibleTrip(Trip trip, User actor) {
+        if (actor.getRole() == Role.EMPLOYEE
+                && (trip.getEmployee() == null
+                        || !trip.getEmployee().getId().equals(actor.getId()))) {
+            throw new ResourceNotFoundException("Trip not found");
+        }
+        return trip;
+    }
+
+    private void requireEmployeeOwnsTrip(User actor, Trip trip) {
+        if (actor.getRole() == Role.EMPLOYEE) {
+            requireVisibleTrip(trip, actor);
+        }
+    }
+
+    private User resolveEmployee(Long employeeId, User actor) {
+        if (actor.getRole() == Role.EMPLOYEE) {
+            if (employeeId != null && !employeeId.equals(actor.getId())) {
+                throw new ConflictException("Employees can only assign trips to themselves.");
+            }
+            return actor;
+        }
+
+        if (employeeId == null) {
+            return null;
+        }
+
+        User employee = userRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new ConflictException("Trips can only be assigned to an employee account.");
+        }
+        return employee;
+    }
+
+    private String buildEmployeeName(User employee) {
+        return java.util.stream.Stream.of(
+                        employee.getFirstName(),
+                        employee.getMiddleName(),
+                        employee.getLastName())
+                .filter(value -> value != null && !value.isBlank())
+                .collect(java.util.stream.Collectors.joining(" "));
+    }
+
+    private User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ConflictException("Authenticated Firebase user is required.");
+        }
+        return userRepository.findByFirebaseUid(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("BUSSIN user profile not found."));
     }
 }

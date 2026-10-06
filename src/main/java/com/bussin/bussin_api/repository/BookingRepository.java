@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.BookingStatus;
@@ -15,6 +17,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByCommuterIdOrderByCreatedAtDesc(Long commuterId);
 
     List<Booking> findByTripIdOrderByCreatedAtDesc(Long tripId);
+
+    @Query("SELECT b FROM Booking b WHERE b.trip.employee.id = :employeeId ORDER BY b.createdAt DESC")
+    List<Booking> findAssignedToEmployee(@Param("employeeId") Long employeeId);
 
     Optional<Booking> findByCommuterIdAndTripId(Long commuterId, Long tripId);
 

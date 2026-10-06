@@ -29,6 +29,10 @@ public class Trip {
     @JoinColumn(name = "route_id", nullable = false)
     private Route route;
 
+    @ManyToOne
+    @JoinColumn(name = "employee_id")
+    private User employee;
+
     @Column(nullable = false)
     private LocalDateTime scheduledDeparture;
 
@@ -66,6 +70,14 @@ public class Trip {
 
     public void setRoute(Route route) {
         this.route = route;
+    }
+
+    public User getEmployee() {
+        return employee;
+    }
+
+    public void setEmployee(User employee) {
+        this.employee = employee;
     }
 
     public LocalDateTime getScheduledDeparture() {

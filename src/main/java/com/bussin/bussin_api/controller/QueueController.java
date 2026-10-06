@@ -56,6 +56,14 @@ public class QueueController {
                 .toList();
     }
 
+    @GetMapping("/employee")
+    public List<QueueResponse> getEmployeeQueue() {
+        return queueService.getEmployeeQueue()
+                .stream()
+                .map(QueueResponse::from)
+                .toList();
+    }
+
     @GetMapping("/{queueEntryId}")
     public QueueResponse getQueueEntry(
             @PathVariable Long queueEntryId) {

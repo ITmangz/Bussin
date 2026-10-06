@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CalendarClock, Edit3, Plus, Search, Trash2, X } from "lucide-react";
 import { getAllBuses } from "../../services/busService";
 import { getAllRoutes } from "../../services/routeService";
+import { getEmployees } from "../../services/userService";
 import { createTrip, deleteTrip, getAllTrips, updateTrip } from "../../services/tripService";
 import "./Trips.css";
 
@@ -12,7 +14,7 @@ const STATUS_OPTIONS = [
   { value: "COMPLETED", label: "Completed" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
-const EMPTY_FORM = { busId: "", routeId: "", scheduledDeparture: "", scheduledArrival: "", status: "SCHEDULED" };
+const EMPTY_FORM = { busId: "", routeId: "", employeeId: "", scheduledDeparture: "", scheduledArrival: "", status: "SCHEDULED" };
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -29,7 +31,9 @@ function toInputDateTime(value) {
 }
 
 function Trips() {
-  const [trips,setTrips]=useState([]), [buses,setBuses]=useState([]), [routes,setRoutes]=useState([]), [loading,setLoading]=useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const employeeFilter = searchParams.get("employeeId") || "";
+  const [trips,setTrips]=useState([]), [buses,setBuses]=useState([]), [routes,setRoutes]=useState([]), [employees,setEmployees]=useState([]), [loading,setLoading]=useState(true);
   const [error,setError]=useState(""), [search,setSearch]=useState(""), [statusFilter,setStatusFilter]=useState("");
   const [modalOpen,setModalOpen]=useState(false), [editingTrip,setEditingTrip]=useState(null);
   const [form,setForm]=useState(EMPTY_FORM), [formError,setFormError]=useState(""), [saving,setSaving]=useState(false), [deletingId,setDeletingId]=useState(null);
@@ -38,8 +42,8 @@ function Trips() {
     async function loadData() {
       try {
         setLoading(true); setError("");
-        const [tripData,busData,routeData]=await Promise.all([getAllTrips(),getAllBuses(),getAllRoutes(true)]);
-        setTrips(Array.isArray(tripData)?tripData:[]); setBuses(Array.isArray(busData)?busData:[]); setRoutes(Array.isArray(routeData)?routeData:[]);
+        const [tripData,busData,routeData,employeeData]=await Promise.all([getAllTrips(),getAllBuses(),getAllRoutes(true),getEmployees()]);
+        setTrips(Array.isArray(tripData)?tripData:[]); setBuses(Array.isArray(busData)?busData:[]); setRoutes(Array.isArray(routeData)?routeData:[]); setEmployees(Array.isArray(employeeData)?employeeData:[]);
       } catch(err) {
         console.error("Failed to load trips:",err);
         setError(err.response?.data?.message||"Unable to load trips from the BUSSIN server.");
@@ -52,12 +56,20 @@ function Trips() {
     const query=search.trim().toLowerCase();
     return trips.filter(trip=>{
       const matches=!query || String(trip.id??"").includes(query) || trip.routeIdentifier?.toLowerCase().includes(query) || trip.busPlateNumber?.toLowerCase().includes(query);
-      return matches && (!statusFilter || trip.status===statusFilter);
+      const matchesEmployee = !employeeFilter || String(trip.employeeId || "") === employeeFilter;
+      return matches && matchesEmployee && (!statusFilter || trip.status===statusFilter);
     });
-  },[trips,search,statusFilter]);
+  },[trips,search,statusFilter,employeeFilter]);
+
+  function handleEmployeeFilter(event) {
+    const next = new URLSearchParams(searchParams);
+    if (event.target.value) next.set("employeeId", event.target.value);
+    else next.delete("employeeId");
+    setSearchParams(next, { replace: true });
+  }
 
   function openCreateModal(){ setEditingTrip(null); setForm({...EMPTY_FORM,busId:buses[0]?.id?String(buses[0].id):"",routeId:routes[0]?.id?String(routes[0].id):""}); setFormError(""); setModalOpen(true); }
-  function openEditModal(trip){ setEditingTrip(trip); setForm({busId:String(trip.busId??""),routeId:String(trip.routeId??""),scheduledDeparture:toInputDateTime(trip.scheduledDeparture),scheduledArrival:toInputDateTime(trip.scheduledArrival),status:trip.status||"SCHEDULED"}); setFormError(""); setModalOpen(true); }
+  function openEditModal(trip){ setEditingTrip(trip); setForm({busId:String(trip.busId??""),routeId:String(trip.routeId??""),employeeId:trip.employeeId?String(trip.employeeId):"",scheduledDeparture:toInputDateTime(trip.scheduledDeparture),scheduledArrival:toInputDateTime(trip.scheduledArrival),status:trip.status||"SCHEDULED"}); setFormError(""); setModalOpen(true); }
   function closeModal(){ if(saving)return; setModalOpen(false); setEditingTrip(null); setForm(EMPTY_FORM); setFormError(""); }
   function handleChange(e){ setForm(c=>({...c,[e.target.name]:e.target.value})); setFormError(""); }
 
@@ -71,7 +83,7 @@ function Trips() {
     if(arrival<departure)return setFormError("Scheduled arrival must not be before departure.");
     try{
       setSaving(true); setFormError("");
-      const payload={busId,routeId,scheduledDeparture:form.scheduledDeparture,scheduledArrival:form.scheduledArrival,status:form.status};
+      const payload={busId,routeId,employeeId:form.employeeId?Number(form.employeeId):null,scheduledDeparture:form.scheduledDeparture,scheduledArrival:form.scheduledArrival,status:form.status};
       const saved=editingTrip?await updateTrip(editingTrip.id,payload):await createTrip(payload);
       setTrips(current=>{
         const next=editingTrip?current.map(item=>item.id===saved.id?saved:item):[...current,saved];
@@ -95,12 +107,13 @@ function Trips() {
     <div className="trips-toolbar">
       <div className="trips-search"><Search size={16}/><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search trip, route, or plate..." aria-label="Search trips"/></div>
       <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} aria-label="Filter trips by status"><option value="">All statuses</option>{STATUS_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>
+      <select value={employeeFilter} onChange={handleEmployeeFilter} aria-label="Filter trips by assigned employee"><option value="">All employees</option>{employees.map(employee=><option key={employee.id} value={employee.id}>{[employee.firstName,employee.lastName].filter(Boolean).join(" ")||employee.email}</option>)}</select>
     </div>
     <div className="admin-dashboard-panel trips-table-card">
       {loading?<div className="trips-empty"><CalendarClock size={25}/><h3>Loading trips</h3><p>Getting the latest schedules from the server.</p></div>:
       filteredTrips.length===0?<div className="trips-empty"><CalendarClock size={25}/><h3>{trips.length?"No trips found":"No trips yet"}</h3><p>{trips.length?"Try changing your search or status filter.":"Create a trip once an existing route and bus are available."}</p></div>:
-      <><div className="trips-table-wrap"><table className="trips-table"><thead><tr><th>Trip</th><th>Route</th><th>Bus</th><th>Departure</th><th>Arrival</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-      {filteredTrips.map(trip=><tr key={trip.id}><td><strong>#{trip.id}</strong></td><td><span className="trip-route">{trip.routeIdentifier||"Route #"+trip.routeId}</span></td><td><span className="trip-bus">{trip.busPlateNumber||"Bus #"+trip.busId}</span><small>{trip.busCapacity?trip.busCapacity+" seats":"—"}</small></td><td>{formatDateTime(trip.scheduledDeparture)}</td><td>{formatDateTime(trip.scheduledArrival)}</td><td><span className={"trip-status "+String(trip.status||"").toLowerCase()}>{STATUS_OPTIONS.find(s=>s.value===trip.status)?.label||trip.status||"Unknown"}</span></td><td><div className="trip-actions"><button type="button" className="trip-action" onClick={()=>openEditModal(trip)} aria-label={"Edit trip "+trip.id} title="Edit trip"><Edit3 size={15}/></button><button type="button" className="trip-action danger" onClick={()=>handleDelete(trip)} disabled={deletingId===trip.id} aria-label={"Delete trip "+trip.id} title="Delete trip"><Trash2 size={15}/></button></div></td></tr>)}
+      <><div className="trips-table-wrap"><table className="trips-table"><thead><tr><th>Trip</th><th>Route</th><th>Bus</th><th>Employee</th><th>Departure</th><th>Arrival</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      {filteredTrips.map(trip=><tr key={trip.id}><td><strong>#{trip.id}</strong></td><td><span className="trip-route">{trip.routeIdentifier||"Route #"+trip.routeId}</span></td><td><span className="trip-bus">{trip.busPlateNumber||"Bus #"+trip.busId}</span><small>{trip.busCapacity?trip.busCapacity+" seats":"—"}</small></td><td>{trip.employeeName||employees.find(employee=>employee.id===trip.employeeId)?.firstName||"Unassigned"}</td><td>{formatDateTime(trip.scheduledDeparture)}</td><td>{formatDateTime(trip.scheduledArrival)}</td><td><span className={"trip-status "+String(trip.status||"").toLowerCase()}>{STATUS_OPTIONS.find(s=>s.value===trip.status)?.label||trip.status||"Unknown"}</span></td><td><div className="trip-actions"><button type="button" className="trip-action" onClick={()=>openEditModal(trip)} aria-label={"Edit trip "+trip.id} title="Edit trip"><Edit3 size={15}/></button><button type="button" className="trip-action danger" onClick={()=>handleDelete(trip)} disabled={deletingId===trip.id} aria-label={"Delete trip "+trip.id} title="Delete trip"><Trash2 size={15}/></button></div></td></tr>)}
       </tbody></table></div><div className="trips-count">Showing {filteredTrips.length} of {trips.length} trips</div></>}
     </div>
     {modalOpen&&<div className="trip-modal-overlay" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&closeModal()}><div className="trip-modal" role="dialog" aria-modal="true" aria-labelledby="trip-modal-title">
@@ -108,6 +121,7 @@ function Trips() {
       <form className="trip-form" onSubmit={handleSubmit}><div className="trip-form-grid">
         <div className="trip-form-field"><label htmlFor="trip-bus">Bus</label><select id="trip-bus" name="busId" value={form.busId} onChange={handleChange} required><option value="">Select bus</option>{buses.map(bus=><option key={bus.id} value={bus.id}>{bus.plateNumber} — {bus.model||"Bus"} ({bus.capacity} seats)</option>)}</select></div>
         <div className="trip-form-field"><label htmlFor="trip-route-id">Route</label><select id="trip-route-id" name="routeId" value={form.routeId} onChange={handleChange} required><option value="">Select route</option>{routes.map(route=><option key={route.id} value={route.id}>{route.routeIdentifier} — {route.origin} → {route.destination}</option>)}</select><small>Only active routes are available for new trip assignments.</small></div>
+        <div className="trip-form-field"><label htmlFor="trip-employee">Assigned employee</label><select id="trip-employee" name="employeeId" value={form.employeeId} onChange={handleChange}><option value="">Unassigned</option>{employees.map(employee=><option key={employee.id} value={employee.id}>{[employee.firstName,employee.lastName].filter(Boolean).join(" ")||employee.email}</option>)}</select></div>
         <div className="trip-form-field"><label htmlFor="trip-departure">Scheduled departure</label><input id="trip-departure" name="scheduledDeparture" type="datetime-local" value={form.scheduledDeparture} onChange={handleChange} required/></div>
         <div className="trip-form-field"><label htmlFor="trip-arrival">Scheduled arrival</label><input id="trip-arrival" name="scheduledArrival" type="datetime-local" value={form.scheduledArrival} onChange={handleChange} required/></div>
         <div className="trip-form-field full"><label htmlFor="trip-status">Status</label><select id="trip-status" name="status" value={form.status} onChange={handleChange}>{STATUS_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>

@@ -224,8 +224,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getAllBookings() {
-        requireStaffAccess();
-
+        requireAdminAccess();
         List<BookingResponse> bookings = new ArrayList<>(bookingRepository.findAll()
                 .stream()
                 .map(this::toResponse)
@@ -234,20 +233,49 @@ public class BookingService {
                 .stream()
                 .map(BookingResponse::from)
                 .toList());
+        return sortBookings(bookings);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getEmployeeBookings() {
+        User employee = getAuthenticatedUser();
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new ConflictException("Employee access is required.");
+        }
+        List<Long> tripIds = tripRepository.findAssignedToEmployee(employee.getId())
+                .stream()
+                .map(Trip::getId)
+                .toList();
+        List<BookingResponse> bookings = new ArrayList<>(bookingRepository
+                .findAssignedToEmployee(employee.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList());
+        if (!tripIds.isEmpty()) {
+            bookings.addAll(cancelledBookingArchiveRepository
+                    .findByTripIdInOrderByCreatedAtDesc(tripIds)
+                    .stream()
+                    .map(BookingResponse::from)
+                    .toList());
+        }
+        return sortBookings(bookings);
+    }
+
+    private List<BookingResponse> sortBookings(List<BookingResponse> bookings) {
         bookings.sort(Comparator.comparing(BookingResponse::getCreatedAt).reversed());
         return bookings;
     }
 
     @Transactional(readOnly = true)
     public BookingResponse getBookingForStaff(Long bookingId) {
-        requireStaffAccess();
-
-        return bookingRepository.findById(bookingId)
+        requireAdminAccess();
+        BookingResponse response = bookingRepository.findById(bookingId)
                 .map(this::toResponse)
                 .orElseGet(() -> cancelledBookingArchiveRepository.findById(bookingId)
                         .map(BookingResponse::from)
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Booking not found: " + bookingId)));
+        return response;
     }
 
     @Transactional
@@ -401,16 +429,6 @@ public class BookingService {
             queueService.ensureQueueEntryForBooking(
                     booking.getTrip(),
                     booking.getCommuter());
-        }
-    }
-
-    private void requireStaffAccess() {
-        User user = getAuthenticatedUser();
-
-        if (user.getRole() != Role.ADMIN
-                && user.getRole() != Role.EMPLOYEE) {
-            throw new ConflictException(
-                    "Administrator or employee access is required.");
         }
     }
 

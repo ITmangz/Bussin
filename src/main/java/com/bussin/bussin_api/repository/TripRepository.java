@@ -14,8 +14,18 @@ import com.bussin.bussin_api.entity.Bus;
 import com.bussin.bussin_api.entity.Route;
 import com.bussin.bussin_api.entity.Trip;
 import com.bussin.bussin_api.entity.TripStatus;
+import org.springframework.data.jpa.repository.Modifying;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
+
+        @Query("SELECT t FROM Trip t WHERE t.employee.id = :employeeId ORDER BY t.scheduledDeparture DESC")
+        List<Trip> findAssignedToEmployee(@Param("employeeId") Long employeeId);
+
+        boolean existsByIdAndEmployeeId(Long tripId, Long employeeId);
+
+        @Modifying
+        @Query("UPDATE Trip t SET t.employee = null WHERE t.employee.id = :employeeId")
+        int clearEmployeeAssignments(@Param("employeeId") Long employeeId);
 
         @Lock(LockModeType.PESSIMISTIC_WRITE)
         @Query("SELECT t FROM Trip t WHERE t.id = :id")

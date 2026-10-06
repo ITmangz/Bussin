@@ -13,6 +13,8 @@ public interface CancelledBookingArchiveRepository
 
     List<CancelledBookingArchive> findByCommuterIdOrderByCreatedAtDesc(Long commuterId);
 
+    List<CancelledBookingArchive> findByTripIdInOrderByCreatedAtDesc(List<Long> tripIds);
+
     Optional<CancelledBookingArchive> findByBookingIdAndCommuterId(Long bookingId, Long commuterId);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

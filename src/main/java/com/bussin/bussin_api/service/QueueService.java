@@ -123,11 +123,11 @@ public class QueueService {
     @Transactional(readOnly = true)
     public List<QueueEntry> getTripQueue(
             Long tripId) {
-
-        if (!tripRepository.existsById(tripId)) {
-            throw new ResourceNotFoundException(
-                    "Trip not found with ID: " + tripId);
-        }
+        User staff = requireStaffUser();
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Trip not found with ID: " + tripId));
+        requireAssignedTripAccess(staff, trip);
 
         return queueEntryRepository
                 .findByTripIdOrderByQueueNumberAsc(
@@ -135,14 +135,22 @@ public class QueueService {
     }
 
     @Transactional(readOnly = true)
+    public List<QueueEntry> getEmployeeQueue() {
+        User employee = getAuthenticatedUser();
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new ConflictException("Employee access is required");
+        }
+        return queueEntryRepository
+                .findAssignedToEmployee(employee.getId());
+    }
+
+    @Transactional(readOnly = true)
     public QueueEntry getQueueEntry(
             Long queueEntryId) {
-
-        return queueEntryRepository
-                .findById(queueEntryId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Queue entry not found with ID: "
-                                + queueEntryId));
+        User staff = requireStaffUser();
+        QueueEntry entry = findQueueEntryById(queueEntryId);
+        requireAssignedTripAccess(staff, entry.getTrip());
+        return entry;
     }
 
     @Transactional(readOnly = true)
@@ -223,7 +231,7 @@ public class QueueService {
             String firebaseUid) {
 
         Trip trip = lockTripForQueueEntry(queueEntryId);
-        QueueEntry entry = getQueueEntry(queueEntryId);
+        QueueEntry entry = findQueueEntryById(queueEntryId);
 
         User commuter = getUserByFirebaseUid(firebaseUid);
 
@@ -259,16 +267,11 @@ public class QueueService {
             Long queueEntryId,
             QueueStatus newStatus) {
 
-        User staff = getAuthenticatedUser();
-
-        if (staff.getRole() != Role.ADMIN
-                && staff.getRole() != Role.EMPLOYEE) {
-            throw new ConflictException(
-                    "Administrator or employee access is required");
-        }
+        User staff = requireStaffUser();
 
         Trip trip = lockTripForQueueEntry(queueEntryId);
-        QueueEntry entry = getQueueEntry(queueEntryId);
+        requireAssignedTripAccess(staff, trip);
+        QueueEntry entry = findQueueEntryById(queueEntryId);
 
         QueueStatus currentStatus = entry.getStatus();
 
@@ -382,6 +385,28 @@ public class QueueService {
         }
 
         return getUserByFirebaseUid(authentication.getName());
+    }
+
+    private User requireStaffUser() {
+        User staff = getAuthenticatedUser();
+        if (staff.getRole() != Role.ADMIN && staff.getRole() != Role.EMPLOYEE) {
+            throw new ConflictException("Administrator or employee access is required");
+        }
+        return staff;
+    }
+
+    private void requireAssignedTripAccess(User staff, Trip trip) {
+        if (staff.getRole() == Role.EMPLOYEE
+                && (trip.getEmployee() == null
+                        || !trip.getEmployee().getId().equals(staff.getId()))) {
+            throw new ResourceNotFoundException("Trip not found");
+        }
+    }
+
+    private QueueEntry findQueueEntryById(Long queueEntryId) {
+        return queueEntryRepository.findByIdWithDetails(queueEntryId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Queue entry not found with ID: " + queueEntryId));
     }
 
     private User getUserByFirebaseUid(

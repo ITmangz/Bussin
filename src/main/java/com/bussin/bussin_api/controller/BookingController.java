@@ -34,6 +34,11 @@ public class BookingController {
         return bookingService.getAllBookings();
     }
 
+    @GetMapping("/employee")
+    public List<BookingResponse> getEmployeeBookings() {
+        return bookingService.getEmployeeBookings();
+    }
+
     @GetMapping("/admin/{bookingId}")
     public BookingResponse getBookingForStaff(@PathVariable Long bookingId) {
         return bookingService.getBookingForStaff(bookingId);

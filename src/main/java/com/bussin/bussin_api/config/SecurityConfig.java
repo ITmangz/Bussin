@@ -99,7 +99,7 @@ public class SecurityConfig {
                                                 // ------------------------------------------------
 
                                                 .requestMatchers("/api/dashboard/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasRole("ADMIN")
 
                                                 // ------------------------------------------------
                                                 // Buses
@@ -167,8 +167,25 @@ public class SecurityConfig {
                                                                 "COMMUTER")
 
                                                 // ------------------------------------------------
+                                                // Employee and administrator booking views
+                                                // ------------------------------------------------
+
+                                                .requestMatchers("/api/bookings/admin", "/api/bookings/admin/**")
+                                                .hasRole("ADMIN")
+
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/bookings/employee")
+                                                .hasRole("EMPLOYEE")
+
+                                                // ------------------------------------------------
                                                 // Queue
                                                 // ------------------------------------------------
+
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/queue/employee")
+                                                .hasRole("EMPLOYEE")
 
                                                 .requestMatchers(
                                                                 HttpMethod.POST,

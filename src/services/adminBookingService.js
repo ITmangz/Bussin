@@ -5,6 +5,11 @@ export async function getAllBookings() {
   return response.data;
 }
 
+export async function getEmployeeBookings() {
+  const response = await apiClient.get("/bookings/employee");
+  return response.data;
+}
+
 export async function getBookingById(bookingId) {
   const response = await apiClient.get(`/bookings/admin/${bookingId}`);
   return response.data;

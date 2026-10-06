@@ -1,0 +1,227 @@
+.employee-dashboard-page {
+  width: 100%;
+}
+
+.employee-dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 21px;
+}
+
+.employee-dashboard-header h1 {
+  margin: 0;
+  color: #121212;
+  font-size: 27px;
+  font-weight: 750;
+}
+
+.employee-dashboard-header p {
+  margin: 7px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.employee-dashboard-link,
+.employee-dashboard-panel-header a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #990000;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.employee-dashboard-link:hover,
+.employee-dashboard-panel-header a:hover {
+  text-decoration: underline;
+}
+
+.employee-dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 19px;
+}
+
+.employee-dashboard-stat {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 78px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.employee-dashboard-stat-icon,
+.employee-dashboard-trip-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #fff0f0;
+  color: #990000;
+}
+
+.employee-dashboard-stat span,
+.employee-dashboard-stat strong {
+  display: block;
+}
+
+.employee-dashboard-stat span {
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.employee-dashboard-stat strong {
+  margin-top: 4px;
+  color: #171717;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.employee-dashboard-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.employee-dashboard-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 19px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.employee-dashboard-panel-header h2 {
+  margin: 0;
+  color: #171717;
+  font-size: 15px;
+}
+
+.employee-dashboard-panel-header p {
+  margin: 4px 0 0;
+  color: #7a828d;
+  font-size: 11px;
+}
+
+.employee-dashboard-empty {
+  padding: 35px 20px;
+  color: #7a828d;
+  text-align: center;
+  font-size: 12px;
+}
+
+.employee-dashboard-trip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.employee-dashboard-trip-row:last-child {
+  border-bottom: 0;
+}
+
+.employee-dashboard-trip-icon {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 9px;
+}
+
+.employee-dashboard-trip-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.employee-dashboard-trip-details strong,
+.employee-dashboard-trip-details span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-dashboard-trip-details strong {
+  color: #272b31;
+  font-size: 12px;
+}
+
+.employee-dashboard-trip-details span {
+  margin-top: 4px;
+  color: #7a828d;
+  font-size: 10px;
+}
+
+.employee-dashboard-quick-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin-top: 14px;
+}
+
+.employee-dashboard-quick-links a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
+  background: white;
+  color: #990000;
+  text-decoration: none;
+}
+
+.employee-dashboard-quick-links a > span {
+  min-width: 0;
+  flex: 1;
+}
+
+.employee-dashboard-quick-links strong,
+.employee-dashboard-quick-links small {
+  display: block;
+}
+
+.employee-dashboard-quick-links strong {
+  color: #171717;
+  font-size: 12px;
+}
+
+.employee-dashboard-quick-links small {
+  margin-top: 4px;
+  color: #7a828d;
+  font-size: 10px;
+}
+
+.employee-dashboard-quick-links a:hover {
+  border-color: #990000;
+}
+
+@media (max-width: 900px) {
+  .employee-dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .employee-dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .employee-dashboard-header h1 {
+    font-size: 23px;
+  }
+
+  .employee-dashboard-quick-links {
+    grid-template-columns: 1fr;
+  }
+}

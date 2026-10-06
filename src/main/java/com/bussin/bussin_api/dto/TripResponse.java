@@ -11,6 +11,8 @@ public record TripResponse(
         Integer busCapacity,
         Long routeId,
         String routeIdentifier,
+        Long employeeId,
+        String employeeName,
         LocalDateTime scheduledDeparture,
         LocalDateTime scheduledArrival,
         TripStatus status,

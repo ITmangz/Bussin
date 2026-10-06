@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   BriefcaseBusiness,
   Edit3,
@@ -17,6 +18,7 @@ import {
   updateManagedUser,
   updateUserRole,
 } from "../../services/userService";
+import { getAllTrips } from "../../services/tripService";
 import "./UserManagement.css";
 
 const EMPTY_FORM = {
@@ -61,9 +63,39 @@ function UserManagement({ mode }) {
 
   const loadUsers = useCallback(async () => {
     try {
-      const response = isEmployeesPage ? await getEmployees() : await getAllUsers();
-      setError("");
-      setUsers(Array.isArray(response) ? response : []);
+      let response;
+      let assignmentCounts = new Map();
+      let assignmentError = "";
+      if (isEmployeesPage) {
+        const [employeeResponse, tripResponse] = await Promise.all([
+          getEmployees(),
+          getAllTrips().catch((tripError) => {
+            console.error("Failed to load employee trip assignments:", tripError);
+            return null;
+          }),
+        ]);
+        response = employeeResponse;
+        if (Array.isArray(tripResponse)) {
+          for (const trip of tripResponse) {
+            if (trip.employeeId != null) {
+              assignmentCounts.set(trip.employeeId, (assignmentCounts.get(trip.employeeId) || 0) + 1);
+            }
+          }
+        } else {
+          assignmentError = "Employee accounts loaded, but trip assignment counts are unavailable.";
+        }
+      } else {
+        response = await getAllUsers();
+      }
+      if (Array.isArray(response)) {
+        setUsers(response.map((user) => ({
+          ...user,
+          assignedTripCount: isEmployeesPage ? assignmentCounts.get(user.id) ?? null : undefined,
+        })));
+      } else {
+        setUsers([]);
+      }
+      setError(assignmentError);
     } catch (loadError) {
       console.error("Failed to load account directory:", loadError);
       setError(getErrorMessage(loadError, "Unable to load accounts from BUSSIN."));
@@ -174,16 +206,19 @@ function UserManagement({ mode }) {
       setUpdatingRoleId(user.id);
       setError("");
       const updated = await updateUserRole(user.id, nextRole);
+      const displayedUser = isEmployeesPage && updated.role === "EMPLOYEE"
+        ? { ...updated, assignedTripCount: 0 }
+        : updated;
       setUsers((current) => {
         if (!isEmployeesPage) {
-          return current.map((item) => item.id === updated.id ? updated : item);
+          return current.map((item) => item.id === displayedUser.id ? displayedUser : item);
         }
-        if (updated.role !== "EMPLOYEE") {
-          return current.filter((item) => item.id !== updated.id);
+        if (displayedUser.role !== "EMPLOYEE") {
+          return current.filter((item) => item.id !== displayedUser.id);
         }
-        return current.some((item) => item.id === updated.id)
-          ? current.map((item) => item.id === updated.id ? updated : item)
-          : [...current, updated];
+        return current.some((item) => item.id === displayedUser.id)
+          ? current.map((item) => item.id === displayedUser.id ? displayedUser : item)
+          : [...current, displayedUser];
       });
       setCandidates((current) => current.filter((item) => item.id !== updated.id));
       return true;
@@ -234,7 +269,7 @@ function UserManagement({ mode }) {
           <h1>{isEmployeesPage ? "Employees" : "Users"}</h1>
           <p>
             {isEmployeesPage
-              ? "Manage employee access for registered BUSSIN accounts."
+              ? "Manage employee access. Assign scheduled work from the Trips page."
               : "Manage BUSSIN account details and access levels."}
           </p>
         </div>
@@ -308,11 +343,12 @@ function UserManagement({ mode }) {
           </div>
         ) : (
           <div className="user-management-table-wrap">
-            <table className="user-management-table">
+            <table className={`user-management-table ${isEmployeesPage ? "employee-management-table" : ""}`}>
               <thead>
                 <tr>
                   <th>Account</th>
                   <th>Contact</th>
+                  {isEmployeesPage && <th>Trip assignments</th>}
                   {!isEmployeesPage && <th>Access level</th>}
                   <th>Joined</th>
                   <th><span className="sr-only">Actions</span></th>
@@ -331,6 +367,12 @@ function UserManagement({ mode }) {
                       </div>
                     </td>
                     <td>{user.contactNumber || <span className="user-management-muted">Not provided</span>}</td>
+                    {isEmployeesPage && (
+                      <td>
+                        {user.assignedTripCount ?? "—"}
+                        <Link className="user-management-assignment-link" to={`/admin/trips?employeeId=${user.id}`}>Manage</Link>
+                      </td>
+                    )}
                     {!isEmployeesPage && (
                       <td>
                         <select

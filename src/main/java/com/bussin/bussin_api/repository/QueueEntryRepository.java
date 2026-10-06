@@ -21,6 +21,14 @@ public interface QueueEntryRepository
     List<QueueEntry> findByTripIdOrderByQueueNumberAsc(
             Long tripId);
 
+    @EntityGraph(attributePaths = {"commuter", "trip", "trip.route", "trip.bus"})
+    @Query("SELECT q FROM QueueEntry q WHERE q.trip.employee.id = :employeeId ORDER BY q.trip.scheduledDeparture ASC, q.queueNumber ASC")
+    List<QueueEntry> findAssignedToEmployee(@Param("employeeId") Long employeeId);
+
+    @EntityGraph(attributePaths = {"commuter", "trip"})
+    @Query("SELECT q FROM QueueEntry q WHERE q.id = :queueEntryId")
+    Optional<QueueEntry> findByIdWithDetails(@Param("queueEntryId") Long queueEntryId);
+
     List<QueueEntry> findByTripIdAndStatusOrderByQueueNumberAsc(
             Long tripId,
             QueueStatus status);

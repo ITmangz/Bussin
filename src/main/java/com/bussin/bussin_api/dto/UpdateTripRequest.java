@@ -15,6 +15,8 @@ public class UpdateTripRequest {
     @NotNull(message = "Route ID is required")
     private Long routeId;
 
+    private Long employeeId;
+
     @NotNull(message = "Scheduled departure is required")
     @FutureOrPresent(message = "Scheduled departure must be in the present or future")
     private LocalDateTime scheduledDeparture;
@@ -43,6 +45,14 @@ public class UpdateTripRequest {
 
     public void setRouteId(Long routeId) {
         this.routeId = routeId;
+    }
+
+    public Long getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(Long employeeId) {
+        this.employeeId = employeeId;
     }
 
     public LocalDateTime getScheduledDeparture() {

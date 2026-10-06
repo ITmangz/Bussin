@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bussin.bussin_api.dto.CreateUserRequest;
 import com.bussin.bussin_api.dto.UpdateUserRequest;
@@ -15,15 +16,18 @@ import com.bussin.bussin_api.entity.Role;
 import com.bussin.bussin_api.entity.User;
 import com.bussin.bussin_api.exception.ConflictException;
 import com.bussin.bussin_api.repository.UserRepository;
+import com.bussin.bussin_api.repository.TripRepository;
 import com.google.firebase.auth.FirebaseToken;
 
 @Service
 public class UserService {
 
         private final UserRepository userRepository;
+        private final TripRepository tripRepository;
 
-        public UserService(UserRepository userRepository) {
+        public UserService(UserRepository userRepository, TripRepository tripRepository) {
                 this.userRepository = userRepository;
+                this.tripRepository = tripRepository;
         }
 
         // ============================================================
@@ -79,6 +83,7 @@ public class UserService {
         // ADMIN ONLY
         // ============================================================
 
+        @Transactional
         public UserResponse updateUserRole(
                         Long userId,
                         UpdateUserRoleRequest request) {
@@ -105,6 +110,10 @@ public class UserService {
                                 throw new ConflictException(
                                                 "Cannot remove the last administrator");
                         }
+                }
+
+                if (currentRole == Role.EMPLOYEE && newRole != Role.EMPLOYEE) {
+                        tripRepository.clearEmployeeAssignments(userId);
                 }
 
                 user.setRole(newRole);

@@ -25,6 +25,8 @@ import AdminRoutes from "../pages/admin/Routes";
 import AdminBookings from "../pages/admin/Bookings";
 import UserManagement from "../pages/admin/UserManagement";
 import EmployeeDashboard from "../pages/employee/EmployeeDashboard";
+import EmployeeTrips from "../pages/employee/EmployeeTrips";
+import EmployeeBookings from "../pages/employee/EmployeeBookings";
 import OperationsQueue from "../pages/OperationsQueue";
 
 console.log("BUSSIN AppRoutes LOADED");
@@ -43,26 +45,6 @@ function AdminPlaceholder({ title, description }) {
 
         <p className="admin-panel-description">
           This management module is currently being developed.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function EmployeePlaceholder({ title, description }) {
-  return (
-    <div>
-      <div className="admin-page-header">
-        <h1 className="admin-page-title">{title}</h1>
-
-        <p className="admin-page-description">{description}</p>
-      </div>
-
-      <div className="admin-dashboard-panel">
-        <h2 className="admin-panel-title">Coming Next</h2>
-
-        <p className="admin-panel-description">
-          This employee module is currently being developed.
         </p>
       </div>
     </div>
@@ -273,10 +255,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["EMPLOYEE"]}>
               <EmployeeLayout>
-                <EmployeePlaceholder
-                  title="My Trips"
-                  description="View trips assigned to you."
-                />
+                <EmployeeTrips />
               </EmployeeLayout>
             </RoleRoute>
           </ProtectedRoute>
@@ -289,10 +268,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["EMPLOYEE"]}>
               <EmployeeLayout>
-                <EmployeePlaceholder
-                  title="Bookings"
-                  description="View and manage passenger bookings for your assigned trips."
-                />
+                <EmployeeBookings />
               </EmployeeLayout>
             </RoleRoute>
           </ProtectedRoute>
@@ -318,9 +294,10 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["EMPLOYEE"]}>
               <EmployeeLayout>
-                <EmployeePlaceholder
+                <OperationsQueue
                   title="Boarding"
-                  description="Manage passenger boarding and ticket verification."
+                  description="Review passengers called for boarding on your assigned trips."
+                  boardingOnly
                 />
               </EmployeeLayout>
             </RoleRoute>

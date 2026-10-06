@@ -5,6 +5,11 @@ export async function getTripQueue(tripId) {
   return response.data;
 }
 
+export async function getEmployeeQueue() {
+  const response = await apiClient.get("/queue/employee");
+  return response.data;
+}
+
 export async function updateQueueStatus(queueEntryId, status) {
   const response = await apiClient.put(`/queue/${queueEntryId}/status`, { status });
   return response.data;

@@ -832,6 +832,8 @@ public class AiBookingService {
                                 trip.getBus().getCapacity(),
                                 trip.getRoute().getId(),
                                 trip.getRoute().getRouteIdentifier(),
+                                null,
+                                null,
                                 trip.getScheduledDeparture(),
                                 trip.getScheduledArrival(),
                                 trip.getStatus(),
