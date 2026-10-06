@@ -187,12 +187,13 @@ function Reports() {
 
   function exportCsv() {
     const columns = [
-      "Booking reference", "Passenger", "Email", "Route", "Trip ID", "Bus plate",
+      "Booking reference", "Passenger", "Guest booking", "Email", "Route", "Trip ID", "Bus plate",
       "Seats", "Fare (PHP)", "Booking status", "Payment status", "Queue number", "Booked at",
     ];
     const rows = filteredBookings.map((booking) => [
       booking.bookingReference || booking.id,
       booking.passengerName || booking.commuterName,
+      booking.guestBooking ? "Yes" : "No",
       booking.passengerEmail || booking.commuterEmail,
       booking.routeIdentifier || `${booking.origin || ""} - ${booking.destination || ""}`,
       booking.tripId,

@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.bussin.bussin_api.dto.BookingResponse;
 import com.bussin.bussin_api.dto.CreateBookingRequest;
@@ -80,6 +82,26 @@ public class BookingService {
                     "Only commuter accounts can create bookings.");
         }
 
+        return createBookingFor(request, commuter);
+    }
+
+    @Transactional
+    public BookingResponse createGuestBooking(CreateBookingRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getPrincipal() instanceof FirebaseToken) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Sign out before creating a guest booking.");
+        }
+        return createBookingFor(request, null);
+    }
+
+    private BookingResponse createBookingFor(
+            CreateBookingRequest request,
+            User commuter) {
+
         Trip trip = tripRepository.findByIdForUpdate(request.getTripId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Trip not found: " + request.getTripId()));
@@ -100,15 +122,17 @@ public class BookingService {
                 BookingStatus.PENDING,
                 BookingStatus.CONFIRMED);
 
-        boolean alreadyBooked = bookingRepository
-                .existsByCommuterIdAndTripIdAndStatusIn(
-                        commuter.getId(),
-                        trip.getId(),
-                        activeStatuses);
+        if (commuter != null) {
+            boolean alreadyBooked = bookingRepository
+                    .existsByCommuterIdAndTripIdAndStatusIn(
+                            commuter.getId(),
+                            trip.getId(),
+                            activeStatuses);
 
-        if (alreadyBooked) {
-            throw new ConflictException(
-                    "You already have an active booking for this trip.");
+            if (alreadyBooked) {
+                throw new ConflictException(
+                        "You already have an active booking for this trip.");
+            }
         }
 
         for (String seatNumber : seatNumbers) {
@@ -176,9 +200,7 @@ public class BookingService {
             throw exception;
         }
 
-        QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(
-                trip,
-                commuter);
+        QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(trip, savedBooking);
 
         return BookingResponse.from(savedBooking, queueEntry);
     }
@@ -383,12 +405,8 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setUpdatedAt(cancelledAt);
 
-        queueService.cancelQueueEntryForBooking(
-                booking.getTrip(),
-                booking.getCommuter());
-        QueueEntry queueEntry = queueService.findQueueEntry(
-                booking.getTrip().getId(),
-                booking.getCommuter().getId());
+        queueService.cancelQueueEntryForBooking(booking);
+        QueueEntry queueEntry = queueService.findQueueEntryForBooking(booking);
 
         CancelledBookingArchive archive = CancelledBookingArchive.from(
                 booking,
@@ -396,6 +414,7 @@ public class BookingService {
                 cancelledAt);
         CancelledBookingArchive savedArchive = cancelledBookingArchiveRepository.saveAndFlush(archive);
 
+        queueService.detachBookingFromQueueEntry(booking);
         bookingRepository.delete(booking);
         bookingRepository.flush();
 
@@ -403,32 +422,24 @@ public class BookingService {
     }
 
     private BookingResponse toResponse(Booking booking) {
-        QueueEntry queueEntry = queueService.findQueueEntry(
-                booking.getTrip().getId(),
-                booking.getCommuter().getId());
+        QueueEntry queueEntry = queueService.findQueueEntryForBooking(booking);
 
         return BookingResponse.from(booking, queueEntry);
     }
 
     private void syncQueueWithBookingStatus(Booking booking) {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            queueService.cancelQueueEntryForBooking(
-                    booking.getTrip(),
-                    booking.getCommuter());
+            queueService.cancelQueueEntryForBooking(booking);
             return;
         }
 
         if (booking.getStatus() == BookingStatus.COMPLETED) {
-            queueService.completeQueueEntryForBooking(
-                    booking.getTrip(),
-                    booking.getCommuter());
+            queueService.completeQueueEntryForBooking(booking);
             return;
         }
 
         if (booking.getStatus() == BookingStatus.CONFIRMED) {
-            queueService.ensureQueueEntryForBooking(
-                    booking.getTrip(),
-                    booking.getCommuter());
+            queueService.ensureQueueEntryForBooking(booking.getTrip(), booking);
         }
     }
 

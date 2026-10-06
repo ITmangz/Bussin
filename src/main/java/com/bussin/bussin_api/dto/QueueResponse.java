@@ -47,17 +47,36 @@ public class QueueResponse {
     public static QueueResponse from(
             QueueEntry entry) {
 
-        String commuterName = buildCommuterName(
-                entry.getCommuter().getFirstName(),
-                entry.getCommuter().getMiddleName(),
-                entry.getCommuter().getLastName());
+        String commuterName;
+        String commuterEmail;
+        Long commuterId = null;
+
+        if (entry.getCommuter() == null) {
+            commuterName = entry.getPassengerName() != null
+                    ? entry.getPassengerName()
+                    : entry.getBooking() == null
+                            ? "Guest"
+                            : entry.getBooking().getPassengerName();
+            commuterEmail = entry.getPassengerEmail() != null
+                    ? entry.getPassengerEmail()
+                    : entry.getBooking() == null
+                            ? null
+                            : entry.getBooking().getPassengerEmail();
+        } else {
+            commuterId = entry.getCommuter().getId();
+            commuterName = buildCommuterName(
+                    entry.getCommuter().getFirstName(),
+                    entry.getCommuter().getMiddleName(),
+                    entry.getCommuter().getLastName());
+            commuterEmail = entry.getCommuter().getEmail();
+        }
 
         return new QueueResponse(
                 entry.getId(),
                 entry.getTrip().getId(),
-                entry.getCommuter().getId(),
+                commuterId,
                 commuterName,
-                entry.getCommuter().getEmail(),
+                commuterEmail,
                 entry.getQueueNumber(),
                 entry.getStatus().name(),
                 entry.getJoinedAt(),

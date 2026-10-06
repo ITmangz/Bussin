@@ -34,7 +34,7 @@ public class CancelledBookingArchive {
     @Column(name = "booking_reference", nullable = false, length = 20)
     private String bookingReference;
 
-    @Column(name = "commuter_id", nullable = false)
+    @Column(name = "commuter_id")
     private Long commuterId;
 
     @Column(name = "commuter_name", nullable = false, length = 600)
@@ -124,14 +124,16 @@ public class CancelledBookingArchive {
 
         archive.bookingId = booking.getId();
         archive.bookingReference = booking.getBookingReference();
-        archive.commuterId = commuter.getId();
-        archive.commuterName = Stream.of(
-                        commuter.getFirstName(),
-                        commuter.getMiddleName(),
-                        commuter.getLastName())
-                .filter(value -> value != null && !value.isBlank())
-                .collect(Collectors.joining(" "));
-        archive.commuterEmail = commuter.getEmail();
+        archive.commuterId = commuter == null ? null : commuter.getId();
+        archive.commuterName = commuter == null
+                ? "Guest"
+                : Stream.of(
+                                commuter.getFirstName(),
+                                commuter.getMiddleName(),
+                                commuter.getLastName())
+                        .filter(value -> value != null && !value.isBlank())
+                        .collect(Collectors.joining(" "));
+        archive.commuterEmail = commuter == null ? null : commuter.getEmail();
         archive.tripId = trip.getId();
         archive.routeIdentifier = route.getRouteIdentifier();
         archive.origin = route.getOrigin();

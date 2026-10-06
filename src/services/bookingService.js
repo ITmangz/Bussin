@@ -38,3 +38,12 @@ export async function createBooking(bookingData) {
 
     return response.data;
 }
+
+export async function createGuestBooking(bookingData) {
+    const response = await apiClient.post(
+        "/bookings/guest",
+        bookingData
+    );
+
+    return response.data;
+}

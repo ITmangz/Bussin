@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.QueueEntry;
 import com.bussin.bussin_api.entity.QueueStatus;
 import com.bussin.bussin_api.entity.Role;
@@ -45,22 +46,50 @@ public class QueueService {
             Trip trip,
             User commuter) {
 
+        return ensureQueueEntryForBooking(trip, commuter, null);
+    }
+
+    @Transactional
+    public QueueEntry ensureQueueEntryForBooking(
+            Trip trip,
+            Booking booking) {
+
+        return ensureQueueEntryForBooking(trip, booking.getCommuter(), booking);
+    }
+
+    private QueueEntry ensureQueueEntryForBooking(
+            Trip trip,
+            User commuter,
+            Booking booking) {
+
         trip = lockTripForQueueChange(trip.getId());
         validateJoinableTrip(trip);
 
-        QueueEntry existing = queueEntryRepository
-                .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
-                .orElse(null);
+        QueueEntry existing = commuter == null
+                ? queueEntryRepository.findByBookingId(booking.getId()).orElse(null)
+                : queueEntryRepository
+                        .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
+                        .orElse(null);
 
         LocalDateTime now = LocalDateTime.now();
 
         if (existing != null) {
             if (existing.getStatus() != QueueStatus.CANCELLED) {
+                if (booking != null) {
+                    existing.setBooking(booking);
+                    existing.setPassengerName(booking.getPassengerName());
+                    existing.setPassengerEmail(booking.getPassengerEmail());
+                    return queueEntryRepository.save(existing);
+                }
                 return existing;
             }
 
             int nextQueueNumber = getNextQueueNumber(trip.getId());
-            existing.setUserId(commuter.getId());
+            existing.setCommuter(commuter);
+            existing.setBooking(booking);
+            existing.setUserId(commuter == null ? null : commuter.getId());
+            existing.setPassengerName(booking == null ? null : booking.getPassengerName());
+            existing.setPassengerEmail(booking == null ? null : booking.getPassengerEmail());
             existing.setQueueNumber(nextQueueNumber);
             existing.setPosition(nextQueueNumber);
             existing.setStatus(QueueStatus.WAITING);
@@ -76,7 +105,10 @@ public class QueueService {
         QueueEntry entry = new QueueEntry();
         entry.setTrip(trip);
         entry.setCommuter(commuter);
-        entry.setUserId(commuter.getId());
+        entry.setBooking(booking);
+        entry.setUserId(commuter == null ? null : commuter.getId());
+        entry.setPassengerName(booking == null ? null : booking.getPassengerName());
+        entry.setPassengerEmail(booking == null ? null : booking.getPassengerEmail());
         int nextQueueNumber = getNextQueueNumber(trip.getId());
         entry.setQueueNumber(nextQueueNumber);
         entry.setPosition(nextQueueNumber);
@@ -153,9 +185,22 @@ public class QueueService {
 
     @Transactional(readOnly = true)
     public QueueEntry findQueueEntry(Long tripId, Long commuterId) {
+        if (commuterId == null) {
+            return null;
+        }
         return queueEntryRepository
                 .findByTripIdAndCommuterId(tripId, commuterId)
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public QueueEntry findQueueEntryForBooking(Booking booking) {
+        if (booking.getCommuter() == null) {
+            return booking.getId() == null
+                    ? null
+                    : queueEntryRepository.findByBookingId(booking.getId()).orElse(null);
+        }
+        return findQueueEntry(booking.getTrip().getId(), booking.getCommuter().getId());
     }
 
     @Transactional(readOnly = true)
@@ -172,12 +217,42 @@ public class QueueService {
 
     @Transactional
     public void cancelQueueEntryForBooking(Trip trip, User commuter) {
-
+        if (commuter == null) {
+            return;
+        }
         trip = lockTripForQueueChange(trip.getId());
         QueueEntry entry = queueEntryRepository
                 .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
                 .orElse(null);
+        cancelQueueEntryForBooking(trip, entry);
+    }
 
+    @Transactional
+    public void cancelQueueEntryForBooking(Booking booking) {
+        Trip trip = lockTripForQueueChange(booking.getTrip().getId());
+        QueueEntry entry = booking.getCommuter() == null
+                ? queueEntryRepository.findByBookingId(booking.getId()).orElse(null)
+                : queueEntryRepository
+                        .findByTripIdAndCommuterId(trip.getId(), booking.getCommuter().getId())
+                        .orElse(null);
+        cancelQueueEntryForBooking(trip, entry);
+    }
+
+    @Transactional
+    public void detachBookingFromQueueEntry(Booking booking) {
+        if (booking.getId() == null) {
+            return;
+        }
+
+        queueEntryRepository.findByBookingId(booking.getId()).ifPresent(entry -> {
+            entry.setPassengerName(booking.getPassengerName());
+            entry.setPassengerEmail(booking.getPassengerEmail());
+            entry.setBooking(null);
+            queueEntryRepository.save(entry);
+        });
+    }
+
+    private void cancelQueueEntryForBooking(Trip trip, QueueEntry entry) {
         if (entry == null) {
             return;
         }
@@ -199,12 +274,22 @@ public class QueueService {
     }
 
     @Transactional
+    public void completeQueueEntryForBooking(Booking booking) {
+        QueueEntry entry = findQueueEntryForBooking(booking);
+        completeQueueEntryForBooking(entry);
+    }
+
+    @Transactional
     public void completeQueueEntryForBooking(Trip trip, User commuter) {
+        QueueEntry entry = commuter == null
+                ? null
+                : queueEntryRepository
+                        .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
+                        .orElse(null);
+        completeQueueEntryForBooking(entry);
+    }
 
-        QueueEntry entry = queueEntryRepository
-                .findByTripIdAndCommuterId(trip.getId(), commuter.getId())
-                .orElse(null);
-
+    private void completeQueueEntryForBooking(QueueEntry entry) {
         if (entry == null || entry.getStatus() == QueueStatus.BOARDED) {
             return;
         }
@@ -227,9 +312,8 @@ public class QueueService {
 
         User commuter = requireCommuterUser();
 
-        if (!entry.getCommuter()
-                .getId()
-                .equals(commuter.getId())) {
+        if (entry.getCommuter() == null
+                || !entry.getCommuter().getId().equals(commuter.getId())) {
 
             throw new ConflictException(
                     "You can only cancel your own queue entry");

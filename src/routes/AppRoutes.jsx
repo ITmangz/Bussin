@@ -6,6 +6,7 @@ import EmployeeLayout from "../components/layout/employee/EmployeeLayout";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 import RoleRoute from "../components/auth/RoleRoute";
+import { useAuth } from "../contexts/AuthContext";
 
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -50,6 +51,14 @@ function AdminPlaceholder({ title, description }) {
       </div>
     </div>
   );
+}
+
+function OptionalAuthRoute({ children }) {
+  const { loading } = useAuth();
+  if (loading) {
+    return <div className="auth-loading">Loading BUSSIN...</div>;
+  }
+  return children;
 }
 
 function AppRoutes() {
@@ -331,23 +340,17 @@ function AppRoutes() {
 
       <Route
         path="/trips"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <Trips />
-            </AppLayout>
-          </ProtectedRoute>
-        }
+        element={<AppLayout><Trips /></AppLayout>}
       />
 
       <Route
         path="/booking"
         element={
-          <ProtectedRoute>
+          <OptionalAuthRoute>
             <AppLayout>
               <Booking />
             </AppLayout>
-          </ProtectedRoute>
+          </OptionalAuthRoute>
         }
       />
 

@@ -108,7 +108,7 @@ function EmployeeBookings() {
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id}>
                     <td><strong>{booking.bookingReference || `#${booking.id}`}</strong><small>{booking.seatCount || 1} passenger seat{(booking.seatCount || 1) === 1 ? "" : "s"}</small></td>
-                    <td><strong>{booking.passengerName || booking.commuterName || "Passenger"}</strong><small>{booking.passengerPhone || booking.passengerEmail || booking.commuterEmail || "Contact not provided"}</small></td>
+                    <td><strong>{booking.passengerName || booking.commuterName || "Passenger"}</strong><small>{booking.guestBooking ? "Guest booking · " : ""}{booking.passengerPhone || booking.passengerEmail || booking.commuterEmail || "Contact not provided"}</small></td>
                     <td><strong>#{booking.tripId}</strong><small>{booking.routeIdentifier || "Route not available"} · {booking.busPlateNumber || "Bus not available"}</small></td>
                     <td>{formatSeats(booking)}</td>
                     <td>{booking.queueNumber ? `Q${booking.queueNumber} · ${booking.queueStatus || "WAITING"}` : "—"}</td>

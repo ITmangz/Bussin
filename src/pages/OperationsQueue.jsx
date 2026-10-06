@@ -141,7 +141,7 @@ function OperationsQueue({ title = "Queue", description = "Monitor passenger que
         <div className="operations-queue-table-wrap"><table className="operations-queue-table"><thead><tr><th>#</th><th>Passenger</th><th>Email</th><th>Status</th><th>Joined</th><th>Action</th></tr></thead><tbody>
           {displayedQueue.map((entry) => <tr key={entry.id}>
             <td><strong className="queue-number">Q{entry.queueNumber}</strong></td>
-            <td><strong>{entry.commuterName || "Unknown passenger"}</strong><small>ID #{entry.commuterId}</small></td>
+            <td><strong>{entry.commuterName || "Unknown passenger"}</strong><small>{entry.commuterId == null ? "Guest booking" : `ID #${entry.commuterId}`}</small></td>
             <td>{entry.commuterEmail || "—"}</td>
             <td><span className={"queue-status "+String(entry.status).toLowerCase()}>{entry.status}</span></td>
             <td>{formatDate(entry.joinedAt)}</td>

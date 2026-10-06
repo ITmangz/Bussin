@@ -36,3 +36,35 @@
 .password-toggle:hover {
     color: var(--text-primary);
 }
+
+.guest-booking-button {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 12px;
+    border: 1px solid var(--bussin-border);
+    border-radius: var(--radius-md);
+    background: var(--bussin-white);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.guest-booking-button:hover:not(:disabled) {
+    border-color: var(--bussin-red);
+    color: var(--bussin-red);
+}
+
+.guest-booking-button:disabled {
+    cursor: not-allowed;
+    opacity: .6;
+}
+
+.guest-booking-note {
+    margin: 7px 0 0;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: center;
+}

@@ -19,6 +19,7 @@ public class BookingResponse {
     private Long commuterId;
     private String commuterName;
     private String commuterEmail;
+    private boolean guestBooking;
 
     private Long tripId;
     private String routeIdentifier;
@@ -62,12 +63,18 @@ public class BookingResponse {
         response.id = booking.getId();
         response.bookingReference = booking.getBookingReference();
 
-        response.commuterId = booking.getCommuter().getId();
-        response.commuterName = buildFullName(
-                booking.getCommuter().getFirstName(),
-                booking.getCommuter().getMiddleName(),
-                booking.getCommuter().getLastName());
-        response.commuterEmail = booking.getCommuter().getEmail();
+        if (booking.getCommuter() == null) {
+            response.commuterName = "Guest";
+            response.commuterEmail = booking.getPassengerEmail();
+            response.guestBooking = true;
+        } else {
+            response.commuterId = booking.getCommuter().getId();
+            response.commuterName = buildFullName(
+                    booking.getCommuter().getFirstName(),
+                    booking.getCommuter().getMiddleName(),
+                    booking.getCommuter().getLastName());
+            response.commuterEmail = booking.getCommuter().getEmail();
+        }
 
         response.tripId = booking.getTrip().getId();
         response.routeIdentifier = booking.getTrip().getRoute().getRouteIdentifier();
@@ -116,8 +123,13 @@ public class BookingResponse {
         response.id = archive.getBookingId();
         response.bookingReference = archive.getBookingReference();
         response.commuterId = archive.getCommuterId();
-        response.commuterName = archive.getCommuterName();
-        response.commuterEmail = archive.getCommuterEmail();
+        response.commuterName = archive.getCommuterId() == null
+                ? "Guest"
+                : archive.getCommuterName();
+        response.commuterEmail = archive.getCommuterId() == null
+                ? archive.getPassengerEmail()
+                : archive.getCommuterEmail();
+        response.guestBooking = archive.getCommuterId() == null;
         response.tripId = archive.getTripId();
         response.routeIdentifier = archive.getRouteIdentifier();
         response.origin = archive.getOrigin();
@@ -184,6 +196,10 @@ public class BookingResponse {
 
     public String getCommuterEmail() {
         return commuterEmail;
+    }
+
+    public boolean isGuestBooking() {
+        return guestBooking;
     }
 
     public Long getTripId() {

@@ -2,9 +2,11 @@ package com.bussin.bussin_api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.bussin.bussin_api.dto.CreateBookingRequest;
 import com.bussin.bussin_api.dto.BookingResponse;
@@ -77,7 +80,7 @@ class BookingServiceTest {
     @BeforeEach
     void authenticateCommuter() {
         FirebaseToken firebaseToken = mock(FirebaseToken.class);
-        when(firebaseToken.getUid()).thenReturn("firebase-uid");
+        lenient().when(firebaseToken.getUid()).thenReturn("firebase-uid");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         firebaseToken,
@@ -207,6 +210,72 @@ class BookingServiceTest {
     }
 
     @Test
+    void guestBookingCanBeCreatedWithoutACommuterProfile() {
+        SecurityContextHolder.clearContext();
+
+        Bus bus = mock(Bus.class);
+        when(bus.getCapacity()).thenReturn(40);
+        when(bus.getStatus()).thenReturn(BusStatus.ACTIVE);
+        when(bus.getId()).thenReturn(7L);
+        when(bus.getPlateNumber()).thenReturn("ABC-1234");
+
+        Route route = mock(Route.class);
+        when(route.isActive()).thenReturn(true);
+        when(route.getBaseFare()).thenReturn(new BigDecimal("100.00"));
+
+        Trip trip = mock(Trip.class);
+        when(trip.getId()).thenReturn(9L);
+        when(trip.getStatus()).thenReturn(TripStatus.SCHEDULED);
+        when(trip.getBus()).thenReturn(bus);
+        when(trip.getRoute()).thenReturn(route);
+        when(tripRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(trip));
+        when(bookingSeatRepository.existsActiveBookingSeat(
+                9L,
+                "1A",
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
+                .thenReturn(false);
+        when(bookingRepository.findByBookingReference(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.empty());
+        when(bookingRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(Booking.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        QueueEntry queueEntry = mock(QueueEntry.class);
+        when(queueEntry.getQueueNumber()).thenReturn(1);
+        when(queueEntry.getStatus()).thenReturn(QueueStatus.WAITING);
+        when(queueService.ensureQueueEntryForBooking(
+                org.mockito.ArgumentMatchers.eq(trip),
+                org.mockito.ArgumentMatchers.any(Booking.class)))
+                .thenReturn(queueEntry);
+
+        CreateBookingRequest request = new CreateBookingRequest();
+        request.setTripId(9L);
+        request.setSeatNumbers(List.of("1A"));
+        request.setPassengerName("Guest Passenger");
+        request.setPassengerPhone("09123456789");
+        request.setPassengerEmail("guest@example.com");
+
+        BookingResponse response = bookingService.createGuestBooking(request);
+
+        assertTrue(response.isGuestBooking());
+        assertEquals("Guest", response.getCommuterName());
+        assertEquals("Guest Passenger", response.getPassengerName());
+        assertEquals(1, response.getQueueNumber());
+        verify(userRepository, never()).findByFirebaseUid(org.mockito.ArgumentMatchers.anyString());
+        verify(queueService).ensureQueueEntryForBooking(
+                org.mockito.ArgumentMatchers.eq(trip),
+                org.mockito.ArgumentMatchers.any(Booking.class));
+    }
+
+    @Test
+    void authenticatedUserCannotUseGuestBookingEndpoint() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.createGuestBooking(new CreateBookingRequest()));
+
+        assertEquals(org.springframework.http.HttpStatus.FORBIDDEN, exception.getStatusCode());
+    }
+
+    @Test
     void cancelMyBookingArchivesHistoryBeforeDeletingActiveRecord() {
         User commuter = mock(User.class);
         when(commuter.getId()).thenReturn(18L);
@@ -253,7 +322,7 @@ class BookingServiceTest {
         QueueEntry queueEntry = mock(QueueEntry.class);
         when(queueEntry.getQueueNumber()).thenReturn(2);
         when(queueEntry.getStatus()).thenReturn(QueueStatus.CANCELLED);
-        when(queueService.findQueueEntry(9L, 18L)).thenReturn(queueEntry);
+        when(queueService.findQueueEntryForBooking(booking)).thenReturn(queueEntry);
         when(cancelledBookingArchiveRepository.saveAndFlush(
                 org.mockito.ArgumentMatchers.any(CancelledBookingArchive.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -272,10 +341,11 @@ class BookingServiceTest {
                 queueService,
                 cancelledBookingArchiveRepository,
                 bookingRepository);
-        cancellationOrder.verify(queueService).cancelQueueEntryForBooking(trip, commuter);
-        cancellationOrder.verify(queueService).findQueueEntry(9L, 18L);
+        cancellationOrder.verify(queueService).cancelQueueEntryForBooking(booking);
+        cancellationOrder.verify(queueService).findQueueEntryForBooking(booking);
         cancellationOrder.verify(cancelledBookingArchiveRepository).saveAndFlush(
                 archivedBooking.capture());
+        cancellationOrder.verify(queueService).detachBookingFromQueueEntry(booking);
         cancellationOrder.verify(bookingRepository).delete(booking);
         cancellationOrder.verify(bookingRepository).flush();
 

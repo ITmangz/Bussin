@@ -29,8 +29,8 @@ public class Booking {
     @Column(nullable = false, unique = true, length = 20)
     private String bookingReference;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "commuter_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "commuter_id", nullable = true)
     private User commuter;
 
     @ManyToOne(optional = false)

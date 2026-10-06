@@ -9,7 +9,7 @@ function Topbar({ onMenuClick }) {
   const displayName =
     user?.displayName?.trim() ||
     user?.email?.split("@")[0] ||
-    "Commuter";
+    "Guest";
 
   const initials = displayName
     .split(/\s+/)
@@ -50,7 +50,7 @@ function Topbar({ onMenuClick }) {
 
           <div className="topbar-user-info">
             <strong>{displayName}</strong>
-            <span>Commuter</span>
+            <span>{user ? "Commuter" : "Guest booking"}</span>
           </div>
         </div>
       </div>

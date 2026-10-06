@@ -15,7 +15,11 @@ import {
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 import { useAuth } from "../contexts/AuthContext";
-import { createBooking, getAvailableSeats } from "../services/bookingService";
+import {
+  createBooking,
+  createGuestBooking,
+  getAvailableSeats,
+} from "../services/bookingService";
 import "./Booking.css";
 
 const SEATS_PER_ROW = 6;
@@ -209,13 +213,16 @@ function Booking() {
       setSubmitting(true);
       setError("");
 
-      const createdBooking = await createBooking({
+      const bookingRequest = {
         tripId: trip.id,
         seatNumbers: selectedSeats,
         passengerName: passengerName.trim(),
         passengerPhone: passengerPhone.trim(),
         passengerEmail: passengerEmail.trim(),
-      });
+      };
+      const createdBooking = user
+        ? await createBooking(bookingRequest)
+        : await createGuestBooking(bookingRequest);
 
       setBooking(createdBooking);
     } catch (err) {
@@ -249,8 +256,9 @@ function Booking() {
           <h1>Your trip is booked.</h1>
 
           <p>
-            Your booking and queue entry were created successfully. Payment
-            remains unpaid until a payment is completed.
+            {booking.guestBooking
+              ? "Your booking and queue entry were created. Keep your booking reference; guest bookings are available to BUSSIN staff but do not appear in commuter history."
+              : "Your booking and queue entry were created successfully. Payment remains unpaid until a payment is completed."}
           </p>
 
           <div className="booking-reference">
@@ -299,9 +307,15 @@ function Booking() {
               Browse More Trips
             </AppButton>
 
-            <AppButton onClick={() => navigate("/bookings")}>
-              View My Bookings
-            </AppButton>
+            {booking.guestBooking ? (
+              <AppButton variant="secondary" onClick={() => navigate("/login")}>
+                Sign In
+              </AppButton>
+            ) : (
+              <AppButton onClick={() => navigate("/bookings")}>
+                View My Bookings
+              </AppButton>
+            )}
           </div>
         </AppCard>
       </section>
@@ -322,7 +336,11 @@ function Booking() {
           </button>
 
           <h1>Book Your Trip</h1>
-          <p>Select your seats, enter passenger details, and confirm.</p>
+          <p>
+            {user
+              ? "Select your seats, enter passenger details, and confirm."
+              : "Booking as a guest. Select seats, enter your contact details, and confirm manually."}
+          </p>
         </div>
       </header>
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 
 import AuthLayout from "../../components/auth/AuthLayout";
-import { loginWithEmail, loginWithGoogle } from "../../services/authService";
+import { loginWithEmail, loginWithGoogle, logoutUser } from "../../services/authService";
 
 import { getCurrentUserProfile } from "../../services/userService";
 
@@ -103,6 +103,21 @@ function Login() {
     }
   }
 
+  async function handleGuestBooking() {
+    setError("");
+    setLoading(true);
+
+    try {
+      await logoutUser();
+      navigate("/trips", { replace: true });
+    } catch (error) {
+      console.error("Unable to start a guest session:", error);
+      setError("Unable to continue as a guest. Please sign out and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <AuthLayout>
       <div className="login-page">
@@ -171,6 +186,18 @@ function Login() {
         >
           Continue with Google
         </button>
+
+        <button
+          type="button"
+          className="guest-booking-button"
+          onClick={handleGuestBooking}
+          disabled={loading}
+        >
+          Continue as guest
+        </button>
+        <p className="guest-booking-note">
+          Book manually without an account. Guest bookings won’t appear in commuter history.
+        </p>
 
         <div className="auth-footer">
           <span>Don't have an account?</span>

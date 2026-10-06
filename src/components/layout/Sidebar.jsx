@@ -6,6 +6,7 @@ import {
   Users,
   Map,
   UserCircle,
+  LogIn,
   LogOut,
   X,
 } from "lucide-react";
@@ -13,11 +14,13 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { logoutUser } from "../../services/authService";
+import { useAuth } from "../../contexts/AuthContext";
 
 import "./Sidebar.css";
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   async function handleLogout() {
     try {
@@ -51,7 +54,7 @@ function Sidebar({ isOpen, onClose }) {
           <div>
             <strong>BUSSIN</strong>
 
-            <span>Commuter System</span>
+            <span>{user ? "Commuter System" : "Guest booking"}</span>
           </div>
         </div>
 
@@ -70,29 +73,31 @@ function Sidebar({ isOpen, onClose }) {
       <nav className="sidebar-navigation">
         <p className="sidebar-section-title">MAIN</p>
 
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? "active" : ""}`
-          }
-          onClick={handleNavigation}
-        >
-          <LayoutDashboard size={18} />
+        {user && (
+          <>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "active" : ""}`
+              }
+              onClick={handleNavigation}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard</span>
+            </NavLink>
 
-          <span>Dashboard</span>
-        </NavLink>
-
-        <NavLink
-          to="/ai-booking"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? "active" : ""}`
-          }
-          onClick={handleNavigation}
-        >
-          <Bot size={18} />
-
-          <span>AI Booking</span>
-        </NavLink>
+            <NavLink
+              to="/ai-booking"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "active" : ""}`
+              }
+              onClick={handleNavigation}
+            >
+              <Bot size={18} />
+              <span>AI Booking</span>
+            </NavLink>
+          </>
+        )}
 
         <NavLink
           to="/trips"
@@ -106,53 +111,64 @@ function Sidebar({ isOpen, onClose }) {
           <span>Trips</span>
         </NavLink>
 
-        <NavLink
-          to="/bookings"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? "active" : ""}`
-          }
-          onClick={handleNavigation}
-        >
-          <Ticket size={18} />
+        {user && (
+          <>
+            <NavLink
+              to="/bookings"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "active" : ""}`
+              }
+              onClick={handleNavigation}
+            >
+              <Ticket size={18} />
+              <span>My Bookings</span>
+            </NavLink>
 
-          <span>My Bookings</span>
-        </NavLink>
+            <NavLink
+              to="/queue"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "active" : ""}`
+              }
+              onClick={handleNavigation}
+            >
+              <Users size={18} />
+              <span>Queue</span>
+            </NavLink>
 
-        <NavLink
-          to="/queue"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? "active" : ""}`
-          }
-          onClick={handleNavigation}
-        >
-          <Users size={18} />
+            <p className="sidebar-section-title">ACCOUNT</p>
 
-          <span>Queue</span>
-        </NavLink>
-
-        <p className="sidebar-section-title">ACCOUNT</p>
-
-        <NavLink
-          to="/profile"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? "active" : ""}`
-          }
-          onClick={handleNavigation}
-        >
-          <UserCircle size={18} />
-
-          <span>Profile</span>
-        </NavLink>
+            <NavLink
+              to="/profile"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "active" : ""}`
+              }
+              onClick={handleNavigation}
+            >
+              <UserCircle size={18} />
+              <span>Profile</span>
+            </NavLink>
+          </>
+        )}
       </nav>
 
       {/* Footer */}
 
       <div className="sidebar-footer">
-        <button type="button" className="sidebar-logout" onClick={handleLogout}>
-          <LogOut size={18} />
-
-          <span>Sign Out</span>
-        </button>
+        {user ? (
+          <button type="button" className="sidebar-logout" onClick={handleLogout}>
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="sidebar-logout"
+            onClick={() => navigate("/login")}
+          >
+            <LogIn size={18} />
+            <span>Sign In</span>
+          </button>
+        )}
 
         <div className="sidebar-version">BUSSIN v1.0.0</div>
       </div>

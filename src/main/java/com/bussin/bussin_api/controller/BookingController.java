@@ -59,6 +59,14 @@ public class BookingController {
         return bookingService.createBooking(request);
     }
 
+    @PostMapping("/guest")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BookingResponse createGuestBooking(
+            @Valid @RequestBody CreateBookingRequest request) {
+
+        return bookingService.createGuestBooking(request);
+    }
+
     @GetMapping("/trip/{tripId}/seats")
     public List<String> getAvailableSeats(
             @PathVariable Long tripId) {

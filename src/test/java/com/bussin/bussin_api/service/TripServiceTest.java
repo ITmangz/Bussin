@@ -67,4 +67,14 @@ class TripServiceTest {
         verify(userRepository).findByFirebaseUid("employee-firebase-uid");
         verify(tripRepository).findAssignedToEmployee(27L);
     }
+
+    @Test
+    void publicTripListDoesNotRequireAnAuthenticatedUser() {
+        when(tripRepository.findAllByOrderByScheduledDepartureDesc())
+                .thenReturn(List.of());
+
+        assertTrue(tripService.getAllTrips(null, null, null, null).isEmpty());
+
+        verify(tripRepository).findAllByOrderByScheduledDepartureDesc();
+    }
 }

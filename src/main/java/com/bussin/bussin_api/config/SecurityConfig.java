@@ -69,6 +69,18 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/health")
                                                 .permitAll()
 
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/trips",
+                                                                "/api/routes",
+                                                                "/api/bookings/trip/*/seats")
+                                                .permitAll()
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/bookings/guest")
+                                                .permitAll()
+
                                                 // ------------------------------------------------
                                                 // User registration
                                                 // ------------------------------------------------

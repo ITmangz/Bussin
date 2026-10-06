@@ -56,10 +56,10 @@ public class TripService {
             LocalDateTime from,
             LocalDateTime to) {
 
-        User actor = getAuthenticatedUser();
+        User actor = getOptionalAuthenticatedUser();
         List<Trip> trips;
 
-        if (actor.getRole() == Role.EMPLOYEE) {
+        if (actor != null && actor.getRole() == Role.EMPLOYEE) {
             trips = filterEmployeeTrips(
                     tripRepository.findAssignedToEmployee(actor.getId()),
                     status,
@@ -246,8 +246,8 @@ public class TripService {
     }
 
     private TripResponse toResponse(Trip trip, User actor) {
-        boolean canViewAssignments = actor.getRole() == Role.ADMIN
-                || actor.getRole() == Role.EMPLOYEE;
+        boolean canViewAssignments = actor != null
+                && (actor.getRole() == Role.ADMIN || actor.getRole() == Role.EMPLOYEE);
         User employee = canViewAssignments ? trip.getEmployee() : null;
 
         return new TripResponse(
@@ -393,5 +393,14 @@ public class TripService {
         }
         return userRepository.findByFirebaseUid(firebaseToken.getUid())
                 .orElseThrow(() -> new ResourceNotFoundException("BUSSIN user profile not found."));
+    }
+
+    private User getOptionalAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof FirebaseToken firebaseToken)) {
+            return null;
+        }
+        return userRepository.findByFirebaseUid(firebaseToken.getUid()).orElse(null);
     }
 }
