@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -114,7 +115,8 @@ class BookingServiceTest {
                 .thenReturn(Optional.empty());
         when(bookingRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(Booking.class)))
                 .thenThrow(new DataIntegrityViolationException(
-                        "duplicate key violates uk_booking_commuter_trip"));
+                        "duplicate key violates uk_booking_commuter_trip",
+                        new SQLException("duplicate key", "23505")));
 
         CreateBookingRequest request = new CreateBookingRequest();
         request.setTripId(9L);
@@ -131,6 +133,63 @@ class BookingServiceTest {
                 "A booking conflicts with an existing booking or seat allocation. "
                         + "Refresh availability and try again.",
                 exception.getMessage());
+        verify(queueService, never()).ensureQueueEntryForBooking(trip, commuter);
+    }
+
+    @Test
+    void createBookingRethrowsNonUniqueDatabaseConstraintViolation() {
+        User commuter = mock(User.class);
+        when(commuter.getRole()).thenReturn(Role.COMMUTER);
+        when(commuter.getId()).thenReturn(18L);
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(commuter));
+
+        Bus bus = mock(Bus.class);
+        when(bus.getCapacity()).thenReturn(40);
+        when(bus.getStatus()).thenReturn(BusStatus.ACTIVE);
+
+        Route route = mock(Route.class);
+        when(route.isActive()).thenReturn(true);
+        when(route.getBaseFare()).thenReturn(new BigDecimal("100.00"));
+
+        Trip trip = mock(Trip.class);
+        when(trip.getId()).thenReturn(9L);
+        when(trip.getStatus()).thenReturn(TripStatus.SCHEDULED);
+        when(trip.getBus()).thenReturn(bus);
+        when(trip.getRoute()).thenReturn(route);
+        when(tripRepository.findByIdForUpdate(9L))
+                .thenReturn(Optional.of(trip));
+
+        when(bookingRepository.existsByCommuterIdAndTripIdAndStatusIn(
+                18L,
+                9L,
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
+                .thenReturn(false);
+        when(bookingSeatRepository.existsActiveBookingSeat(
+                9L,
+                "1A",
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)))
+                .thenReturn(false);
+        when(bookingRepository.findByBookingReference(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.empty());
+        DataIntegrityViolationException foreignKeyViolation = new DataIntegrityViolationException(
+                "foreign key violation",
+                new SQLException("foreign key violation", "23503"));
+        when(bookingRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(Booking.class)))
+                .thenThrow(foreignKeyViolation);
+
+        CreateBookingRequest request = new CreateBookingRequest();
+        request.setTripId(9L);
+        request.setSeatNumbers(List.of("1A"));
+        request.setPassengerName("Commuter");
+        request.setPassengerPhone("09123456789");
+        request.setPassengerEmail("commuter@example.com");
+
+        DataIntegrityViolationException exception = assertThrows(
+                DataIntegrityViolationException.class,
+                () -> bookingService.createBooking(request));
+
+        assertEquals(foreignKeyViolation, exception);
         verify(queueService, never()).ensureQueueEntryForBooking(trip, commuter);
     }
 }

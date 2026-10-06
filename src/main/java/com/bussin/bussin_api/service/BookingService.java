@@ -1,6 +1,7 @@
 package com.bussin.bussin_api.service;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -161,9 +162,12 @@ public class BookingService {
         try {
             savedBooking = bookingRepository.saveAndFlush(booking);
         } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException(
-                    "A booking conflicts with an existing booking or seat allocation. "
-                            + "Refresh availability and try again.");
+            if (isUniqueConstraintViolation(exception)) {
+                throw new ConflictException(
+                        "A booking conflicts with an existing booking or seat allocation. "
+                                + "Refresh availability and try again.");
+            }
+            throw exception;
         }
 
         QueueEntry queueEntry = queueService.ensureQueueEntryForBooking(
@@ -507,6 +511,12 @@ public class BookingService {
                 .isPresent());
 
         return reference;
+    }
+
+    private boolean isUniqueConstraintViolation(DataIntegrityViolationException exception) {
+        Throwable cause = exception.getMostSpecificCause();
+        return cause instanceof SQLException sqlException
+                && "23505".equals(sqlException.getSQLState());
     }
 
     private String getAuthenticatedFirebaseUid() {
