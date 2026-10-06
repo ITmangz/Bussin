@@ -23,6 +23,7 @@ import Buses from "../pages/admin/Buses";
 import AdminTrips from "../pages/admin/Trips";
 import AdminRoutes from "../pages/admin/Routes";
 import AdminBookings from "../pages/admin/Bookings";
+import UserManagement from "../pages/admin/UserManagement";
 import EmployeeDashboard from "../pages/employee/EmployeeDashboard";
 import OperationsQueue from "../pages/OperationsQueue";
 
@@ -184,10 +185,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["ADMIN"]}>
               <AdminLayout>
-                <AdminPlaceholder
-                  title="Users"
-                  description="Manage BUSSIN commuter accounts and roles."
-                />
+                <UserManagement mode="users" />
               </AdminLayout>
             </RoleRoute>
           </ProtectedRoute>
@@ -200,10 +198,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <RoleRoute allowedRoles={["ADMIN"]}>
               <AdminLayout>
-                <AdminPlaceholder
-                  title="Employees"
-                  description="Manage employee accounts and assignments."
-                />
+                <UserManagement mode="employees" />
               </AdminLayout>
             </RoleRoute>
           </ProtectedRoute>

@@ -1,0 +1,555 @@
+.user-management-page {
+  width: 100%;
+}
+
+.user-management-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.user-management-header h1 {
+  margin: 0;
+  color: #121212;
+  font-size: 27px;
+  font-weight: 750;
+}
+
+.user-management-header p {
+  margin: 7px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.user-management-primary,
+.user-management-secondary,
+.user-management-refresh {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.user-management-primary {
+  background: #990000;
+  color: white;
+}
+
+.user-management-primary:hover:not(:disabled) {
+  background: #7f0000;
+}
+
+.user-management-secondary,
+.user-management-refresh {
+  background: white;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+.user-management-secondary:hover:not(:disabled),
+.user-management-refresh:hover:not(:disabled) {
+  border-color: #990000;
+  color: #990000;
+}
+
+.user-management-primary:disabled,
+.user-management-secondary:disabled,
+.user-management-refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.user-management-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 20px;
+}
+
+.user-management-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.user-management-stat-icon {
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #fff0f0;
+  color: #990000;
+}
+
+.user-management-stat-card span,
+.user-management-stat-card strong {
+  display: block;
+}
+
+.user-management-stat-card span {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.user-management-stat-card strong {
+  margin-top: 4px;
+  color: #121212;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.user-management-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.user-management-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 160px;
+  max-width: 440px;
+}
+
+.user-management-search svg {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.user-management-search input,
+.user-management-role-filter {
+  width: 100%;
+  height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  outline: none;
+  background: white;
+  color: #121212;
+  font: inherit;
+  font-size: 13px;
+}
+
+.user-management-search input {
+  padding: 0 12px 0 38px;
+}
+
+.user-management-role-filter {
+  width: auto;
+  min-width: 155px;
+  padding: 0 11px;
+}
+
+.user-management-search input:focus,
+.user-management-role-filter:focus,
+.user-management-form-grid input:focus {
+  border-color: #990000;
+}
+
+.user-management-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 15px;
+  padding: 11px 13px;
+  border: 1px solid #f1b8b5;
+  border-radius: 9px;
+  background: #fff5f4;
+  color: #912018;
+  font-size: 13px;
+}
+
+.user-management-alert button,
+.user-management-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.user-management-alert button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+}
+
+.user-management-icon-button:hover {
+  border-color: #990000;
+  color: #990000;
+}
+
+.user-management-table-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.user-management-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.user-management-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.user-management-table th,
+.user-management-table td {
+  padding: 13px 17px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.user-management-table th {
+  background: #fafafa;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.user-management-table td {
+  color: #374151;
+  font-size: 12px;
+}
+
+.user-management-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.user-management-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+}
+
+.user-management-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f3e8e8;
+  color: #850000;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.user-management-person-copy {
+  min-width: 0;
+}
+
+.user-management-person-copy strong,
+.user-management-person-copy span {
+  display: block;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-management-person-copy strong {
+  color: #171717;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-management-person-copy span {
+  margin-top: 3px;
+  color: #7b818b;
+  font-size: 11px;
+}
+
+.user-management-muted {
+  color: #9ca3af;
+}
+
+.user-management-role {
+  min-height: 29px;
+  padding: 0 25px 0 9px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background-color: white;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.user-management-role:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.user-management-role.commuter { color: #475467; }
+.user-management-role.employee { color: #12653a; background-color: #eef9f1; border-color: #d6eedb; }
+.user-management-role.admin { color: #8c2020; background-color: #fff1f0; border-color: #f3d1cf; }
+
+.user-management-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-management-text-button {
+  padding: 6px 7px;
+  border: 0;
+  background: transparent;
+  color: #9b2520;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.user-management-text-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.user-management-text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.user-management-state {
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 25px;
+  color: #8b929d;
+  text-align: center;
+  font-size: 13px;
+}
+
+.user-management-state strong {
+  color: #252a31;
+  font-size: 14px;
+}
+
+.user-management-empty-icon {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 3px;
+  border-radius: 50%;
+  background: #f6f7f8;
+  color: #818894;
+}
+
+.user-management-table-footer {
+  padding: 11px 17px;
+  border-top: 1px solid #eef0f2;
+  color: #777f8a;
+  font-size: 11px;
+}
+
+.user-management-overlay {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 22px;
+  background: rgb(17 24 39 / 48%);
+}
+
+.user-management-modal {
+  width: min(100%, 560px);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 22%);
+}
+
+.user-management-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 21px;
+}
+
+.user-management-modal-header h2 {
+  margin: 0;
+  color: #171717;
+  font-size: 19px;
+}
+
+.user-management-modal-header p {
+  margin: 5px 0 0;
+  color: #737b86;
+  font-size: 12px;
+}
+
+.user-management-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.user-management-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #3e4650;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.user-management-form-grid label.full-width {
+  grid-column: 1 / -1;
+}
+
+.user-management-form-grid input {
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  outline: none;
+  background: white;
+  color: #171717;
+  font: inherit;
+  font-weight: 400;
+}
+
+.user-management-form-error {
+  margin-top: 14px;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.user-management-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.employee-picker {
+  width: min(100%, 600px);
+}
+
+.employee-picker-search {
+  max-width: none;
+  margin-bottom: 8px;
+}
+
+.employee-picker-list {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.employee-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 2px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.employee-picker-row:last-child {
+  border-bottom: 0;
+}
+
+.user-management-secondary.compact {
+  min-height: 33px;
+  padding: 0 13px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .user-management-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .user-management-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-management-toolbar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .user-management-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .user-management-role-filter {
+    flex: 1;
+  }
+
+  .user-management-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-management-form-grid label.full-width {
+    grid-column: auto;
+  }
+
+  .user-management-overlay {
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  .user-management-modal {
+    max-height: 92vh;
+    padding: 18px;
+    border-radius: 14px 14px 10px 10px;
+  }
+}
