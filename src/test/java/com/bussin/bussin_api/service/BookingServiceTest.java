@@ -31,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.bussin.bussin_api.dto.CreateBookingRequest;
 import com.bussin.bussin_api.dto.BookingResponse;
+import com.bussin.bussin_api.dto.UpdatePaymentStatusRequest;
 import com.bussin.bussin_api.entity.Booking;
 import com.bussin.bussin_api.entity.BookingSeat;
 import com.bussin.bussin_api.entity.BookingStatus;
@@ -358,5 +359,146 @@ class BookingServiceTest {
         assertEquals(1, bookingHistory.size());
         assertEquals(BookingStatus.CANCELLED, bookingHistory.get(0).getStatus());
         assertEquals(41L, bookingHistory.get(0).getId());
+    }
+
+    @Test
+    void adminCanMarkAnActiveBookingPaid() {
+        User admin = mock(User.class);
+        when(admin.getRole()).thenReturn(Role.ADMIN);
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(admin));
+
+        Booking booking = mockBookingForPaymentStatus();
+        when(bookingRepository.findById(17L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(booking)).thenReturn(booking);
+        prepareBookingResponse(booking);
+        when(booking.getPaymentStatus()).thenReturn(PaymentStatus.UNPAID);
+
+        BookingResponse response = bookingService.updateAdminPaymentStatus(
+                17L,
+                paymentStatusRequest(PaymentStatus.PAID));
+
+        assertEquals(17L, response.getId());
+        verify(booking).setPaymentStatus(PaymentStatus.PAID);
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void employeeCanOnlyUpdatePaymentForAnAssignedTrip() {
+        User employee = mock(User.class);
+        when(employee.getId()).thenReturn(24L);
+        when(employee.getRole()).thenReturn(Role.EMPLOYEE);
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(employee));
+
+        Booking booking = mockBookingForPaymentStatus();
+        when(bookingRepository.findById(17L)).thenReturn(Optional.of(booking));
+        when(booking.getTrip().getId()).thenReturn(9L);
+        when(tripRepository.existsByIdAndEmployeeId(9L, 24L)).thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.updateEmployeePaymentStatus(
+                        17L,
+                        paymentStatusRequest(PaymentStatus.PAID)));
+
+        assertEquals(org.springframework.http.HttpStatus.FORBIDDEN, exception.getStatusCode());
+        verify(booking, never()).setPaymentStatus(PaymentStatus.PAID);
+        verify(bookingRepository, never()).save(booking);
+    }
+
+    @Test
+    void employeeCanUpdatePaymentForAnAssignedTrip() {
+        User employee = mock(User.class);
+        when(employee.getId()).thenReturn(24L);
+        when(employee.getRole()).thenReturn(Role.EMPLOYEE);
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(employee));
+
+        Booking booking = mockBookingForPaymentStatus();
+        when(bookingRepository.findById(17L)).thenReturn(Optional.of(booking));
+        when(tripRepository.existsByIdAndEmployeeId(9L, 24L)).thenReturn(true);
+        when(bookingRepository.save(booking)).thenReturn(booking);
+        prepareBookingResponse(booking);
+        when(booking.getPaymentStatus()).thenReturn(PaymentStatus.UNPAID);
+
+        BookingResponse response = bookingService.updateEmployeePaymentStatus(
+                17L,
+                paymentStatusRequest(PaymentStatus.PAID));
+
+        assertEquals(17L, response.getId());
+        verify(booking).setPaymentStatus(PaymentStatus.PAID);
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void unpaidBookingCannotBeMarkedRefunded() {
+        User admin = mock(User.class);
+        when(admin.getRole()).thenReturn(Role.ADMIN);
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(admin));
+
+        Booking booking = mockBookingForPaymentStatus();
+        when(bookingRepository.findById(17L)).thenReturn(Optional.of(booking));
+        when(booking.getPaymentStatus()).thenReturn(PaymentStatus.UNPAID);
+
+        assertThrows(
+                ConflictException.class,
+                () -> bookingService.updateAdminPaymentStatus(
+                        17L,
+                        paymentStatusRequest(PaymentStatus.REFUNDED)));
+
+        verify(booking, never()).setPaymentStatus(PaymentStatus.REFUNDED);
+        verify(bookingRepository, never()).save(booking);
+    }
+
+    @Test
+    void adminCanMarkPaidArchivedBookingRefunded() {
+        User admin = mock(User.class);
+        when(admin.getRole()).thenReturn(Role.ADMIN);
+        when(userRepository.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(admin));
+
+        CancelledBookingArchive archive = mock(CancelledBookingArchive.class);
+        when(archive.getBookingId()).thenReturn(17L);
+        when(archive.getPaymentStatus()).thenReturn(PaymentStatus.PAID);
+        when(archive.getSeatNumbers()).thenReturn(List.of());
+        when(bookingRepository.findById(17L)).thenReturn(Optional.empty());
+        when(cancelledBookingArchiveRepository.findById(17L))
+                .thenReturn(Optional.of(archive));
+        when(cancelledBookingArchiveRepository.save(archive)).thenReturn(archive);
+
+        BookingResponse response = bookingService.updateAdminPaymentStatus(
+                17L,
+                paymentStatusRequest(PaymentStatus.REFUNDED));
+
+        assertEquals(17L, response.getId());
+        assertEquals(BookingStatus.CANCELLED, response.getStatus());
+        verify(archive).setPaymentStatus(PaymentStatus.REFUNDED);
+        verify(cancelledBookingArchiveRepository).save(archive);
+    }
+
+    private Booking mockBookingForPaymentStatus() {
+        Trip trip = mock(Trip.class);
+        Booking booking = mock(Booking.class);
+
+        when(booking.getTrip()).thenReturn(trip);
+        return booking;
+    }
+
+    private void prepareBookingResponse(Booking booking) {
+        Trip trip = booking.getTrip();
+        when(booking.getId()).thenReturn(17L);
+        when(booking.getBookingSeats()).thenReturn(List.of());
+        when(trip.getId()).thenReturn(9L);
+        when(trip.getRoute()).thenReturn(mock(Route.class));
+        when(trip.getBus()).thenReturn(mock(Bus.class));
+        when(queueService.findQueueEntryForBooking(booking)).thenReturn(null);
+    }
+
+    private UpdatePaymentStatusRequest paymentStatusRequest(PaymentStatus paymentStatus) {
+        UpdatePaymentStatusRequest request = new UpdatePaymentStatusRequest();
+        request.setPaymentStatus(paymentStatus);
+        return request;
     }
 }
