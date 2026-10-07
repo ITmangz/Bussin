@@ -1,0 +1,16 @@
+import { copyFileSync, mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+
+const require = createRequire(import.meta.url);
+const maplibreRoot = path.dirname(require.resolve("maplibre-gl/package.json"));
+const sourceDir = path.join(maplibreRoot, "dist");
+const targetDir = path.join(process.cwd(), "public", "maplibre");
+
+mkdirSync(targetDir, { recursive: true });
+
+for (const file of ["maplibre-gl-worker.mjs", "maplibre-gl-shared.mjs"]) {
+  copyFileSync(path.join(sourceDir, file), path.join(targetDir, file));
+}
+
+console.log("BUSSIN: MapLibre worker assets copied to public/maplibre.");
