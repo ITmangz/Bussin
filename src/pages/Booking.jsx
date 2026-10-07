@@ -15,7 +15,7 @@ import {
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 import ETicket from "../components/booking/ETicket";
-import EReceipt from "../components/booking/EReceipt";
+import EReceipt from "../components/booking/EReceipt";\nimport PassengerFareMap from "../components/map/PassengerFareMap";\nimport { getRouteById } from "../services/routeService";
 import { useAuth } from "../contexts/AuthContext";
 import {
   createBooking,
@@ -85,7 +85,7 @@ function Booking() {
   const [loadingSeats, setLoadingSeats] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [booking, setBooking] = useState(null);
+  const [booking, setBooking] = useState(null);\n  const [route, setRoute] = useState(null);\n  const [dropoff, setDropoff] = useState(null);\n  const [fareQuote, setFareQuote] = useState(null);
 
   useEffect(() => {
     if (!trip?.id) {
@@ -482,6 +482,16 @@ function Booking() {
               </div>
 
               <div className="booking-form">
+                {route?.originLatitude && route?.routeGeometry ? (
+                  <PassengerFareMap
+                    route={route}
+                    onDropoffChange={setDropoff}
+                    onQuoteChange={setFareQuote}
+                  />
+                ) : (
+                  <div className="booking-error">This route does not have an interactive map configured yet.</div>
+                )}
+
                 <label>
                   <span>Passenger Name</span>
 
@@ -589,7 +599,7 @@ function Booking() {
               <div className="booking-total">
                 <div>
                   <span>{selectedSeats.length} seat{selectedSeats.length === 1 ? "" : "s"}</span>
-                  <small>₱{formatFare(trip.fare)} per seat</small>
+                  <small>₱{formatFare(fareQuote?.finalFare ?? trip.fare)} per seat</small>
                 </div>
 
                 <strong>₱{formatFare(totalFare)}</strong>

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.bussin.bussin_api.dto.BookingResponse;
+import com.bussin.bussin_api.dto.BookingResponse;\nimport com.bussin.bussin_api.dto.FareQuoteRequest;\nimport com.bussin.bussin_api.dto.FareQuoteResponse;
 import com.bussin.bussin_api.dto.CreateBookingRequest;
 import com.bussin.bussin_api.dto.UpdatePaymentStatusRequest;
 import com.bussin.bussin_api.dto.UpdateBookingStatusRequest;
@@ -51,7 +51,7 @@ public class BookingService {
     private final CancelledBookingArchiveRepository cancelledBookingArchiveRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
-    private final QueueService queueService;
+    private final QueueService queueService;\n    private final RouteFareService routeFareService;
 
     public BookingService(
             BookingRepository bookingRepository,
@@ -59,14 +59,14 @@ public class BookingService {
             CancelledBookingArchiveRepository cancelledBookingArchiveRepository,
             TripRepository tripRepository,
             UserRepository userRepository,
-            QueueService queueService) {
+            QueueService queueService,\n            RouteFareService routeFareService) {
 
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
         this.cancelledBookingArchiveRepository = cancelledBookingArchiveRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
-        this.queueService = queueService;
+        this.queueService = queueService;\n        this.routeFareService = routeFareService;
     }
 
     @Transactional
@@ -156,8 +156,15 @@ public class BookingService {
                     "The selected trip does not have a configured fare.");
         }
 
-        BigDecimal totalFare = trip.getRoute().getBaseFare()
-                .multiply(BigDecimal.valueOf(seatNumbers.size()));
+        FareQuoteResponse fareQuote = routeFareService.quote(
+                trip.getRoute().getId(),
+                new FareQuoteRequest(
+                        request.getDropoffLatitude(),
+                        request.getDropoffLongitude(),
+                        request.getPassengerType()));
+
+        BigDecimal farePerSeat = fareQuote.finalFare();
+        BigDecimal totalFare = farePerSeat.multiply(BigDecimal.valueOf(seatNumbers.size()));
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -173,7 +180,7 @@ public class BookingService {
 
         // Kept for backward compatibility with the existing schema and API.
         booking.setSeatNumber(seatNumbers.get(0));
-        booking.setFare(totalFare);
+        booking.setFare(totalFare);\n        booking.setDropoffLatitude(request.getDropoffLatitude());\n        booking.setDropoffLongitude(request.getDropoffLongitude());\n        booking.setPassengerType(request.getPassengerType().trim().toUpperCase());
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setPaymentStatus(PaymentStatus.UNPAID);
@@ -185,7 +192,7 @@ public class BookingService {
             BookingSeat bookingSeat = new BookingSeat();
             bookingSeat.setTrip(trip);
             bookingSeat.setSeatNumber(seatNumber);
-            bookingSeat.setFare(trip.getRoute().getBaseFare());
+            bookingSeat.setFare(farePerSeat);
             booking.addBookingSeat(bookingSeat);
         }
 
