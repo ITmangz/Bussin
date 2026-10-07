@@ -8,12 +8,10 @@ import {
   setWorkerUrl,
 } from "maplibre-gl";
 
-import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./RouteMap.css";
 
-setWorkerUrl(maplibreWorker);
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 const DEFAULT_CENTER = [120.9842, 14.5995];
 
