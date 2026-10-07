@@ -7,6 +7,12 @@ export default defineConfig({
         port: 5173,
         strictPort: true
     },
+    optimizeDeps: {
+        exclude: ["maplibre-gl"]
+    },
+    worker: {
+        format: "es"
+    },
     build: {
         outDir: "dist"
     },
