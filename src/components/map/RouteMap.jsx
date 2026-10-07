@@ -5,13 +5,11 @@ import {
   Marker,
   NavigationControl,
   Popup,
-  setWorkerUrl,
 } from "maplibre-gl";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./RouteMap.css";
 
-setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 const DEFAULT_CENTER = [120.9842, 14.5995];
 
@@ -234,13 +232,23 @@ export default function RouteMap({
 
     console.log("BUSSIN MAP: Creating map.");
 
-    const map = new Map({
+    let map;
+
+    try {
+      map = new Map({
       container: containerRef.current,
       style: OSM_STYLE,
       center: DEFAULT_CENTER,
       zoom: 11,
       attributionControl: true,
     });
+    } catch (error) {
+      console.error("BUSSIN MAP: Failed to initialize MapLibre:", error);
+      if (containerRef.current) {
+        containerRef.current.innerHTML = `<div class="bussin-map-error">Unable to initialize the map. Please check WebGL support.</div>`;
+      }
+      return;
+    }
 
     mapRef.current = map;
 
