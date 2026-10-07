@@ -137,6 +137,16 @@ public class SecurityConfig {
 
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
+                                                                "/api/routes/*/fare-quote")
+                                                .hasRole("COMMUTER")
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/routes/preview")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
                                                                 "/api/routes/**")
                                                 .hasAnyRole("ADMIN", "EMPLOYEE")
 
