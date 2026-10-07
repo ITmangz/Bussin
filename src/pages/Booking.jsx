@@ -88,10 +88,14 @@ function Booking() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
+
   const [route, setRoute] = useState(null);
   const [dropoff, setDropoff] = useState(null);
   const [fareQuote, setFareQuote] = useState(null);
 
+  /*
+   * Load available seats for the selected trip.
+   */
   useEffect(() => {
     if (!trip?.id) {
       return;
@@ -109,7 +113,7 @@ function Booking() {
         setSelectedSeats([]);
         setSeatCount(nextAvailableSeats.length > 0 ? 1 : 0);
       } catch (err) {
-        console.error("Failed to load seats:", err);
+        console.error("BUSSIN: Failed to load seats:", err);
 
         setError(
           err.response?.data?.message || "Unable to load seat availability.",
@@ -122,19 +126,87 @@ function Booking() {
     loadSeats();
   }, [trip?.id]);
 
+  /*
+   * Load the complete route information.
+   *
+   * Trips.jsx only needs to pass routeId with the trip.
+   * Booking.jsx then retrieves the full route so the
+   * PassengerFareMap can access:
+   *
+   * - originLatitude
+   * - originLongitude
+   * - routeGeometry
+   * - origin
+   * - destination
+   * - fare information
+   */
+  useEffect(() => {
+    if (!trip?.routeId) {
+      console.warn("BUSSIN: No routeId found on trip:", trip);
+
+      setRoute(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRoute() {
+      try {
+        setError("");
+
+        console.log("BUSSIN: Loading route:", trip.routeId);
+
+        const routeResponse = await getRouteById(trip.routeId);
+
+        if (cancelled) {
+          return;
+        }
+
+        console.log("BUSSIN: Route loaded:", routeResponse);
+
+        console.log("BUSSIN: Route geometry:", routeResponse?.routeGeometry);
+
+        setRoute(routeResponse);
+      } catch (err) {
+        console.error("BUSSIN: Failed to load route:", err);
+
+        if (cancelled) {
+          return;
+        }
+
+        setRoute(null);
+
+        setError(
+          err.response?.data?.message ||
+            err.response?.data?.error ||
+            "Unable to load route information.",
+        );
+      }
+    }
+
+    loadRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trip?.routeId]);
+
   const seatRows = useMemo(() => {
     return generateSeatRows(trip?.capacity);
   }, [trip?.capacity]);
 
   const maxSeatCount = availableSeats.length;
+
   const totalFare =
-    Number(fareQuote?.finalFare ?? trip?.fare ?? 0) * Number(selectedSeats.length || seatCount || 0);
+    Number(fareQuote?.finalFare ?? trip?.fare ?? 0) *
+    Number(selectedSeats.length || seatCount || 0);
 
   if (!trip) {
     return (
       <section className="booking-page">
         <AppCard className="booking-empty">
           <h2>No trip selected</h2>
+
           <p>Select a trip before starting a booking.</p>
 
           <AppButton onClick={() => navigate("/trips")}>Browse Trips</AppButton>
@@ -157,7 +229,9 @@ function Booking() {
     const nextCount = Number(event.target.value);
 
     setSeatCount(nextCount);
+
     setSelectedSeats((current) => current.slice(0, nextCount));
+
     setError("");
   }
 
@@ -169,17 +243,26 @@ function Booking() {
     setSelectedSeats((current) => {
       if (current.includes(seatNumber)) {
         setError("");
+
         return current.filter((seat) => seat !== seatNumber);
       }
 
       if (current.length >= seatCount) {
-        setError(`You selected ${seatCount} seat${seatCount === 1 ? "" : "s"}. Deselect a seat before choosing another.`);
+        setError(
+          `You selected ${seatCount} seat${
+            seatCount === 1 ? "" : "s"
+          }. Deselect a seat before choosing another.`,
+        );
+
         return current;
       }
 
       setError("");
+
       return [...current, seatNumber].sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true }),
+        a.localeCompare(b, undefined, {
+          numeric: true,
+        }),
       );
     });
   }
@@ -187,6 +270,7 @@ function Booking() {
   function continueFromSeat() {
     if (seatCount < 1) {
       setError("There are no available seats for this trip.");
+
       return;
     }
 
@@ -194,6 +278,7 @@ function Booking() {
       setError(
         `Please select exactly ${seatCount} seat${seatCount === 1 ? "" : "s"}.`,
       );
+
       return;
     }
 
@@ -208,11 +293,15 @@ function Booking() {
       !passengerEmail.trim()
     ) {
       setError("Please complete all passenger information.");
+
       return;
     }
 
     if (!dropoff || !fareQuote) {
-      setError("Please pin your drop-off location and wait for the fare calculation.");
+      setError(
+        "Please pin your drop-off location and wait for the fare calculation.",
+      );
+
       return;
     }
 
@@ -235,13 +324,14 @@ function Booking() {
         dropoffLongitude: dropoff.longitude,
         passengerType: fareQuote.passengerType,
       };
+
       const createdBooking = user
         ? await createBooking(bookingRequest)
         : await createGuestBooking(bookingRequest);
 
       setBooking(createdBooking);
     } catch (err) {
-      console.error("Booking failed:", err);
+      console.error("BUSSIN: Booking failed:", err);
 
       setError(
         err.response?.data?.message ||
@@ -272,6 +362,7 @@ function Booking() {
           </p>
 
           <ETicket booking={booking} />
+
           <EReceipt booking={booking} />
 
           <div className="booking-success-actions">
@@ -308,6 +399,7 @@ function Booking() {
           </button>
 
           <h1>Book Your Trip</h1>
+
           <p>
             {user
               ? "Select your seats, enter passenger details, and confirm."
@@ -349,6 +441,7 @@ function Booking() {
               <div className="booking-trip-meta">
                 <span>
                   <Clock3 size={13} />
+
                   {formatDateTime(trip.scheduledDeparture)}
                 </span>
 
@@ -367,7 +460,11 @@ function Booking() {
               <div className="booking-panel-header">
                 <div>
                   <h2>How many seats?</h2>
-                  <p>Choose the number of seats you want to book, then select them below.</p>
+
+                  <p>
+                    Choose the number of seats you want to book, then select
+                    them below.
+                  </p>
                 </div>
 
                 <span>{availableSeats.length} available</span>
@@ -383,11 +480,14 @@ function Booking() {
                   disabled={loadingSeats || maxSeatCount === 0}
                 >
                   {Array.from(
-                    { length: Math.max(maxSeatCount, 1) },
+                    {
+                      length: Math.max(maxSeatCount, 1),
+                    },
                     (_, index) => index + 1,
                   ).map((count) => (
                     <option key={count} value={count}>
-                      {count} seat{count === 1 ? "" : "s"}
+                      {count} seat
+                      {count === 1 ? "" : "s"}
                     </option>
                   ))}
                 </select>
@@ -404,6 +504,7 @@ function Booking() {
               ) : maxSeatCount === 0 ? (
                 <div className="booking-no-seats">
                   <h3>No seats available</h3>
+
                   <p>All seats on this trip have already been booked.</p>
                 </div>
               ) : (
@@ -423,20 +524,31 @@ function Booking() {
                   <div className="seat-rows">
                     {seatRows.map((rowSeats) => {
                       const rowNumber = rowSeats[0]?.row;
+
                       const leftSeats = rowSeats.slice(0, 3);
+
                       const rightSeats = rowSeats.slice(3, 6);
 
                       const renderSeat = (seat) => {
                         const available = availableSeats.includes(seat.seat);
+
                         const selected = selectedSeats.includes(seat.seat);
 
                         return (
                           <button
                             key={seat.seat}
                             type="button"
-                            className={`seat-button ${available ? "available" : "occupied"} ${selected ? "selected" : ""}`}
+                            className={`seat-button ${
+                              available ? "available" : "occupied"
+                            } ${selected ? "selected" : ""}`}
                             disabled={!available}
-                            aria-label={`${seat.seat} ${available ? selected ? "selected" : "available" : "occupied"}`}
+                            aria-label={`${seat.seat} ${
+                              available
+                                ? selected
+                                  ? "selected"
+                                  : "available"
+                                : "occupied"
+                            }`}
                             onClick={() => toggleSeat(seat.seat)}
                           >
                             {seat.seat}
@@ -447,7 +559,9 @@ function Booking() {
                       return (
                         <div className="seat-row" key={rowNumber}>
                           {leftSeats.map(renderSeat)}
+
                           <div className="seat-aisle" />
+
                           {rightSeats.map(renderSeat)}
                         </div>
                       );
@@ -490,19 +604,27 @@ function Booking() {
               <div className="booking-panel-header">
                 <div>
                   <h2>Passenger Information</h2>
+
                   <p>Enter the passenger details for this booking.</p>
                 </div>
               </div>
 
               <div className="booking-form">
-                {route?.originLatitude && route?.routeGeometry ? (
+                {/* ROUTE MAP */}
+                {route?.originLatitude != null &&
+                route?.originLongitude != null &&
+                route?.routeGeometry ? (
                   <PassengerFareMap
                     route={route}
                     onDropoffChange={setDropoff}
                     onQuoteChange={setFareQuote}
                   />
                 ) : (
-                  <div className="booking-error">This route does not have an interactive map configured yet.</div>
+                  <div className="booking-error">
+                    {route
+                      ? "This route does not have an interactive map configured yet."
+                      : "Loading route map..."}
+                  </div>
                 )}
 
                 <label>
@@ -571,6 +693,7 @@ function Booking() {
               <div className="booking-panel-header">
                 <div>
                   <h2>Review Booking</h2>
+
                   <p>Confirm the details before creating your booking.</p>
                 </div>
               </div>
@@ -578,6 +701,7 @@ function Booking() {
               <div className="booking-review">
                 <div>
                   <span>Route</span>
+
                   <strong>
                     {trip.origin} → {trip.destination}
                   </strong>
@@ -585,34 +709,45 @@ function Booking() {
 
                 <div>
                   <span>Departure</span>
+
                   <strong>{formatDateTime(trip.scheduledDeparture)}</strong>
                 </div>
 
                 <div>
                   <span>Bus</span>
+
                   <strong>{trip.busNumber || "N/A"}</strong>
                 </div>
 
                 <div>
                   <span>Selected Seats</span>
+
                   <strong>{selectedSeats.join(", ")}</strong>
                 </div>
 
                 <div>
                   <span>Passenger</span>
+
                   <strong>{passengerName}</strong>
                 </div>
 
                 <div>
                   <span>Contact</span>
+
                   <strong>{passengerPhone}</strong>
                 </div>
               </div>
 
               <div className="booking-total">
                 <div>
-                  <span>{selectedSeats.length} seat{selectedSeats.length === 1 ? "" : "s"}</span>
-                  <small>₱{formatFare(fareQuote?.finalFare ?? trip.fare)} per seat</small>
+                  <span>
+                    {selectedSeats.length} seat
+                    {selectedSeats.length === 1 ? "" : "s"}
+                  </span>
+
+                  <small>
+                    ₱{formatFare(fareQuote?.finalFare ?? trip.fare)} per seat
+                  </small>
                 </div>
 
                 <strong>₱{formatFare(totalFare)}</strong>
@@ -643,12 +778,17 @@ function Booking() {
             <span>Booking Total</span>
 
             <strong>
-              ₱{formatFare(step === 3 ? totalFare : Number(trip.fare || 0) * seatCount)}
+              ₱
+              {formatFare(
+                step === 3 ? totalFare : Number(trip.fare || 0) * seatCount,
+              )}
             </strong>
 
             <small>
               {step === 1
-                ? `${seatCount || 0} seat${seatCount === 1 ? "" : "s"} selected for booking`
+                ? `${seatCount || 0} seat${
+                    seatCount === 1 ? "" : "s"
+                  } selected for booking`
                 : "Final fare is calculated by the BUSSIN server."}
             </small>
           </AppCard>

@@ -188,7 +188,9 @@ public class BookingService {
         booking.setFare(totalFare);
         booking.setDropoffLatitude(request.getDropoffLatitude());
         booking.setDropoffLongitude(request.getDropoffLongitude());
-        booking.setPassengerType(request.getPassengerType().trim().toUpperCase());
+        String passengerType = request.getPassengerType() == null
+                ? "REGULAR"
+                : request.getPassengerType().trim();
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setPaymentStatus(PaymentStatus.UNPAID);
