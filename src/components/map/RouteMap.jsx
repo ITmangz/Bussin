@@ -1,7 +1,19 @@
 import { useEffect, useRef } from "react";
-import { Map, NavigationControl, Marker, Popup } from "maplibre-gl";
+import {
+  LngLatBounds,
+  Map,
+  Marker,
+  NavigationControl,
+  Popup,
+  setWorkerUrl,
+} from "maplibre-gl";
+
+import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./RouteMap.css";
+
+setWorkerUrl(maplibreWorker);
 
 const DEFAULT_CENTER = [120.9842, 14.5995];
 
@@ -24,19 +36,19 @@ const OSM_STYLE = {
   ],
 };
 
-function normalizeGeometry(geometry) {
-  if (!geometry) {
+function normalizeGeometry(value) {
+  if (!value) {
+    console.warn("BUSSIN MAP: No route geometry provided.");
     return null;
   }
 
-  let parsed = geometry;
+  let parsed = value;
 
-  // routeGeometry is normally returned from Spring Boot as a JSON string.
   if (typeof parsed === "string") {
     try {
       parsed = JSON.parse(parsed);
     } catch (error) {
-      console.error("Unable to parse route geometry:", error);
+      console.error("BUSSIN MAP: Failed to parse route geometry:", error);
       return null;
     }
   }
@@ -45,31 +57,21 @@ function normalizeGeometry(geometry) {
     return null;
   }
 
-  /*
-   * OSRM returns:
-   *
-   * {
-   *   "type": "LineString",
-   *   "coordinates": [...]
-   * }
-   *
-   * But this also supports GeoJSON Feature / FeatureCollection
-   * in case the backend changes later.
-   */
-
   if (parsed.type === "Feature") {
     return parsed.geometry || null;
   }
 
   if (parsed.type === "FeatureCollection") {
-    const firstFeature = parsed.features?.find((feature) => feature?.geometry);
+    const feature = parsed.features?.find((item) => item?.geometry);
 
-    return firstFeature?.geometry || null;
+    return feature?.geometry || null;
   }
 
   if (parsed.type === "LineString") {
     return parsed;
   }
+
+  console.error("BUSSIN MAP: Unsupported geometry:", parsed);
 
   return null;
 }
@@ -81,19 +83,44 @@ function buildRouteFeature(geometry) {
     return null;
   }
 
+  if (normalized.type !== "LineString") {
+    console.error("BUSSIN MAP: Expected LineString:", normalized.type);
+    return null;
+  }
+
   if (
-    normalized.type !== "LineString" ||
     !Array.isArray(normalized.coordinates) ||
     normalized.coordinates.length < 2
   ) {
-    console.error("Invalid route geometry:", normalized);
+    console.error(
+      "BUSSIN MAP: Invalid route coordinates:",
+      normalized.coordinates,
+    );
+    return null;
+  }
+
+  const coordinates = normalized.coordinates.map((coordinate) => [
+    Number(coordinate[0]),
+    Number(coordinate[1]),
+  ]);
+
+  const valid = coordinates.every(
+    ([longitude, latitude]) =>
+      Number.isFinite(longitude) && Number.isFinite(latitude),
+  );
+
+  if (!valid) {
+    console.error("BUSSIN MAP: Invalid coordinate values:", coordinates);
     return null;
   }
 
   return {
     type: "Feature",
     properties: {},
-    geometry: normalized,
+    geometry: {
+      type: "LineString",
+      coordinates,
+    },
   };
 }
 
@@ -103,6 +130,8 @@ function addOrUpdateRouteLayer(map, geometry) {
   if (!routeFeature) {
     return false;
   }
+
+  console.log("BUSSIN MAP: Route feature:", routeFeature);
 
   const source = map.getSource("bussin-route");
 
@@ -127,7 +156,7 @@ function addOrUpdateRouteLayer(map, geometry) {
       paint: {
         "line-color": "#FF0000",
         "line-width": 6,
-        "line-opacity": 0.95,
+        "line-opacity": 1,
       },
     });
   }
@@ -155,15 +184,13 @@ function fitMapToRoute(map, geometry, origin, destination) {
     ]);
   }
 
-  if (coordinates.length === 0) {
+  if (!coordinates.length) {
     return;
   }
 
   const bounds = coordinates.reduce(
-    (result, coordinate) => {
-      return result.extend(coordinate);
-    },
-    new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+    (result, coordinate) => result.extend(coordinate),
+    new LngLatBounds(coordinates[0], coordinates[0]),
   );
 
   map.fitBounds(bounds, {
@@ -171,6 +198,23 @@ function fitMapToRoute(map, geometry, origin, destination) {
     maxZoom: 15,
     duration: 800,
   });
+}
+
+function createPinElement(type) {
+  const element = document.createElement("div");
+
+  element.className =
+    type === "origin"
+      ? "bussin-map-pin bussin-map-pin-origin"
+      : "bussin-map-pin bussin-map-pin-destination";
+
+  element.innerHTML = `
+    <div class="bussin-map-pin-shape">
+      <div class="bussin-map-pin-dot"></div>
+    </div>
+  `;
+
+  return element;
 }
 
 export default function RouteMap({
@@ -185,19 +229,19 @@ export default function RouteMap({
   const markersRef = useRef([]);
   const mapLoadedRef = useRef(false);
 
-  /*
-   * Create the map only once.
-   */
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
+
+    console.log("BUSSIN MAP: Creating map.");
 
     const map = new Map({
       container: containerRef.current,
       style: OSM_STYLE,
       center: DEFAULT_CENTER,
       zoom: 11,
+      attributionControl: true,
     });
 
     mapRef.current = map;
@@ -205,39 +249,49 @@ export default function RouteMap({
     map.addControl(new NavigationControl(), "top-right");
 
     map.on("load", () => {
+      console.log("BUSSIN MAP: Map loaded.");
+
       mapLoadedRef.current = true;
 
       if (geometry) {
-        addOrUpdateRouteLayer(map, geometry);
+        const rendered = addOrUpdateRouteLayer(map, geometry);
+
+        if (rendered) {
+          fitMapToRoute(map, geometry, origin, destination);
+        }
       }
+    });
+
+    map.on("error", (event) => {
+      console.error("BUSSIN MAP: MapLibre error:", event?.error || event);
     });
 
     if (interactive) {
       map.on("click", (event) => {
-        onPointSelect?.({
+        const point = {
           latitude: event.lngLat.lat,
           longitude: event.lngLat.lng,
-        });
+        };
+
+        console.log("BUSSIN MAP: Selected point:", point);
+
+        onPointSelect?.(point);
       });
     }
 
     return () => {
       mapLoadedRef.current = false;
 
-      markersRef.current.forEach((marker) => {
-        marker.remove();
-      });
+      markersRef.current.forEach((marker) => marker.remove());
 
       markersRef.current = [];
 
       map.remove();
+
       mapRef.current = null;
     };
   }, [interactive, onPointSelect]);
 
-  /*
-   * Update route whenever geometry changes.
-   */
   useEffect(() => {
     const map = mapRef.current;
 
@@ -256,9 +310,6 @@ export default function RouteMap({
     }
   }, [geometry, origin, destination]);
 
-  /*
-   * Update markers whenever origin/destination changes.
-   */
   useEffect(() => {
     const map = mapRef.current;
 
@@ -266,30 +317,47 @@ export default function RouteMap({
       return;
     }
 
-    markersRef.current.forEach((marker) => {
-      marker.remove();
-    });
+    markersRef.current.forEach((marker) => marker.remove());
 
     markersRef.current = [];
 
     const points = [
-      [origin, "Origin"],
-      [destination, "Destination"],
+      {
+        point: origin,
+        type: "origin",
+        label: "Origin",
+      },
+      {
+        point: destination,
+        type: "destination",
+        label: "Destination",
+      },
     ];
 
-    points.forEach(([point, label]) => {
+    points.forEach(({ point, type, label }) => {
       if (!point || point.latitude == null || point.longitude == null) {
         return;
       }
 
+      const latitude = Number(point.latitude);
+
+      const longitude = Number(point.longitude);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return;
+      }
+
       const popup = new Popup({
-        offset: 18,
+        offset: 20,
       }).setText(label);
 
+      const element = createPinElement(type);
+
       const marker = new Marker({
-        color: label === "Origin" ? "#990000" : "#121212",
+        element,
+        anchor: "bottom",
       })
-        .setLngLat([Number(point.longitude), Number(point.latitude)])
+        .setLngLat([longitude, latitude])
         .setPopup(popup)
         .addTo(map);
 

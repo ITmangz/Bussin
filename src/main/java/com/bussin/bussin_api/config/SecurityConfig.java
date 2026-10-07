@@ -42,7 +42,8 @@ public class SecurityConfig {
                 http
                                 .csrf(csrf -> csrf.disable())
 
-                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .cors(cors -> cors.configurationSource(
+                                                corsConfigurationSource()))
 
                                 .sessionManagement(session -> session.sessionCreationPolicy(
                                                 SessionCreationPolicy.STATELESS))
@@ -59,16 +60,20 @@ public class SecurityConfig {
                                                 // CORS preflight
                                                 // ------------------------------------------------
 
-                                                .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                                .requestMatchers(
+                                                                HttpMethod.OPTIONS,
+                                                                "/**")
                                                 .permitAll()
 
                                                 // ------------------------------------------------
                                                 // Public
                                                 // ------------------------------------------------
 
-                                                .requestMatchers("/api/health")
+                                                .requestMatchers(
+                                                                "/api/health")
                                                 .permitAll()
 
+                                                // Public trip listing
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
                                                                 "/api/trips",
@@ -76,9 +81,25 @@ public class SecurityConfig {
                                                                 "/api/bookings/trip/*/seats")
                                                 .permitAll()
 
+                                                // Public individual route
+                                                // Required by commuter/guest booking map
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/routes/*")
+                                                .permitAll()
+
+                                                // Guest booking
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/bookings/guest")
+                                                .permitAll()
+
+                                                // Guest fare calculation
+                                                // Required when a guest selects a
+                                                // drop-off point on the map.
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/api/routes/*/fare-quote")
                                                 .permitAll()
 
                                                 // ------------------------------------------------
@@ -110,7 +131,8 @@ public class SecurityConfig {
                                                 // Dashboard
                                                 // ------------------------------------------------
 
-                                                .requestMatchers("/api/dashboard/**")
+                                                .requestMatchers(
+                                                                "/api/dashboard/**")
                                                 .hasRole("ADMIN")
 
                                                 // ------------------------------------------------
@@ -124,37 +146,47 @@ public class SecurityConfig {
 
                                                 .requestMatchers(
                                                                 "/api/buses/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
                                                 // ------------------------------------------------
                                                 // Routes
                                                 // ------------------------------------------------
 
+                                                // Delete routes
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,
                                                                 "/api/routes/**")
                                                 .hasRole("ADMIN")
 
-                                                .requestMatchers(
-                                                                HttpMethod.POST,
-                                                                "/api/routes/*/fare-quote")
-                                                .hasRole("COMMUTER")
-
+                                                // Route preview is an admin/employee
+                                                // route-management operation.
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/routes/preview")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
+                                                // Create routes
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/routes/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
+                                                // Update routes
                                                 .requestMatchers(
                                                                 HttpMethod.PUT,
                                                                 "/api/routes/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
+                                                // Any remaining route operation
+                                                // requires authentication/role.
                                                 .requestMatchers(
                                                                 "/api/routes/**")
                                                 .hasAnyRole(
@@ -174,12 +206,16 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/api/trips/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
                                                 .requestMatchers(
                                                                 HttpMethod.PUT,
                                                                 "/api/trips/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
                                                 .requestMatchers(
                                                                 "/api/trips/**")
@@ -192,7 +228,9 @@ public class SecurityConfig {
                                                 // Employee and administrator booking views
                                                 // ------------------------------------------------
 
-                                                .requestMatchers("/api/bookings/admin", "/api/bookings/admin/**")
+                                                .requestMatchers(
+                                                                "/api/bookings/admin",
+                                                                "/api/bookings/admin/**")
                                                 .hasRole("ADMIN")
 
                                                 .requestMatchers(
@@ -222,7 +260,9 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                                 HttpMethod.PUT,
                                                                 "/api/queue/**")
-                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .hasAnyRole(
+                                                                "ADMIN",
+                                                                "EMPLOYEE")
 
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
@@ -269,7 +309,8 @@ public class SecurityConfig {
                                 "CORS_ALLOWED_ORIGINS",
                                 "http://localhost:5173");
 
-                List<String> allowedOrigins = Arrays.stream(configuredOrigins.split(","))
+                List<String> allowedOrigins = Arrays.stream(
+                                configuredOrigins.split(","))
                                 .map(String::trim)
                                 .filter(origin -> !origin.isBlank())
                                 .toList();
