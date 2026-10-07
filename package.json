@@ -11,7 +11,10 @@
     "test": "vitest run --pool=threads --maxWorkers=1",
     "electron": "electron .",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predev": "node ./scripts/copy-maplibre-worker.mjs",
+    "predev:web": "node ./scripts/copy-maplibre-worker.mjs",
+    "prebuild": "node ./scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
     "axios": "^1.20.0",
