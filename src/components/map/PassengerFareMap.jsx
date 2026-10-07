@@ -11,6 +11,7 @@ const TYPES = [
   ["SENIOR", "Senior Citizen"],
   ["PWD", "PWD"],
 ];
+
 export default function PassengerFareMap({
   route,
   onQuoteChange,
@@ -21,18 +22,6 @@ export default function PassengerFareMap({
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  console.log("========== BUSSIN COMMUTER MAP ==========");
-  console.log("ROUTE:", route);
-  console.log("ROUTE ID:", route?.id);
-  console.log("ORIGIN:", route?.origin);
-  console.log("ORIGIN LAT:", route?.originLatitude);
-  console.log("ORIGIN LNG:", route?.originLongitude);
-  console.log("DESTINATION:", route?.destination);
-  console.log("DESTINATION LAT:", route?.destinationLatitude);
-  console.log("DESTINATION LNG:", route?.destinationLongitude);
-  console.log("ROUTE GEOMETRY:", route?.routeGeometry);
-  console.log("==========================================");
 
   const origin = useMemo(() => {
     if (route?.originLatitude == null || route?.originLongitude == null) {
@@ -47,8 +36,12 @@ export default function PassengerFareMap({
 
   const handlePoint = useCallback(
     async (point) => {
-      setDropoff(point);
+      if (!route?.id) {
+        setError("Route information is unavailable.");
+        return;
+      }
 
+      setDropoff(point);
       onDropoffChange?.(point);
 
       setQuote(null);
@@ -81,7 +74,7 @@ export default function PassengerFareMap({
         setLoading(false);
       }
     },
-    [route.id, type, onQuoteChange, onDropoffChange],
+    [route?.id, type, onQuoteChange, onDropoffChange],
   );
 
   async function changeType(event) {
@@ -92,7 +85,7 @@ export default function PassengerFareMap({
     setQuote(null);
     onQuoteChange?.(null);
 
-    if (!dropoff) {
+    if (!dropoff || !route?.id) {
       return;
     }
 
@@ -124,20 +117,42 @@ export default function PassengerFareMap({
     }
   }
 
+  if (!route) {
+    return (
+      <div className="passenger-fare-map">
+        <div className="route-map-help">Loading route information...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="passenger-fare-map">
+      {/* =====================================================
+          MAP INSTRUCTIONS
+          ===================================================== */}
+
       <div className="route-map-help">
         Tap the map to pin your drop-off location. BUSSIN calculates the road
         distance from the route origin and applies the selected passenger
         discount.
       </div>
 
-      <RouteMap
-        origin={origin}
-        destination={dropoff}
-        geometry={route.routeGeometry}
-        onPointSelect={handlePoint}
-      />
+      {/* =====================================================
+          MAP
+          ===================================================== */}
+
+      <div className="passenger-fare-map-container">
+        <RouteMap
+          origin={origin}
+          destination={dropoff}
+          geometry={route.routeGeometry}
+          onPointSelect={handlePoint}
+        />
+      </div>
+
+      {/* =====================================================
+          ROUTE POINTS
+          ===================================================== */}
 
       <div className="route-map-points">
         <span className="route-map-point selected">Origin: {route.origin}</span>
@@ -145,39 +160,63 @@ export default function PassengerFareMap({
         {dropoff && <span className="route-map-point">Drop-off pinned</span>}
       </div>
 
-      <label>
-        Passenger type
-        <select value={type} onChange={changeType}>
+      {/* =====================================================
+          PASSENGER TYPE
+          ===================================================== */}
+
+      <div className="passenger-type-field">
+        <label htmlFor="passenger-type">Passenger type</label>
+
+        <select id="passenger-type" value={type} onChange={changeType}>
           {TYPES.map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
         </select>
-      </label>
+      </div>
 
-      {loading && <p>Calculating road distance and fare…</p>}
+      {/* =====================================================
+          LOADING
+          ===================================================== */}
+
+      {loading && (
+        <p className="fare-map-status">Calculating road distance and fare…</p>
+      )}
+
+      {/* =====================================================
+          ERROR
+          ===================================================== */}
 
       {error && <p className="routes-error">{error}</p>}
+
+      {/* =====================================================
+          FARE QUOTE
+          ===================================================== */}
 
       {quote && (
         <div className="fare-quote-card">
           <div>
-            Distance{" "}
+            <span>Distance</span>
+
             <strong>{Number(quote.distanceKm || 0).toFixed(2)} km</strong>
           </div>
 
           <div>
-            Regular fare{" "}
+            <span>Regular fare</span>
+
             <strong>₱{Number(quote.regularFare || 0).toFixed(2)}</strong>
           </div>
 
           <div>
-            Discount <strong>{quote.discountPercent}%</strong>
+            <span>Discount</span>
+
+            <strong>{quote.discountPercent}%</strong>
           </div>
 
           <div>
-            Final fare{" "}
+            <span>Final fare</span>
+
             <strong>₱{Number(quote.finalFare || 0).toFixed(2)}</strong>
           </div>
         </div>

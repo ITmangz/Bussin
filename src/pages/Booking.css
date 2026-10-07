@@ -445,6 +445,19 @@
   gap: 15px;
 }
 
+/*
+ * The map is a full-width component inside the two-column
+ * passenger form. Without this rule, CSS Grid places it
+ * inside only the first column.
+ */
+.booking-form > .passenger-fare-map {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .booking-form label:last-child {
   grid-column: span 2;
 }
@@ -770,6 +783,13 @@
   .booking-review,
   .booking-success-grid {
     grid-template-columns: 1fr;
+  }
+
+  /*
+   * Keep the map full-width on mobile as well.
+   */
+  .booking-form > .passenger-fare-map {
+    grid-column: 1 / -1;
   }
 
   .booking-form label:last-child {
