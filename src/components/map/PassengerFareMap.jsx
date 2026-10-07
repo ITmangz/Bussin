@@ -14,7 +14,18 @@ export default function PassengerFareMap({route,onQuoteChange,onDropoffChange}){
   finally{setLoading(false);}
  },[route.id,type,onQuoteChange,onDropoffChange]);
  const origin=useMemo(()=>route.originLatitude&&route.originLongitude?{latitude:Number(route.originLatitude),longitude:Number(route.originLongitude)}:null,[route]);
- function changeType(e){const next=e.target.value;setType(next);setQuote(null);onQuoteChange?.(null);if(dropoff)handlePoint(dropoff);}
+ async function changeType(e){
+  const next=e.target.value;
+  setType(next);setQuote(null);onQuoteChange?.(null);
+  if(!dropoff)return;
+  setError("");setLoading(true);
+  try{
+    const nextQuote=await quoteRouteFare(route.id,{...dropoff,passengerType:next});
+    setQuote(nextQuote);onQuoteChange?.({...nextQuote,passengerType:next});
+  }catch(err){
+    setError(err.response?.data?.message||err.response?.data?.error||"Unable to calculate the fare.");
+  }finally{setLoading(false);}
+ }
  return <div className="passenger-fare-map">
   <div className="route-map-help">Tap the map to pin your drop-off location. BUSSIN calculates the road distance from the route origin and applies the selected passenger discount.</div>
   <RouteMap origin={origin} destination={dropoff} geometry={route.routeGeometry} onPointSelect={handlePoint}/>

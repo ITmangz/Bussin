@@ -211,6 +211,11 @@ function Booking() {
       return;
     }
 
+    if (!dropoff || !fareQuote) {
+      setError("Please pin your drop-off location and wait for the fare calculation.");
+      return;
+    }
+
     setError("");
     setStep(3);
   }
