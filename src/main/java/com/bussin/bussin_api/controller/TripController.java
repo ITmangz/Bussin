@@ -45,6 +45,17 @@ public class TripController {
         return tripService.getAllTrips(status, routeId, from, to);
     }
 
+    // EMPLOYEE only: explicit assigned-trip endpoint.
+    @GetMapping("/employee")
+    public List<TripResponse> getEmployeeTrips(
+            @RequestParam(required = false) TripStatus status,
+            @RequestParam(required = false) Long routeId,
+            @RequestParam(required = false) LocalDateTime from,
+            @RequestParam(required = false) LocalDateTime to) {
+
+        return tripService.getEmployeeTrips(status, routeId, from, to);
+    }
+
     // ADMIN, EMPLOYEE, COMMUTER
     @GetMapping("/{tripId}")
     public TripResponse getTrip(@PathVariable Long tripId) {

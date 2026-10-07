@@ -6,7 +6,7 @@ import AppCard from "../../components/ui/AppCard";
 import { useAuth } from "../../contexts/AuthContext";
 import { getEmployeeBookings } from "../../services/adminBookingService";
 import { getEmployeeQueue } from "../../services/queueService";
-import { getAllTrips } from "../../services/tripService";
+import { getEmployeeTrips } from "../../services/tripService";
 import "./EmployeeDashboard.css";
 
 function formatDate(value) {
@@ -31,7 +31,7 @@ function EmployeeDashboard() {
     setError("");
 
     const results = await Promise.allSettled([
-      getAllTrips(),
+      getEmployeeTrips(),
       getEmployeeBookings(),
       getEmployeeQueue(),
     ]);

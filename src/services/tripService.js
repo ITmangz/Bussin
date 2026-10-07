@@ -2,7 +2,13 @@ import apiClient from "./apiClient";
 
 export async function getAllTrips() {
     const response = await apiClient.get("/trips");
+    return response.data;
+}
 
+export async function getEmployeeTrips(params = {}) {
+    const response = await apiClient.get("/trips/employee", {
+        params,
+    });
     return response.data;
 }
 
@@ -10,7 +16,6 @@ export async function getTripById(tripId) {
     const response = await apiClient.get(
         `/trips/${tripId}`
     );
-
     return response.data;
 }
 
@@ -28,7 +33,6 @@ export async function searchTrips({
             to
         }
     });
-
     return response.data;
 }
 
@@ -36,7 +40,6 @@ export async function getRouteById(routeId) {
     const response = await apiClient.get(
         `/routes/${routeId}`
     );
-
     return response.data;
 }
 

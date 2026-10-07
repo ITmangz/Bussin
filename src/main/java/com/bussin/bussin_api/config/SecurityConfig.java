@@ -197,6 +197,11 @@ public class SecurityConfig {
                                                 // ------------------------------------------------
                                                 // Trips
                                                 // ------------------------------------------------
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/api/trips/employee")
+                                                .hasRole("EMPLOYEE")
+
 
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,

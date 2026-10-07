@@ -96,6 +96,35 @@ public class TripService {
     }
 
     // ============================================================
+    // GET EMPLOYEE ASSIGNED TRIPS
+    // ============================================================
+
+    @Transactional(readOnly = true)
+    public List<TripResponse> getEmployeeTrips(
+            TripStatus status,
+            Long routeId,
+            LocalDateTime from,
+            LocalDateTime to) {
+
+        User employee = getAuthenticatedUser();
+
+        if (employee.getRole() != Role.EMPLOYEE) {
+            throw new ConflictException("Employee access is required.");
+        }
+
+        List<Trip> trips = filterEmployeeTrips(
+                tripRepository.findAssignedToEmployee(employee.getId()),
+                status,
+                routeId,
+                from,
+                to);
+
+        return trips.stream()
+                .map(trip -> toResponse(trip, employee))
+                .toList();
+    }
+
+    // ============================================================
     // GET TRIP BY ID
     // ============================================================
 

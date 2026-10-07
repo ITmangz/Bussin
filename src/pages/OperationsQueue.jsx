@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListOrdered, RefreshCw } from "lucide-react";
-import { getAllTrips } from "../services/tripService";
+import { getAllTrips, getEmployeeTrips } from "../services/tripService";
 import { getTripQueue, updateQueueStatus } from "../services/queueService";
+import { useAuth } from "../contexts/AuthContext";
 import "./OperationsQueue.css";
 
 function formatDate(value) {
@@ -21,12 +22,13 @@ function OperationsQueue({ title = "Queue", description = "Monitor passenger que
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [error, setError] = useState("");
+  const { role } = useAuth();
 
   const loadTrips = useCallback(async () => {
     try {
       setLoadingTrips(true);
       setError("");
-      const data = await getAllTrips();
+      const data = role === "EMPLOYEE" ? await getEmployeeTrips() : await getAllTrips();
       const list = Array.isArray(data) ? data : [];
       setTrips(list);
       setTripId((current) => current || (list.length ? String(list[0].id) : ""));
@@ -35,7 +37,7 @@ function OperationsQueue({ title = "Queue", description = "Monitor passenger que
     } finally {
       setLoadingTrips(false);
     }
-  }, []);
+  }, [role]);
 
   const loadQueue = useCallback(async (selectedTripId) => {
     if (!selectedTripId) {

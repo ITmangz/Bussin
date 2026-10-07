@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, RefreshCw, Route } from "lucide-react";
 
 import AppCard from "../../components/ui/AppCard";
-import { getAllTrips } from "../../services/tripService";
+import { getEmployeeTrips } from "../../services/tripService";
 import "./EmployeeTrips.css";
 
 function formatDate(value) {
@@ -28,7 +28,7 @@ function EmployeeTrips() {
   async function loadTrips() {
     try {
       setError("");
-      const response = await getAllTrips();
+      const response = await getEmployeeTrips();
       setTrips(Array.isArray(response) ? response : []);
     } catch (loadError) {
       console.error("Failed to load assigned trips:", loadError);
