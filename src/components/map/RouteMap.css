@@ -107,3 +107,16 @@
   background: #fee2e2;
   color: #990000;
 }
+.bussin-map-error {
+  height: 100%;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: center;
+  color: #6b7280;
+  background: #eef2f4;
+  font-size: 13px;
+}
