@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.bussin.bussin_api.dto.BookingResponse;\nimport com.bussin.bussin_api.dto.FareQuoteRequest;\nimport com.bussin.bussin_api.dto.FareQuoteResponse;
+import com.bussin.bussin_api.dto.BookingResponse;
+import com.bussin.bussin_api.dto.FareQuoteRequest;
+import com.bussin.bussin_api.dto.FareQuoteResponse;
 import com.bussin.bussin_api.dto.CreateBookingRequest;
 import com.bussin.bussin_api.dto.UpdatePaymentStatusRequest;
 import com.bussin.bussin_api.dto.UpdateBookingStatusRequest;
@@ -51,7 +53,8 @@ public class BookingService {
     private final CancelledBookingArchiveRepository cancelledBookingArchiveRepository;
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
-    private final QueueService queueService;\n    private final RouteFareService routeFareService;
+    private final QueueService queueService;
+    private final RouteFareService routeFareService;
 
     public BookingService(
             BookingRepository bookingRepository,
@@ -59,14 +62,16 @@ public class BookingService {
             CancelledBookingArchiveRepository cancelledBookingArchiveRepository,
             TripRepository tripRepository,
             UserRepository userRepository,
-            QueueService queueService,\n            RouteFareService routeFareService) {
+            QueueService queueService,
+            RouteFareService routeFareService) {
 
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
         this.cancelledBookingArchiveRepository = cancelledBookingArchiveRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
-        this.queueService = queueService;\n        this.routeFareService = routeFareService;
+        this.queueService = queueService;
+        this.routeFareService = routeFareService;
     }
 
     @Transactional
@@ -180,7 +185,10 @@ public class BookingService {
 
         // Kept for backward compatibility with the existing schema and API.
         booking.setSeatNumber(seatNumbers.get(0));
-        booking.setFare(totalFare);\n        booking.setDropoffLatitude(request.getDropoffLatitude());\n        booking.setDropoffLongitude(request.getDropoffLongitude());\n        booking.setPassengerType(request.getPassengerType().trim().toUpperCase());
+        booking.setFare(totalFare);
+        booking.setDropoffLatitude(request.getDropoffLatitude());
+        booking.setDropoffLongitude(request.getDropoffLongitude());
+        booking.setPassengerType(request.getPassengerType().trim().toUpperCase());
 
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setPaymentStatus(PaymentStatus.UNPAID);

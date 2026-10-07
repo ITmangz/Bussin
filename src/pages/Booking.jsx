@@ -15,7 +15,9 @@ import {
 import AppButton from "../components/ui/AppButton";
 import AppCard from "../components/ui/AppCard";
 import ETicket from "../components/booking/ETicket";
-import EReceipt from "../components/booking/EReceipt";\nimport PassengerFareMap from "../components/map/PassengerFareMap";\nimport { getRouteById } from "../services/routeService";
+import EReceipt from "../components/booking/EReceipt";
+import PassengerFareMap from "../components/map/PassengerFareMap";
+import { getRouteById } from "../services/routeService";
 import { useAuth } from "../contexts/AuthContext";
 import {
   createBooking,
@@ -85,7 +87,10 @@ function Booking() {
   const [loadingSeats, setLoadingSeats] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [booking, setBooking] = useState(null);\n  const [route, setRoute] = useState(null);\n  const [dropoff, setDropoff] = useState(null);\n  const [fareQuote, setFareQuote] = useState(null);
+  const [booking, setBooking] = useState(null);
+  const [route, setRoute] = useState(null);
+  const [dropoff, setDropoff] = useState(null);
+  const [fareQuote, setFareQuote] = useState(null);
 
   useEffect(() => {
     if (!trip?.id) {
@@ -123,7 +128,7 @@ function Booking() {
 
   const maxSeatCount = availableSeats.length;
   const totalFare =
-    Number(trip?.fare || 0) * Number(selectedSeats.length || seatCount || 0);
+    Number(fareQuote?.finalFare ?? trip?.fare ?? 0) * Number(selectedSeats.length || seatCount || 0);
 
   if (!trip) {
     return (
@@ -221,6 +226,9 @@ function Booking() {
         passengerName: passengerName.trim(),
         passengerPhone: passengerPhone.trim(),
         passengerEmail: passengerEmail.trim(),
+        dropoffLatitude: dropoff.latitude,
+        dropoffLongitude: dropoff.longitude,
+        passengerType: fareQuote.passengerType,
       };
       const createdBooking = user
         ? await createBooking(bookingRequest)

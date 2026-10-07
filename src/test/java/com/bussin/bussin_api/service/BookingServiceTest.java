@@ -30,6 +30,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.bussin.bussin_api.dto.CreateBookingRequest;
+import com.bussin.bussin_api.dto.FareQuoteRequest;
+import com.bussin.bussin_api.dto.FareQuoteResponse;
 import com.bussin.bussin_api.dto.BookingResponse;
 import com.bussin.bussin_api.dto.UpdatePaymentStatusRequest;
 import com.bussin.bussin_api.entity.Booking;
@@ -75,6 +77,9 @@ class BookingServiceTest {
     @Mock
     private QueueService queueService;
 
+    @Mock
+    private RouteFareService routeFareService;
+
     @InjectMocks
     private BookingService bookingService;
 
@@ -82,6 +87,17 @@ class BookingServiceTest {
     void authenticateCommuter() {
         FirebaseToken firebaseToken = mock(FirebaseToken.class);
         lenient().when(firebaseToken.getUid()).thenReturn("firebase-uid");
+        lenient().when(routeFareService.quote(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(FareQuoteRequest.class)))
+                .thenReturn(new FareQuoteResponse(
+                        new BigDecimal("5.00"),
+                        new BigDecimal("100.00"),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        new BigDecimal("100.00"),
+                        "REGULAR"));
+
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         firebaseToken,
