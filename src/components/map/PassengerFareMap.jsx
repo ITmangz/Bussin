@@ -11,7 +11,6 @@ const TYPES = [
   ["SENIOR", "Senior Citizen"],
   ["PWD", "PWD"],
 ];
-
 export default function PassengerFareMap({
   route,
   onQuoteChange,
@@ -22,6 +21,18 @@ export default function PassengerFareMap({
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  console.log("========== BUSSIN COMMUTER MAP ==========");
+  console.log("ROUTE:", route);
+  console.log("ROUTE ID:", route?.id);
+  console.log("ORIGIN:", route?.origin);
+  console.log("ORIGIN LAT:", route?.originLatitude);
+  console.log("ORIGIN LNG:", route?.originLongitude);
+  console.log("DESTINATION:", route?.destination);
+  console.log("DESTINATION LAT:", route?.destinationLatitude);
+  console.log("DESTINATION LNG:", route?.destinationLongitude);
+  console.log("ROUTE GEOMETRY:", route?.routeGeometry);
+  console.log("==========================================");
 
   const origin = useMemo(() => {
     if (route?.originLatitude == null || route?.originLongitude == null) {

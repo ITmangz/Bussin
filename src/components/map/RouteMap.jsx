@@ -1,15 +1,18 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
-  LngLatBounds,
   Map,
   Marker,
   NavigationControl,
   Popup,
+  setWorkerUrl,
 } from "maplibre-gl";
+
+import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
+setWorkerUrl(maplibreWorker);
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./RouteMap.css";
-
 
 const DEFAULT_CENTER = [120.9842, 14.5995];
 
@@ -59,12 +62,20 @@ function normalizeGeometry(value) {
 
   if (parsed.type === "FeatureCollection") {
     const feature = parsed.features?.find((item) => item?.geometry);
-
     return feature?.geometry || null;
   }
 
   if (parsed.type === "LineString") {
     return parsed;
+  }
+
+  // Your backend currently returns the geometry object without
+  // explicitly requiring the "type" field in some responses.
+  if (Array.isArray(parsed.coordinates)) {
+    return {
+      type: "LineString",
+      coordinates: parsed.coordinates,
+    };
   }
 
   console.error("BUSSIN MAP: Unsupported geometry:", parsed);
@@ -180,14 +191,34 @@ function fitMapToRoute(map, geometry, origin, destination) {
     ]);
   }
 
-  if (!coordinates.length) {
+  const validCoordinates = coordinates.filter(
+    ([longitude, latitude]) =>
+      Number.isFinite(longitude) && Number.isFinite(latitude),
+  );
+
+  if (!validCoordinates.length) {
     return;
   }
 
-  const bounds = coordinates.reduce(
-    (result, coordinate) => result.extend(coordinate),
-    new LngLatBounds(coordinates[0], coordinates[0]),
-  );
+  let minLongitude = validCoordinates[0][0];
+  let maxLongitude = validCoordinates[0][0];
+  let minLatitude = validCoordinates[0][1];
+  let maxLatitude = validCoordinates[0][1];
+
+  validCoordinates.forEach(([longitude, latitude]) => {
+    minLongitude = Math.min(minLongitude, longitude);
+
+    maxLongitude = Math.max(maxLongitude, longitude);
+
+    minLatitude = Math.min(minLatitude, latitude);
+
+    maxLatitude = Math.max(maxLatitude, latitude);
+  });
+
+  const bounds = [
+    [minLongitude, minLatitude],
+    [maxLongitude, maxLatitude],
+  ];
 
   map.fitBounds(bounds, {
     padding: 70,
@@ -225,6 +256,85 @@ export default function RouteMap({
   const markersRef = useRef([]);
   const mapLoadedRef = useRef(false);
 
+  const renderMapContent = useCallback(() => {
+    const map = mapRef.current;
+
+    if (!map || !mapLoadedRef.current) {
+      return;
+    }
+
+    console.log("BUSSIN MAP: Rendering route and markers.");
+
+    /*
+     * ROUTE
+     */
+    if (geometry) {
+      const rendered = addOrUpdateRouteLayer(map, geometry);
+
+      if (rendered) {
+        fitMapToRoute(map, geometry, origin, destination);
+      }
+    }
+
+    /*
+     * MARKERS
+     */
+    markersRef.current.forEach((marker) => marker.remove());
+
+    markersRef.current = [];
+
+    const points = [
+      {
+        point: origin,
+        type: "origin",
+        label: "Origin",
+      },
+      {
+        point: destination,
+        type: "destination",
+        label: "Drop-off",
+      },
+    ];
+
+    points.forEach(({ point, type, label }) => {
+      if (!point || point.latitude == null || point.longitude == null) {
+        return;
+      }
+
+      const latitude = Number(point.latitude);
+      const longitude = Number(point.longitude);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        console.warn("BUSSIN MAP: Invalid marker coordinates:", point);
+        return;
+      }
+
+      console.log(`BUSSIN MAP: Adding ${type} marker:`, {
+        latitude,
+        longitude,
+      });
+
+      const popup = new Popup({
+        offset: 20,
+      }).setText(label);
+
+      const element = createPinElement(type);
+
+      const marker = new Marker({
+        element,
+        anchor: "bottom",
+      })
+        .setLngLat([longitude, latitude])
+        .setPopup(popup)
+        .addTo(map);
+
+      markersRef.current.push(marker);
+    });
+  }, [origin, destination, geometry]);
+
+  /*
+   * CREATE MAP
+   */
   useEffect(() => {
     if (!containerRef.current) {
       return;
@@ -232,25 +342,50 @@ export default function RouteMap({
 
     console.log("BUSSIN MAP: Creating map.");
 
+    console.log("BUSSIN MAP: Container:", {
+      width: containerRef.current?.clientWidth,
+      height: containerRef.current?.clientHeight,
+      rect: containerRef.current?.getBoundingClientRect(),
+    });
+
+    console.log("BUSSIN MAP: WebGL:", {
+      webgl: Boolean(document.createElement("canvas").getContext("webgl")),
+      webgl2: Boolean(document.createElement("canvas").getContext("webgl2")),
+    });
+
     let map;
 
     try {
       map = new Map({
-      container: containerRef.current,
-      style: OSM_STYLE,
-      center: DEFAULT_CENTER,
-      zoom: 11,
-      attributionControl: true,
-    });
+        container: containerRef.current,
+        style: OSM_STYLE,
+        center: DEFAULT_CENTER,
+        zoom: 11,
+        attributionControl: true,
+      });
     } catch (error) {
       console.error("BUSSIN MAP: Failed to initialize MapLibre:", error);
+
       if (containerRef.current) {
-        containerRef.current.innerHTML = `<div class="bussin-map-error">Unable to initialize the map. Please check WebGL support.</div>`;
+        containerRef.current.innerHTML = `
+          <div class="bussin-map-error">
+            Unable to initialize the map. Please check WebGL support.
+          </div>
+        `;
       }
+
       return;
     }
 
     mapRef.current = map;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (map) {
+        map.resize();
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
 
     map.addControl(new NavigationControl(), "top-right");
 
@@ -259,13 +394,12 @@ export default function RouteMap({
 
       mapLoadedRef.current = true;
 
-      if (geometry) {
-        const rendered = addOrUpdateRouteLayer(map, geometry);
+      map.resize();
 
-        if (rendered) {
-          fitMapToRoute(map, geometry, origin, destination);
-        }
-      }
+      requestAnimationFrame(() => {
+        map.resize();
+        renderMapContent();
+      });
     });
 
     map.on("error", (event) => {
@@ -288,6 +422,8 @@ export default function RouteMap({
     return () => {
       mapLoadedRef.current = false;
 
+      resizeObserver.disconnect();
+
       markersRef.current.forEach((marker) => marker.remove());
 
       markersRef.current = [];
@@ -296,88 +432,14 @@ export default function RouteMap({
 
       mapRef.current = null;
     };
-  }, [interactive, onPointSelect]);
+  }, [interactive, onPointSelect, renderMapContent]);
 
+  /*
+   * UPDATE ROUTE / MARKERS WHEN PROPS CHANGE
+   */
   useEffect(() => {
-    const map = mapRef.current;
-
-    if (!map || !mapLoadedRef.current) {
-      return;
-    }
-
-    if (!geometry) {
-      return;
-    }
-
-    const rendered = addOrUpdateRouteLayer(map, geometry);
-
-    if (rendered) {
-      fitMapToRoute(map, geometry, origin, destination);
-    }
-  }, [geometry, origin, destination]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-
-    if (!map || !mapLoadedRef.current) {
-      return;
-    }
-
-    markersRef.current.forEach((marker) => marker.remove());
-
-    markersRef.current = [];
-
-    const points = [
-      {
-        point: origin,
-        type: "origin",
-        label: "Origin",
-      },
-      {
-        point: destination,
-        type: "destination",
-        label: "Destination",
-      },
-    ];
-
-    points.forEach(({ point, type, label }) => {
-      if (!point || point.latitude == null || point.longitude == null) {
-        return;
-      }
-
-      const latitude = Number(point.latitude);
-
-      const longitude = Number(point.longitude);
-
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return;
-      }
-
-      const popup = new Popup({
-        offset: 20,
-      }).setText(label);
-
-      const element = createPinElement(type);
-
-      const marker = new Marker({
-        element,
-        anchor: "bottom",
-      })
-        .setLngLat([longitude, latitude])
-        .setPopup(popup)
-        .addTo(map);
-
-      markersRef.current.push(marker);
-    });
-
-    if (geometry) {
-      const rendered = addOrUpdateRouteLayer(map, geometry);
-
-      if (rendered) {
-        fitMapToRoute(map, geometry, origin, destination);
-      }
-    }
-  }, [origin, destination, geometry]);
+    renderMapContent();
+  }, [renderMapContent]);
 
   return (
     <div
